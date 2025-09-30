@@ -5,7 +5,7 @@
     "props": {}
   },
   "watchparty": {
-    "url": "/mf/watchparty/index.js",
+    "url": "https://cdn.jsdelivr.net/gh/WolffM/hadoku-watchparty@main/apps/ui/dist/index.js",
     "basename": "/watchparty",
     "props": {}
   },

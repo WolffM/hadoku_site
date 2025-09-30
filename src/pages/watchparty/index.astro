@@ -6,6 +6,16 @@ import Base from '../../layouts/Base.astro';
   <hadoku-header></hadoku-header>
   <div id="root" data-app="watchparty"></div>
   
+  <!-- React peer dependencies for watchparty micro-frontend -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19.0.0",
+        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
+      }
+    }
+  </script>
+  
   <script src="../../components/hadoku-header.js"></script>
   <script src="../../components/mf-loader.js"></script>
 </Base>
