@@ -1,0 +1,21 @@
+{
+  "name": "hadoku_site",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Astro-based controller app for hadoku micro-frontends",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@astrojs/node": "^9.4.4",
+    "astro": "^5.14.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

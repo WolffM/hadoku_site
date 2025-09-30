@@ -1,0 +1,27 @@
+{
+  "home": {
+    "url": "/mf/home/index.js",
+    "basename": "/",
+    "props": {}
+  },
+  "watchparty": {
+    "url": "/mf/watchparty/index.js",
+    "basename": "/watchparty",
+    "props": {}
+  },
+  "task": {
+    "url": "/mf/task/index.js",
+    "basename": "/task",
+    "props": {}
+  },
+  "contact": {
+    "url": "/mf/contact/index.js",
+    "basename": "/contact",
+    "props": {}
+  },
+  "herodraft": {
+    "url": "/mf/herodraft/index.js",
+    "basename": "/herodraft",
+    "props": {}
+  }
+}
