@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """
 Script to update HADOKU_SITE_TOKEN secret across multiple GitHub repositories.
+Uses GitHub OAuth Device Flow for secure authentication.
 Requires: pip install requests PyNaCl
 """
 
 import requests
 import base64
 import json
-import os
+import time
 from pathlib import Path
 from nacl import encoding, public
-from typing import List
+from typing import List, Optional
+
+# GitHub OAuth App Client ID (public, safe to commit)
+# This is the official GitHub CLI client ID
+CLIENT_ID = "178c6fc778ccc68e1d6a"
 
 # Load token from .env file
 def load_env():
@@ -30,18 +35,74 @@ def load_env():
 
 # Load configuration from .env
 env = load_env()
-GITHUB_TOKEN = env.get('HADOKU_SITE_TOKEN', '')
-NEW_SECRET_VALUE = GITHUB_TOKEN  # Use the same token as the secret value
+NEW_SECRET_VALUE = env.get('HADOKU_SITE_TOKEN', '')
 SECRET_NAME = "HADOKU_SITE_TOKEN"
 
 # List of repositories to update
 REPOS = [
     "WolffM/hadoku-task",
     "WolffM/hadoku-watchparty", 
-    "WolffM/hadoku-contact",
-    "WolffM/hadoku-herodraft",
     # Add more repos as needed
 ]
+
+def github_device_flow_auth() -> Optional[str]:
+    """Authenticate using GitHub Device Flow."""
+    print("🔐 Starting GitHub OAuth Device Flow...")
+    print("=" * 50)
+    
+    # Step 1: Request device and user codes
+    device_code_url = "https://github.com/login/device/code"
+    response = requests.post(
+        device_code_url,
+        headers={"Accept": "application/json"},
+        data={"client_id": CLIENT_ID, "scope": "repo"}
+    )
+    
+    if response.status_code != 200:
+        print(f"❌ Failed to request device code: {response.text}")
+        return None
+    
+    data = response.json()
+    device_code = data["device_code"]
+    user_code = data["user_code"]
+    verification_uri = data["verification_uri"]
+    interval = data.get("interval", 5)
+    
+    # Step 2: Display user code and wait for authorization
+    print(f"\n📋 Please visit: {verification_uri}")
+    print(f"🔑 Enter code: {user_code}")
+    print(f"\nWaiting for authorization (this will auto-check every {interval} seconds)...")
+    print("Press Ctrl+C to cancel\n")
+    
+    # Step 3: Poll for access token
+    token_url = "https://github.com/login/oauth/access_token"
+    while True:
+        time.sleep(interval)
+        
+        response = requests.post(
+            token_url,
+            headers={"Accept": "application/json"},
+            data={
+                "client_id": CLIENT_ID,
+                "device_code": device_code,
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            }
+        )
+        
+        result = response.json()
+        
+        if "access_token" in result:
+            print("✅ Successfully authenticated!")
+            return result["access_token"]
+        elif result.get("error") == "authorization_pending":
+            print("⏳ Still waiting for authorization...")
+            continue
+        elif result.get("error") == "slow_down":
+            interval += 5
+            continue
+        else:
+            print(f"❌ Authentication failed: {result.get('error_description', result.get('error'))}")
+            return None
 
 class GitHubSecretsManager:
     def __init__(self, token: str):
@@ -107,14 +168,24 @@ def main():
     print("🚀 GitHub Secrets Updater")
     print("=" * 50)
     
-    # Validate configuration
-    if not GITHUB_TOKEN:
+    # Validate that we have the secret value to distribute
+    if not NEW_SECRET_VALUE:
         print("❌ HADOKU_SITE_TOKEN not found in .env file")
         print("Please add HADOKU_SITE_TOKEN to your .env file")
         return
     
+    # Authenticate via OAuth Device Flow
+    github_token = github_device_flow_auth()
+    if not github_token:
+        print("❌ Authentication failed. Exiting.")
+        return
+    
+    print(f"\n🔄 Will update {SECRET_NAME} in {len(REPOS)} repositories")
+    print(f"📦 Secret value from .env: {NEW_SECRET_VALUE[:20]}...")
+    print()
+    
     # Initialize manager
-    manager = GitHubSecretsManager(GITHUB_TOKEN)
+    manager = GitHubSecretsManager(github_token)
     
     # Update secrets
     success_count = 0
