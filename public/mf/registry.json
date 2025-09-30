@@ -7,7 +7,11 @@
   "watchparty": {
     "url": "/mf/watchparty/index.js",
     "basename": "/watchparty",
-    "props": {}
+    "props": {
+      "serverOrigin": "http://localhost:8080",
+      "defaultRoomKey": "dev-room-1000",
+      "mediaBase": "/media"
+    }
   },
   "task": {
     "url": "/mf/task/index.js",
