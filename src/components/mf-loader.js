@@ -22,6 +22,23 @@
       throw new Error(`App "${appName}" not found in registry`);
     }
 
+    // Load CSS if specified
+    if (appConfig.css) {
+      const linkId = `mf-css-${appName}`;
+      // Remove existing CSS for this app if present
+      const existingLink = document.getElementById(linkId);
+      if (existingLink) {
+        existingLink.remove();
+      }
+      // Add new CSS link
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = appConfig.css;
+      document.head.appendChild(link);
+      console.log(`Loaded CSS for micro-app: ${appName}`);
+    }
+
     // Create a blob URL for the module to work around Vite's public directory restrictions
     const moduleResponse = await fetch(appConfig.url);
     if (!moduleResponse.ok) {

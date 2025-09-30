@@ -6,6 +6,7 @@
   },
   "watchparty": {
     "url": "/mf/watchparty/index.js",
+    "css": "/mf/watchparty/style.css",
     "basename": "/watchparty",
     "props": {
       "serverOrigin": "http://localhost:8080",
