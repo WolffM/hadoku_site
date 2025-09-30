@@ -1,213 +1,158 @@
 # hadoku_site
 
-An Astro-based controller application for managing micro-frontends (micro-apps). This application provides a consistent navigation experience and dynamically loads micro-apps based on the route.
+An Astro-based shell application for managing micro-frontends. Provides dynamic app loading, access control, and automated deployment.
 
 ## Features
 
-- **Astro-based routing**: Utilizes Astro's file-based routing for clean URL structure
-- **Consistent header navigation**: Custom `<hadoku-header>` web component with Shadow DOM
-- **Micro-frontend architecture**: Dynamically loads and mounts micro-apps via ES modules
-- **Centralized registry**: Single source of truth for all micro-app configurations
-- **TypeScript support**: Full TypeScript configuration for type safety
+- **Dynamic Micro-Frontend Loading**: Load React/Vue/vanilla JS apps as ES modules
+- **Access Control**: URL-based access levels (public/friend/admin)
+- **Auto-Generated Registry**: Props and secrets injected at build time
+- **GitHub Actions Deployment**: Automated cross-repo deployments
+- **Single Dynamic Route**: One template handles all micro-apps
 
-## Getting Started
+## Quick Start
 
-### Prerequisites
-
-- Node.js 18.x or higher
-- npm 9.x or higher
-
-### Installation
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/WolffM/hadoku_site.git
-cd hadoku_site
-```
-
-2. Install dependencies:
-```bash
+# Install
 npm install
-```
 
-### Running Locally
-
-#### Development Mode
-Start the development server with hot-reload:
-```bash
+# Development
 npm run dev
-```
-The site will be available at `http://localhost:4321`
 
-#### Build for Production
-Build the static site:
-```bash
+# Build
 npm run build
-```
 
-#### Preview Production Build
-Preview the production build locally:
-```bash
+# Preview
 npm run preview
 ```
 
-## Architecture
+## Access Levels
 
-### Directory Structure
+Visit the site with different access keys:
+
+- **Public**: `https://hadoku.me/` - Home only
+- **Friend**: `https://hadoku.me/?key=FRIEND_KEY` - Home + Watchparty
+- **Admin**: `https://hadoku.me/?key=ADMIN_KEY` - All apps
+
+See [docs/ACCESS_CONTROL.md](docs/ACCESS_CONTROL.md) for details.
+
+## Architecture
 
 ```
 hadoku_site/
 ├── src/
-│   ├── layouts/
-│   │   └── Base.astro          # Base layout with HTML head
+│   ├── components/
+│   │   ├── MicroFrontend.astro  # Reusable micro-app component
+│   │   ├── mf-loader.js         # Dynamic module loader
+│   │   └── hadoku-header.js     # Header web component
+│   ├── config/
+│   │   ├── access-control.ts    # User type & visibility rules
+│   │   └── micro-frontends.ts   # App configurations
 │   ├── pages/
-│   │   ├── index.astro          # Home route (/)
-│   │   ├── watchparty/
-│   │   │   └── index.astro      # Watch Party route (/watchparty/)
-│   │   ├── task/
-│   │   │   └── index.astro      # Task route (/task/)
-│   │   ├── contact/
-│   │   │   └── index.astro      # Contact route (/contact/)
-│   │   └── herodraft/
-│   │       └── index.astro      # Hero Draft route (/herodraft/)
-│   └── components/
-│       ├── hadoku-header.js     # Header web component
-│       └── mf-loader.js         # Micro-frontend loader script
+│   │   ├── index.astro          # Home with app cards
+│   │   └── [app].astro          # Dynamic route for all apps
+│   └── layouts/
+│       └── Base.astro           # Base HTML layout
 ├── public/
 │   └── mf/
-│       ├── registry.json        # Micro-app registry
-│       └── [app-name]/
-│           └── index.js         # Micro-app bundle
-└── astro.config.mjs             # Astro configuration
+│       ├── registry.json        # Auto-generated (gitignored)
+│       └── [app]/               # App bundles deployed here
+│           ├── index.js
+│           └── style.css
+├── scripts/
+│   └── generate-registry.mjs    # Generates registry with secrets
+└── docs/
+    ├── ACCESS_CONTROL.md         # Access level documentation
+    ├── REGISTRY_CONFIGURATION.md # Registry system guide
+    └── starter-templates/        # Template for new micro-apps
 ```
 
-### Routes
+### How It Works
 
-All routes follow the same pattern:
-1. Render the `<hadoku-header>` web component for navigation
-2. Include an empty `<div id="root" data-app="[app-name]">` placeholder
-3. Load the micro-frontend loader script that:
-   - Fetches `/mf/registry.json`
-   - Imports the correct ESM bundle for the route
-   - Calls `mount(el, props)` on the imported module
+1. **Build Time**: `generate-registry.mjs` creates `registry.json` with environment variables
+2. **Load Time**: `mf-loader.js` fetches registry and imports app bundle
+3. **Runtime**: App's `mount(el, props)` function renders into `#root`
+4. **Access Control**: URL `?key=xxx` determines which apps are visible
 
-Available routes:
-- `/` - Home page
-- `/watchparty/` - Watch Party app
-- `/task/` - Task Manager app
-- `/contact/` - Contact app
-- `/herodraft/` - Hero Draft app
+## Creating a Micro-App
 
-### Micro-Frontend Registry
+### 1. Use the Starter Template
 
-The registry (`/public/mf/registry.json`) maps app names to their configurations:
+Copy files from `docs/starter-templates/` to your new repo.
 
-```json
-{
-  "appname": {
-    "url": "/mf/appname/index.js",
-    "basename": "/appname",
-    "props": {}
-  }
+### 2. Micro-App Contract
+
+Each app exports `mount` and `unmount`:
+
+```typescript
+export function mount(el: HTMLElement, props: AppProps) {
+  // Render your app into el
+  const root = createRoot(el);
+  root.render(<App {...props} />);
+}
+
+export function unmount(el: HTMLElement) {
+  // Clean up
 }
 ```
 
-## Developing Micro-Apps
+### 3. Register in hadoku_site
 
-### Micro-App Contract
+Edit `scripts/generate-registry.mjs`:
 
-Each micro-app must be an ES module that exports two functions:
-
-#### `mount(el, props)`
-Called when the app should render into the DOM.
-
-**Parameters:**
-- `el` (HTMLElement): The DOM element to render into (the `#root` div)
-- `props` (Object): Configuration object containing:
-  - `basename` (string): The route basename for the app
-  - Any additional custom properties from the registry
-
-**Example:**
 ```javascript
-export function mount(el, props) {
-  el.innerHTML = `
-    <div>
-      <h1>My Micro App</h1>
-      <p>Running at: ${props.basename}</p>
-    </div>
-  `;
-  console.log('App mounted with props:', props);
+// Add your app config
+myapp: {
+  url: '/mf/myapp/index.js',
+  css: '/mf/myapp/style.css',
+  basename: '/myapp',
+  props: myappConfig  // Define above with dev/prod variants
 }
 ```
 
-#### `unmount(el)` (optional)
-Called before the page unloads for cleanup.
+### 4. Update Access Control
 
-**Parameters:**
-- `el` (HTMLElement): The DOM element that was used for rendering
+Edit `src/config/access-control.ts`:
 
-**Example:**
-```javascript
-export function unmount(el) {
-  // Clean up event listeners, timers, etc.
-  el.innerHTML = '';
-  console.log('App unmounted');
-}
+```typescript
+export const appVisibility: Record<UserType, string[]> = {
+  public: ['home'],
+  friend: ['home', 'watchparty'],
+  admin: ['home', 'watchparty', 'task', 'contact', 'herodraft', 'myapp']
+};
 ```
 
-### Publishing Micro-Apps
+### 5. Add to Dynamic Route
 
-1. **Build your app** as an ES module that exports `mount` and `unmount` functions
+Edit `src/pages/[app].astro`:
 
-2. **Deploy your bundle** to the `/public/mf/[app-name]/` directory:
-   ```
-   public/mf/
-   └── myapp/
-       └── index.js  (your built bundle)
-   ```
+```typescript
+const validApps = ['watchparty', 'task', 'contact', 'herodraft', 'home', 'myapp'];
+```
 
-3. **Register your app** in `/public/mf/registry.json`:
-   ```json
-   {
-     "myapp": {
-       "url": "/mf/myapp/index.js",
-       "basename": "/myapp",
-       "props": {
-         "customProp": "value"
-       }
-     }
-   }
-   ```
+See [docs/starter-templates/README.md](docs/starter-templates/README.md) for complete guide.
 
-4. **Create a route** in `src/pages/myapp/index.astro`:
-   ```astro
-   ---
-   import Base from '../../layouts/Base.astro';
-   ---
+## Environment Variables
 
-   <Base title="My App">
-     <hadoku-header></hadoku-header>
-     <div id="root" data-app="myapp"></div>
-     
-     <script src="../../components/hadoku-header.js"></script>
-     <script src="../../components/mf-loader.js"></script>
-   </Base>
-   ```
+Required GitHub Secrets:
 
-### Micro-App Best Practices
+- `HADOKU_SITE_TOKEN` - GitHub PAT (shared with all apps)
+- `ADMIN_KEY` - Admin access key (generated with `openssl rand -hex 16`)
+- `FRIEND_KEY` - Friend access key (generated with `openssl rand -hex 16`)
 
-- **Keep bundles small**: Use code splitting and lazy loading
-- **Avoid global state**: Each app should be self-contained
-- **Clean up resources**: Always implement the `unmount` function
-- **Use the basename**: Respect the `props.basename` for routing within your app
-- **Error handling**: Handle errors gracefully and display user-friendly messages
+## Documentation
 
-## Technologies Used
+- [ACCESS_CONTROL.md](docs/ACCESS_CONTROL.md) - Access levels and URL keys
+- [REGISTRY_CONFIGURATION.md](docs/REGISTRY_CONFIGURATION.md) - Registry system
+- [starter-templates/](docs/starter-templates/) - Template for new apps
 
-- [Astro](https://astro.build/) - Static site generator with server-side rendering
-- [TypeScript](https://www.typescriptlang.org/) - Type safety
-- Web Components - For the custom header navigation
-- ES Modules - For dynamic micro-app loading
+## Tech Stack
+
+- **[Astro](https://astro.build/)** - Static site generator
+- **[TypeScript](https://www.typescriptlang.org/)** - Type safety
+- **ES Modules** - Dynamic micro-app loading
+- **Web Components** - Custom elements
+- **GitHub Actions** - CI/CD
 
 ## License
 

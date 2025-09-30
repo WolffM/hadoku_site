@@ -26,8 +26,8 @@ Push to the `main` branch to automatically deploy to hadoku_site via GitHub Acti
 ## Documentation
 
 See the [hadoku_site documentation](https://github.com/WolffM/hadoku_site/tree/main/docs) for:
-- [Creating Micro-Frontends](https://github.com/WolffM/hadoku_site/blob/main/docs/CREATE_MICRO_FRONTEND.md)
-- [Architecture Guide](https://github.com/WolffM/hadoku_site/blob/main/docs/MICRO_FRONTEND_CONFIG.md)
+- [Registry Configuration](../REGISTRY_CONFIGURATION.md) - How the registry works
+- [Access Control](../ACCESS_CONTROL.md) - User visibility and access levels
 
 ## Structure
 
@@ -76,24 +76,64 @@ Edit these files to customize your app:
 
 After deploying, update hadoku_site:
 
-1. Add to `public/mf/registry.json`:
-   ```json
-   {
-     "myapp": {
-       "url": "/mf/myapp/index.js",
-       "css": "/mf/myapp/style.css",
-       "basename": "/myapp",
-       "props": {
-         "apiUrl": "https://api.hadoku.me",
-         "environment": "production"
+1. **Update Registry Configuration**  
+   Edit `scripts/generate-registry.mjs` to add your app:
+   ```javascript
+   // Add your app config
+   const myappConfig = MODE === 'production'
+     ? {
+         apiUrl: 'https://api.hadoku.me',
+         environment: 'production',
+         githubPat: HADOKU_SITE_TOKEN
        }
+     : {
+         apiUrl: 'http://localhost:3000',
+         environment: 'development',
+         githubPat: HADOKU_SITE_TOKEN
+       };
+
+   // Add to registry object
+   const registry = {
+     // ... existing apps
+     myapp: {
+       url: '/mf/myapp/index.js',
+       css: '/mf/myapp/style.css',
+       basename: '/myapp',
+       props: myappConfig
      }
-   }
+   };
    ```
 
-2. Create `src/pages/myapp/index.astro` in hadoku_site (see docs for template)
+2. **Update Access Control** (optional)  
+   Edit `src/config/access-control.ts` to control visibility:
+   ```typescript
+   export const appVisibility: Record<UserType, string[]> = {
+     public: ['home'],
+     friend: ['home', 'watchparty'],
+     admin: ['home', 'watchparty', 'task', 'contact', 'herodraft', 'myapp']
+   };
+   ```
 
-3. Add navigation link to home page
+3. **Add to Dynamic Route**  
+   Edit `src/pages/[app].astro`:
+   ```typescript
+   const validApps = ['watchparty', 'task', 'contact', 'herodraft', 'home', 'myapp'];
+   ```
+
+4. **Update Home Page** (optional)  
+   Edit `src/pages/index.astro` to add app metadata:
+   ```typescript
+   const appInfo = {
+     // ... existing apps
+     myapp: {
+       title: 'My App',
+       description: 'Description of my app',
+       icon: '🆕'
+     }
+   };
+   ```
+
+See [REGISTRY_CONFIGURATION.md](../REGISTRY_CONFIGURATION.md) for details.
 
 ## License
 
