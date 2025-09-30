@@ -1,0 +1,80 @@
+name: Build and Publish UI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/ui/**'
+      - 'packages/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout hadoku-watchparty
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.HADOKU_WATCHPARTY_DEPLOY_TOKEN }}
+          path: hadoku-watchparty
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Install dependencies
+        working-directory: hadoku-watchparty
+        run: pnpm install
+      
+      - name: Build shared package
+        working-directory: hadoku-watchparty
+        run: pnpm --filter @watchparty/shared build
+      
+      - name: Build UI
+        working-directory: hadoku-watchparty
+        run: pnpm --filter watchparty-ui build
+      
+      - name: Checkout hadoku_site
+        uses: actions/checkout@v4
+        with:
+          repository: WolffM/hadoku_site
+          token: ${{ secrets.HADOKU_SITE_TRIGGER_TOKEN }}
+          path: hadoku_site
+      
+      - name: Copy built files to hadoku_site
+        run: |
+          # Create directory if it doesn't exist
+          mkdir -p hadoku_site/public/mf/watchparty
+          
+          # Copy all dist files
+          cp hadoku-watchparty/apps/ui/dist/* hadoku_site/public/mf/watchparty/
+          
+          # List what was copied
+          echo "Copied files:"
+          ls -la hadoku_site/public/mf/watchparty/
+      
+      - name: Commit and push to hadoku_site
+        working-directory: hadoku_site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add public/mf/watchparty/
+          
+          # Check if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update watchparty UI from hadoku-watchparty@${{ github.sha }}"
+            git push
+            echo "✅ Pushed updated watchparty UI to hadoku_site"
+          fi
