@@ -292,7 +292,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: WolffM/hadoku_site
-          token: ${{ secrets.HADOKU_SITE_TOKEN }}
+          token: ${{ secrets.HADOKU_WATCHPARTY_DEPLOY_TOKEN }}
           path: hadoku_site
       
       - name: Copy built files to hadoku_site
@@ -319,9 +319,9 @@ jobs:
 
 ### Required Secret
 
-Add `HADOKU_SITE_TOKEN` to your repository secrets:
+Add `HADOKU_WATCHPARTY_DEPLOY_TOKEN` to your repository secrets:
 1. Go to your repo → Settings → Secrets → Actions
-2. Create `HADOKU_SITE_TOKEN` with a GitHub PAT that has access to hadoku_site
+2. Create `HADOKU_WATCHPARTY_DEPLOY_TOKEN` with a GitHub PAT that has access to hadoku_site
 3. The token needs `repo` and `workflow` permissions
 
 ---
@@ -539,7 +539,7 @@ See the template above for a minimal working implementation.
 - [ ] Exported `mount(el, props)` and `unmount(el)` from entry.tsx
 - [ ] Added props handling with defaults
 - [ ] Created GitHub Actions workflow
-- [ ] Added `HADOKU_SITE_TOKEN` secret
+- [ ] Added `HADOKU_WATCHPARTY_DEPLOY_TOKEN` secret
 - [ ] Updated hadoku_site registry.json
 - [ ] Created page in hadoku_site
 - [ ] Tested locally with `npm run dev`

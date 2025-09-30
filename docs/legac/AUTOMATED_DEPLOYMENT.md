@@ -63,7 +63,7 @@ If you prefer the classic token:
 
 1. Go to `https://github.com/WolffM/hadoku-watchparty/settings/secrets/actions`
 2. Click "New repository secret"
-3. Name: `HADOKU_SITE_TRIGGER_TOKEN`
+3. Name: `HADOKU_WATCHPARTY_DEPLOY_TOKEN`
 4. Value: Paste the token from Step 1
 5. Click "Add secret"
 
@@ -89,7 +89,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.HADOKU_WATCHPARTY_DEPLOY_TOKEN }}
       
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -126,7 +126,7 @@ jobs:
         run: |
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: token ${{ secrets.HADOKU_SITE_TRIGGER_TOKEN }}" \
+            -H "Authorization: token ${{ secrets.HADOKU_WATCHPARTY_DEPLOY_TOKEN }}" \
             https://api.github.com/repos/WolffM/hadoku_site/dispatches \
             -d '{"event_type":"watchparty_updated","client_payload":{"commit":"${{ github.sha }}"}}'
 ```
@@ -183,7 +183,7 @@ The `hadoku_site/.github/workflows/deploy.yml` has been updated to listen for th
 - Verify the build command works locally
 
 ### hadoku_site doesn't trigger
-- Verify `HADOKU_SITE_TRIGGER_TOKEN` secret is set
+- Verify `HADOKU_WATCHPARTY_DEPLOY_TOKEN` secret is set
 - Check that the token has `repo` and `workflow` scopes
 - Look for curl errors in the workflow logs
 
@@ -263,7 +263,7 @@ This is more complex but significantly more secure for long-term use.
    - When the token expires, you'll need to update the secret with a new one
 3. **Set a calendar reminder** - Renew 1 week before expiration
    - Go to: https://github.com/WolffM/hadoku-watchparty/settings/secrets/actions
-   - Update `HADOKU_SITE_TRIGGER_TOKEN` with a new token
+   - Update `HADOKU_WATCHPARTY_DEPLOY_TOKEN` with a new token
    - Takes 2 minutes, no code changes needed
 4. **Principle of least privilege** - Only grant permissions you need
 5. **Scope to specific repos** - Use fine-grained tokens

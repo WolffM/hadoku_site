@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: WolffM/hadoku_site
-          token: ${{ secrets.HADOKU_SITE_TRIGGER_TOKEN }}
+          token: ${{ secrets.HADOKU_WATCHPARTY_DEPLOY_TOKEN }}
           path: hadoku_site
       
       - name: Copy built files to hadoku_site
