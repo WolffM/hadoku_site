@@ -1,11 +1,13 @@
 ---
 import Base from '../../layouts/Base.astro';
+import MicroFrontend from '../../components/MicroFrontend.astro';
 ---
 
 <Base title="Hadoku - Contact">
-  <hadoku-header></hadoku-header>
-  <div id="root" data-app="contact"></div>
-  
-  <script src="../../components/hadoku-header.js"></script>
-  <script src="../../components/mf-loader.js"></script>
+	<MicroFrontend 
+		appName="contact"
+		title="Hadoku - Contact"
+		showHeader={true}
+		showHomeButton={true}
+	/>
 </Base>

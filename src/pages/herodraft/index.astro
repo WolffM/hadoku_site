@@ -1,11 +1,13 @@
 ---
 import Base from '../../layouts/Base.astro';
+import MicroFrontend from '../../components/MicroFrontend.astro';
 ---
 
 <Base title="Hadoku - Hero Draft">
-  <hadoku-header></hadoku-header>
-  <div id="root" data-app="herodraft"></div>
-  
-  <script src="../../components/hadoku-header.js"></script>
-  <script src="../../components/mf-loader.js"></script>
+	<MicroFrontend 
+		appName="herodraft"
+		title="Hadoku - Hero Draft"
+		showHeader={true}
+		showHomeButton={true}
+	/>
 </Base>

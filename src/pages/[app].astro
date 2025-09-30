@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import MicroFrontend from '../components/MicroFrontend.astro';
+
+// Get the app name from the route parameter
+const { app } = Astro.params;
+
+// Define valid apps (these should match your registry.json)
+const validApps = ['watchparty', 'task', 'contact', 'herodraft', 'home'];
+
+// If app is not valid, return 404
+if (!app || !validApps.includes(app)) {
+  return Astro.redirect('/404');
+}
+
+// Generate page title
+const title = `Hadoku - ${app.charAt(0).toUpperCase() + app.slice(1)}`;
+---
+
+<Base title={title}>
+  <MicroFrontend 
+    appName={app}
+    title={title}
+    showHeader={false}
+    showHomeButton={true}
+  />
+</Base>
