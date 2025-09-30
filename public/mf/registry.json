@@ -5,8 +5,7 @@
     "props": {}
   },
   "watchparty": {
-    "url": "https://github.com/WolffM/hadoku-watchparty/releases/download/ui-latest/index.js",
-    "css": "https://github.com/WolffM/hadoku-watchparty/releases/download/ui-latest/style.css",
+    "url": "/mf/watchparty/index.js",
     "basename": "/watchparty",
     "props": {}
   },
