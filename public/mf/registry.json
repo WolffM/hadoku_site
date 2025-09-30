@@ -11,7 +11,8 @@
     "props": {
       "serverOrigin": "http://localhost:8080",
       "defaultRoomKey": "dev-room-1000",
-      "mediaBase": "/media"
+      "mediaBase": "/media",
+      "githubPat": "test-token-123"
     }
   },
   "task": {
@@ -19,8 +20,14 @@
     "css": "/mf/task/style.css",
     "basename": "/task",
     "props": {
-      "apiUrl": "https://api.hadoku.me",
-      "environment": "production"
+      "githubPat": "test-token-123",
+      "repoOwner": "WolffM",
+      "repoName": "hadoku_site",
+      "branch": "main",
+      "tasksPath": "task/data/tasks.json",
+      "statsPath": "task/data/stats.json",
+      "apiUrl": "http://localhost:3000",
+      "environment": "development"
     }
   },
   "contact": {

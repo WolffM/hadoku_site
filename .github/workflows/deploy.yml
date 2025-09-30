@@ -35,7 +35,8 @@ jobs:
       - name: Build with Astro
         env:
           HADOKU_SITE_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
-          TASK_ADMIN_KEY: ${{ secrets.TASK_ADMIN_KEY }}
+          PUBLIC_ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          PUBLIC_FRIEND_KEY: ${{ secrets.FRIEND_KEY }}
           MODE: production
         run: npm run build
       

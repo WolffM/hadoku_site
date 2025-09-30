@@ -9,7 +9,6 @@ export interface WatchpartyConfig {
 }
 
 export interface TaskConfig {
-  adminKey: string;
   githubPat: string;
   repoOwner: string;
   repoName: string;
@@ -45,7 +44,6 @@ export const watchpartyConfig: WatchpartyConfig =
 
 // Task Development configuration
 const devTaskConfig: TaskConfig = {
-  adminKey: 'dev-admin-key-123',
   githubPat,
   repoOwner: 'WolffM',
   repoName: 'hadoku_site', // or separate data repo
@@ -58,7 +56,6 @@ const devTaskConfig: TaskConfig = {
 
 // Task Production configuration
 const prodTaskConfig: TaskConfig = {
-  adminKey: import.meta.env.TASK_ADMIN_KEY || 'your-production-admin-key',
   githubPat,
   repoOwner: 'WolffM',
   repoName: 'hadoku_site',

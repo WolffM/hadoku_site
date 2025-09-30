@@ -9,7 +9,6 @@ const __dirname = dirname(__filename);
 // Get environment variables
 const MODE = process.env.MODE || 'production';
 const HADOKU_SITE_TOKEN = process.env.HADOKU_SITE_TOKEN || '';
-const TASK_ADMIN_KEY = process.env.TASK_ADMIN_KEY || 'your-production-admin-key';
 
 // Watchparty config
 const watchpartyConfig = MODE === 'production' 
@@ -29,7 +28,6 @@ const watchpartyConfig = MODE === 'production'
 // Task config
 const taskConfig = MODE === 'production'
   ? {
-      adminKey: TASK_ADMIN_KEY,
       githubPat: HADOKU_SITE_TOKEN,
       repoOwner: 'WolffM',
       repoName: 'hadoku_site',
@@ -40,7 +38,6 @@ const taskConfig = MODE === 'production'
       environment: 'production'
     }
   : {
-      adminKey: 'dev-admin-key-123',
       githubPat: HADOKU_SITE_TOKEN,
       repoOwner: 'WolffM',
       repoName: 'hadoku_site',
@@ -88,4 +85,3 @@ writeFileSync(registryPath, JSON.stringify(registry, null, 2));
 
 console.log(`✓ Generated registry.json in ${MODE} mode`);
 console.log(`  - GitHub PAT: ${HADOKU_SITE_TOKEN ? '✓ Set' : '✗ Not set'}`);
-console.log(`  - Task Admin Key: ${TASK_ADMIN_KEY !== 'your-production-admin-key' ? '✓ Set' : '✗ Using default'}`);
