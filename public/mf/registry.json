@@ -16,8 +16,12 @@
   },
   "task": {
     "url": "/mf/task/index.js",
+    "css": "/mf/task/style.css",
     "basename": "/task",
-    "props": {}
+    "props": {
+      "apiUrl": "https://api.hadoku.me",
+      "environment": "production"
+    }
   },
   "contact": {
     "url": "/mf/contact/index.js",
