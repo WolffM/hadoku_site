@@ -13,8 +13,7 @@
     "basename": "/watchparty",
     "props": {
       "serverOrigin": "https://api.hadoku.me",
-      "defaultRoomKey": "dev-room-1000",
-      "mediaBase": "/media"
+      "defaultRoomKey": "dev-room-1000"
     }
   },
   "task": {

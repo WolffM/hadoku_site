@@ -4,21 +4,18 @@
 export interface WatchpartyConfig {
   serverOrigin: string;
   defaultRoomKey: string;
-  mediaBase: string;
 }
 
 // Watchparty Development configuration
 const devWatchpartyConfig: WatchpartyConfig = {
   serverOrigin: 'http://localhost:8080',
-  defaultRoomKey: 'dev-room-1000',
-  mediaBase: '/media',
+  defaultRoomKey: 'dev-room-1000'
 };
 
 // Watchparty Production configuration
 const prodWatchpartyConfig: WatchpartyConfig = {
   serverOrigin: 'https://api.hadoku.me', // Update this when you have your API
-  defaultRoomKey: 'dev-room-1000',
-  mediaBase: '/media',
+  defaultRoomKey: 'dev-room-1000'
 };
 
 // Auto-select based on environment

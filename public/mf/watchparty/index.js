@@ -6065,7 +6065,6 @@ Object.assign(Gt, {
 const Tt = {
   serverOrigin: "http://localhost:8080",
   defaultRoomKey: "dev-room-1000",
-  mediaBase: "/media"
 };
 let Or = { ...Tt };
 function cl(t) {

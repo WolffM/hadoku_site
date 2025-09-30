@@ -31,12 +31,10 @@ const watchpartyConfig = MODE === 'production'
   ? {
       serverOrigin: 'https://api.hadoku.me',
       defaultRoomKey: 'dev-room-1000',
-      mediaBase: '/media',
     }
   : {
       serverOrigin: 'http://localhost:8080',
       defaultRoomKey: 'dev-room-1000',
-      mediaBase: '/media',
     };
 
 // Task config - empty, task app handles its own config
