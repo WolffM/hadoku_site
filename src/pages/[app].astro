@@ -2,16 +2,18 @@
 import Base from '../layouts/Base.astro';
 import MicroFrontend from '../components/MicroFrontend.astro';
 
+// Static site generation: pre-render all valid app routes
+export function getStaticPaths() {
+  // Define valid apps (these should match your registry.json)
+  const validApps = ['watchparty', 'task', 'contact', 'herodraft', 'home'];
+  
+  return validApps.map(app => ({
+    params: { app },
+  }));
+}
+
 // Get the app name from the route parameter
 const { app } = Astro.params;
-
-// Define valid apps (these should match your registry.json)
-const validApps = ['watchparty', 'task', 'contact', 'herodraft', 'home'];
-
-// If app is not valid, return 404
-if (!app || !validApps.includes(app)) {
-  return Astro.redirect('/404');
-}
 
 // Generate page title
 const title = `Hadoku - ${app.charAt(0).toUpperCase() + app.slice(1)}`;

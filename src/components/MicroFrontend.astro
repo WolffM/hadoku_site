@@ -1,5 +1,8 @@
 ---
 // Reusable Micro-Frontend Page Component
+import mfLoaderScript from './mf-loader.js?raw';
+import hadokuHeaderScript from './hadoku-header.js?raw';
+
 interface Props {
   appName: string;
   title?: string;
@@ -63,10 +66,10 @@ const {
 </script>
 
 <!-- Header component (optional) -->
-{showHeader && <script src="../../components/hadoku-header.js"></script>}
+{showHeader && <script is:inline set:html={hadokuHeaderScript} />}
 
 <!-- Micro-frontend loader -->
-<script src="../../components/mf-loader.js"></script>
+<script is:inline set:html={mfLoaderScript} />
 
 <style>
   /* Ensure full-screen micro-frontend */
