@@ -94,17 +94,34 @@ Required secrets in GitHub repository settings:
 
 ## Local Development
 
-For local development with secrets:
+For local development, create a `.env` file (see `.env.example`):
+
+```bash
+# .env file
+HADOKU_SITE_TOKEN=your-github-pat-here
+PUBLIC_ADMIN_KEY=your-local-admin-key
+PUBLIC_FRIEND_KEY=your-local-friend-key
+MODE=development
+```
+
+Then run:
+```bash
+npm run dev
+```
+
+The script will automatically load variables from `.env`.
+
+**Alternative**: Set environment variables directly:
 
 ```bash
 # PowerShell
 $env:HADOKU_SITE_TOKEN="your-local-token"
-$env:TASK_ADMIN_KEY="your-local-admin-key"
+$env:MODE="development"
 npm run dev
 
 # Bash
 export HADOKU_SITE_TOKEN="your-local-token"
-export TASK_ADMIN_KEY="your-local-admin-key"
+export MODE="development"
 npm run dev
 ```
 

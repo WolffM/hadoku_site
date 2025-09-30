@@ -1,13 +1,29 @@
 #!/usr/bin/env node
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Load .env file if it exists (for local development)
+const envPath = join(__dirname, '..', '.env');
+if (existsSync(envPath)) {
+  const envContent = readFileSync(envPath, 'utf-8');
+  envContent.split('\n').forEach(line => {
+    const match = line.match(/^([^#=]+)=(.*)$/);
+    if (match) {
+      const key = match[1].trim();
+      const value = match[2].trim().replace(/^["']|["']$/g, '');
+      if (!process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  });
+}
+
 // Get environment variables
-const MODE = process.env.MODE || 'production';
+const MODE = process.env.MODE || 'development';
 const HADOKU_SITE_TOKEN = process.env.HADOKU_SITE_TOKEN || '';
 
 // Watchparty config
@@ -16,19 +32,16 @@ const watchpartyConfig = MODE === 'production'
       serverOrigin: 'https://api.hadoku.me',
       defaultRoomKey: 'dev-room-1000',
       mediaBase: '/media',
-      githubPat: HADOKU_SITE_TOKEN,
     }
   : {
       serverOrigin: 'http://localhost:8080',
       defaultRoomKey: 'dev-room-1000',
       mediaBase: '/media',
-      githubPat: HADOKU_SITE_TOKEN,
     };
 
 // Task config
 const taskConfig = MODE === 'production'
   ? {
-      githubPat: HADOKU_SITE_TOKEN,
       repoOwner: 'WolffM',
       repoName: 'hadoku_site',
       branch: 'main',
@@ -38,7 +51,6 @@ const taskConfig = MODE === 'production'
       environment: 'production'
     }
   : {
-      githubPat: HADOKU_SITE_TOKEN,
       repoOwner: 'WolffM',
       repoName: 'hadoku_site',
       branch: 'main',
@@ -85,3 +97,7 @@ writeFileSync(registryPath, JSON.stringify(registry, null, 2));
 
 console.log(`✓ Generated registry.json in ${MODE} mode`);
 console.log(`  - GitHub PAT: ${HADOKU_SITE_TOKEN ? '✓ Set' : '✗ Not set'}`);
+if (!HADOKU_SITE_TOKEN) {
+  console.log(`\n⚠️  Warning: No GitHub PAT set. Create a .env file with HADOKU_SITE_TOKEN.`);
+  console.log(`   See .env.example for template.\n`);
+}

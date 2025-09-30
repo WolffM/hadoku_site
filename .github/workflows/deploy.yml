@@ -5,12 +5,13 @@ on:
     branches: [ main ]
   workflow_dispatch:
   repository_dispatch:
-    types: [watchparty_updated]
+    types: [watchparty_updated, task_updated, contact_updated, herodraft_updated]
 
 permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read  # Need this to download artifacts from other repos
 
 concurrency:
   group: "pages"
@@ -28,6 +29,32 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+      
+      - name: Download watchparty artifact
+        if: github.event.action == 'watchparty_updated'
+        env:
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+        run: |
+          echo "Downloading watchparty build from run ${{ github.event.client_payload.run_id }}"
+          gh run download ${{ github.event.client_payload.run_id }} \
+            --repo WolffM/hadoku-watchparty \
+            --name watchparty-dist \
+            --dir ./public/mf/watchparty
+          echo "✓ Downloaded watchparty artifacts"
+          ls -la ./public/mf/watchparty
+      
+      - name: Download task artifact
+        if: github.event.action == 'task_updated'
+        env:
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+        run: |
+          echo "Downloading task build from run ${{ github.event.client_payload.run_id }}"
+          gh run download ${{ github.event.client_payload.run_id }} \
+            --repo WolffM/hadoku-task \
+            --name task-dist \
+            --dir ./public/mf/task
+          echo "✓ Downloaded task artifacts"
+          ls -la ./public/mf/task
       
       - name: Install dependencies
         run: npm ci

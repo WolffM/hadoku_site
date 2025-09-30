@@ -5,11 +5,9 @@ export interface WatchpartyConfig {
   serverOrigin: string;
   defaultRoomKey: string;
   mediaBase: string;
-  githubPat?: string;
 }
 
 export interface TaskConfig {
-  githubPat: string;
   repoOwner: string;
   repoName: string;
   branch: string;
@@ -19,15 +17,11 @@ export interface TaskConfig {
   environment: string;
 }
 
-// Get GitHub PAT from environment (shared across all apps)
-const githubPat = import.meta.env.HADOKU_SITE_TOKEN || '';
-
 // Watchparty Development configuration
 const devWatchpartyConfig: WatchpartyConfig = {
   serverOrigin: 'http://localhost:8080',
   defaultRoomKey: 'dev-room-1000',
   mediaBase: '/media',
-  githubPat,
 };
 
 // Watchparty Production configuration
@@ -35,7 +29,6 @@ const prodWatchpartyConfig: WatchpartyConfig = {
   serverOrigin: 'https://api.hadoku.me', // Update this when you have your API
   defaultRoomKey: 'dev-room-1000',
   mediaBase: '/media',
-  githubPat,
 };
 
 // Auto-select based on environment
@@ -44,7 +37,6 @@ export const watchpartyConfig: WatchpartyConfig =
 
 // Task Development configuration
 const devTaskConfig: TaskConfig = {
-  githubPat,
   repoOwner: 'WolffM',
   repoName: 'hadoku_site', // or separate data repo
   branch: 'main',
@@ -56,7 +48,6 @@ const devTaskConfig: TaskConfig = {
 
 // Task Production configuration
 const prodTaskConfig: TaskConfig = {
-  githubPat,
   repoOwner: 'WolffM',
   repoName: 'hadoku_site',
   branch: 'main',
