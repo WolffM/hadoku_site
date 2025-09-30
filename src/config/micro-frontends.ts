@@ -7,16 +7,6 @@ export interface WatchpartyConfig {
   mediaBase: string;
 }
 
-export interface TaskConfig {
-  repoOwner: string;
-  repoName: string;
-  branch: string;
-  tasksPath: string;
-  statsPath: string;
-  apiUrl: string;
-  environment: string;
-}
-
 // Watchparty Development configuration
 const devWatchpartyConfig: WatchpartyConfig = {
   serverOrigin: 'http://localhost:8080',
@@ -35,32 +25,10 @@ const prodWatchpartyConfig: WatchpartyConfig = {
 export const watchpartyConfig: WatchpartyConfig =
   import.meta.env.MODE === 'production' ? prodWatchpartyConfig : devWatchpartyConfig;
 
-// Task Development configuration
-const devTaskConfig: TaskConfig = {
-  repoOwner: 'WolffM',
-  repoName: 'hadoku_site', // or separate data repo
-  branch: 'main',
-  tasksPath: 'task/data/tasks.json',
-  statsPath: 'task/data/stats.json',
-  apiUrl: 'http://localhost:3000',
-  environment: 'development'
-};
-
-// Task Production configuration
-const prodTaskConfig: TaskConfig = {
-  repoOwner: 'WolffM',
-  repoName: 'hadoku_site',
-  branch: 'main',
-  tasksPath: 'task/data/tasks.json',
-  statsPath: 'task/data/stats.json',
-  apiUrl: 'https://api.hadoku.me',
-  environment: 'production'
-};
-
 // Export all app configs
 export const appConfigs = {
   watchparty: watchpartyConfig,
-  task: import.meta.env.MODE === 'production' ? prodTaskConfig : devTaskConfig,
+  task: {}, // Task app handles its own configuration
   // Add other apps as needed:
   // contact: contactConfig,
   // herodraft: herodraftConfig,

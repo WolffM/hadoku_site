@@ -39,26 +39,8 @@ const watchpartyConfig = MODE === 'production'
       mediaBase: '/media',
     };
 
-// Task config
-const taskConfig = MODE === 'production'
-  ? {
-      repoOwner: 'WolffM',
-      repoName: 'hadoku_site',
-      branch: 'main',
-      tasksPath: 'task/data/tasks.json',
-      statsPath: 'task/data/stats.json',
-      apiUrl: 'https://api.hadoku.me',
-      environment: 'production'
-    }
-  : {
-      repoOwner: 'WolffM',
-      repoName: 'hadoku_site',
-      branch: 'main',
-      tasksPath: 'task/data/tasks.json',
-      statsPath: 'task/data/stats.json',
-      apiUrl: 'http://localhost:3000',
-      environment: 'development'
-    };
+// Task config - empty, task app handles its own config
+const taskConfig = {};
 
 // Generate registry
 const registry = {
