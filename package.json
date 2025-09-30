@@ -4,9 +4,10 @@
   "type": "module",
   "description": "Astro-based controller app for hadoku micro-frontends",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview"
+    "dev": "node scripts/generate-registry.mjs && astro dev",
+    "build": "node scripts/generate-registry.mjs && astro build",
+    "preview": "astro preview",
+    "generate-registry": "node scripts/generate-registry.mjs"
   },
   "keywords": [],
   "author": "",
