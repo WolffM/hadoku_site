@@ -43,11 +43,21 @@ jobs:
           gh run download ${{ github.event.client_payload.run_id }} \
             --repo WolffM/hadoku-watchparty \
             --name watchparty-dist \
-            --archive \
             --dir "$temp_dir"
 
-          unzip -qo "$temp_dir/watchparty-dist.zip" -d "$temp_dir/extracted"
-          contents_dir="$temp_dir/extracted"
+          contents_dir=""
+          if [ -f "$temp_dir/watchparty-dist.zip" ]; then
+            unzip -qo "$temp_dir/watchparty-dist.zip" -d "$temp_dir/extracted"
+            contents_dir="$temp_dir/extracted"
+          elif [ -d "$temp_dir/watchparty-dist" ]; then
+            contents_dir="$temp_dir/watchparty-dist"
+          fi
+
+          if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
+            echo "❌ Failed to locate downloaded watchparty artifacts"
+            exit 1
+          fi
+
           if [ -d "$contents_dir/watchparty-dist" ]; then
             contents_dir="$contents_dir/watchparty-dist"
           fi
@@ -74,11 +84,21 @@ jobs:
           gh run download ${{ github.event.client_payload.run_id }} \
             --repo WolffM/hadoku-task \
             --name task-dist \
-            --archive \
             --dir "$temp_dir"
 
-          unzip -qo "$temp_dir/task-dist.zip" -d "$temp_dir/extracted"
-          contents_dir="$temp_dir/extracted"
+          contents_dir=""
+          if [ -f "$temp_dir/task-dist.zip" ]; then
+            unzip -qo "$temp_dir/task-dist.zip" -d "$temp_dir/extracted"
+            contents_dir="$temp_dir/extracted"
+          elif [ -d "$temp_dir/task-dist" ]; then
+            contents_dir="$temp_dir/task-dist"
+          fi
+
+          if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
+            echo "❌ Failed to locate downloaded task artifacts"
+            exit 1
+          fi
+
           if [ -d "$contents_dir/task-dist" ]; then
             contents_dir="$contents_dir/task-dist"
           fi
