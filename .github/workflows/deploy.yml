@@ -35,6 +35,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
         run: |
+          rm -rf ./public/mf/watchparty
+          mkdir -p ./public/mf/watchparty
           echo "Downloading watchparty build from run ${{ github.event.client_payload.run_id }}"
           gh run download ${{ github.event.client_payload.run_id }} \
             --repo WolffM/hadoku-watchparty \
@@ -48,6 +50,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
         run: |
+          rm -rf ./public/mf/task
+          mkdir -p ./public/mf/task
           echo "Downloading task build from run ${{ github.event.client_payload.run_id }}"
           gh run download ${{ github.event.client_payload.run_id }} \
             --repo WolffM/hadoku-task \
