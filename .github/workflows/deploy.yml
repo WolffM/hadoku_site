@@ -46,20 +46,33 @@ jobs:
             --dir "$temp_dir"
 
           contents_dir=""
-          if [ -f "$temp_dir/watchparty-dist.zip" ]; then
-            unzip -qo "$temp_dir/watchparty-dist.zip" -d "$temp_dir/extracted"
-            contents_dir="$temp_dir/extracted"
-          elif [ -d "$temp_dir/watchparty-dist" ]; then
-            contents_dir="$temp_dir/watchparty-dist"
+
+          # Unzip any downloaded archives so we can operate on extracted files.
+          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
+            if [ -f "$zip_path" ]; then
+              unzip -qo "$zip_path" -d "$temp_dir/extracted"
+            fi
+          done
+
+          search_roots=("$temp_dir")
+          if [ -d "$temp_dir/extracted" ]; then
+            search_roots+=("$temp_dir/extracted")
           fi
+
+          for root in "${search_roots[@]}"; do
+            candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
+              \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
+            if [ -n "$candidate" ]; then
+              contents_dir="$(dirname "$candidate")"
+              break
+            fi
+          done
 
           if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
+            echo "Downloaded artifact contents:"
+            find "$temp_dir" -maxdepth 4 -print
             echo "❌ Failed to locate downloaded watchparty artifacts"
             exit 1
-          fi
-
-          if [ -d "$contents_dir/watchparty-dist" ]; then
-            contents_dir="$contents_dir/watchparty-dist"
           fi
 
           rm -rf ./public/mf/watchparty
@@ -87,20 +100,32 @@ jobs:
             --dir "$temp_dir"
 
           contents_dir=""
-          if [ -f "$temp_dir/task-dist.zip" ]; then
-            unzip -qo "$temp_dir/task-dist.zip" -d "$temp_dir/extracted"
-            contents_dir="$temp_dir/extracted"
-          elif [ -d "$temp_dir/task-dist" ]; then
-            contents_dir="$temp_dir/task-dist"
+
+          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
+            if [ -f "$zip_path" ]; then
+              unzip -qo "$zip_path" -d "$temp_dir/extracted"
+            fi
+          done
+
+          search_roots=("$temp_dir")
+          if [ -d "$temp_dir/extracted" ]; then
+            search_roots+=("$temp_dir/extracted")
           fi
+
+          for root in "${search_roots[@]}"; do
+            candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
+              \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
+            if [ -n "$candidate" ]; then
+              contents_dir="$(dirname "$candidate")"
+              break
+            fi
+          done
 
           if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
+            echo "Downloaded artifact contents:"
+            find "$temp_dir" -maxdepth 4 -print
             echo "❌ Failed to locate downloaded task artifacts"
             exit 1
-          fi
-
-          if [ -d "$contents_dir/task-dist" ]; then
-            contents_dir="$contents_dir/task-dist"
           fi
 
           rm -rf ./public/mf/task
