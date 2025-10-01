@@ -30,9 +30,68 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
-      # (unchanged) Download artifacts for watchparty/task...
-      # ...
+      - name: Download watchparty artifact
+        if: github.event.action == 'watchparty_updated'
+        env:
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+        run: |
+          set -euo pipefail
+          temp_dir="$(mktemp -d)"
+          trap 'rm -rf "$temp_dir"' EXIT
 
+          echo "Downloading watchparty build from run ${{ github.event.client_payload.run_id }}"
+          gh run download ${{ github.event.client_payload.run_id }} \
+            --repo WolffM/hadoku-watchparty \
+            --name watchparty-dist \
+            --archive \
+            --dir "$temp_dir"
+
+          unzip -qo "$temp_dir/watchparty-dist.zip" -d "$temp_dir/extracted"
+          contents_dir="$temp_dir/extracted"
+          if [ -d "$contents_dir/watchparty-dist" ]; then
+            contents_dir="$contents_dir/watchparty-dist"
+          fi
+
+          rm -rf ./public/mf/watchparty
+          mkdir -p ./public/mf/watchparty
+          shopt -s dotglob
+          cp -a "$contents_dir"/* ./public/mf/watchparty/
+          shopt -u dotglob
+
+          echo "✓ Downloaded watchparty artifacts"
+          ls -la ./public/mf/watchparty
+      
+      - name: Download task artifact
+        if: github.event.action == 'task_updated'
+        env:
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+        run: |
+          set -euo pipefail
+          temp_dir="$(mktemp -d)"
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          echo "Downloading task build from run ${{ github.event.client_payload.run_id }}"
+          gh run download ${{ github.event.client_payload.run_id }} \
+            --repo WolffM/hadoku-task \
+            --name task-dist \
+            --archive \
+            --dir "$temp_dir"
+
+          unzip -qo "$temp_dir/task-dist.zip" -d "$temp_dir/extracted"
+          contents_dir="$temp_dir/extracted"
+          if [ -d "$contents_dir/task-dist" ]; then
+            contents_dir="$contents_dir/task-dist"
+          fi
+
+          rm -rf ./public/mf/task
+          mkdir -p ./public/mf/task
+          shopt -s dotglob
+          cp -a "$contents_dir"/* ./public/mf/task/
+          shopt -u dotglob
+
+          echo "✓ Downloaded task artifacts"
+          ls -la ./public/mf/task
+      
       - name: Install dependencies
         run: npm ci
       
