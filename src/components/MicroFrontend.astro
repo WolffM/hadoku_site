@@ -26,7 +26,8 @@ const {
   <!-- Home button overlay (optional) -->
   {showHomeButton && (
     <a 
-      href="/" 
+      href="/"
+      id="home-button"
       style="
         position: fixed;
         top: 1rem;
@@ -52,6 +53,22 @@ const {
       <span style="font-size: 1.2rem;">←</span>
       <span>Home</span>
     </a>
+  )}
+  
+  <!-- Preserve key parameter in home button -->
+  {showHomeButton && (
+    <script is:inline>
+      (function() {
+        const params = new URLSearchParams(window.location.search);
+        const key = params.get('key');
+        if (key) {
+          const homeButton = document.getElementById('home-button');
+          if (homeButton) {
+            homeButton.href = `/?key=${encodeURIComponent(key)}`;
+          }
+        }
+      })();
+    </script>
   )}
 </div>
 

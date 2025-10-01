@@ -15,6 +15,16 @@ export const appVisibility: Record<UserType, string[]> = {
   admin: ['home', 'watchparty', 'task', 'contact', 'herodraft']
 };
 
+// Build-time validation for production
+if (import.meta.env.PROD) {
+  if (!import.meta.env.PUBLIC_ADMIN_KEY) {
+    throw new Error("Missing PUBLIC_ADMIN_KEY environment variable");
+  }
+  if (!import.meta.env.PUBLIC_FRIEND_KEY) {
+    throw new Error("Missing PUBLIC_FRIEND_KEY environment variable");
+  }
+}
+
 // Get access config from environment
 export const accessConfig: AccessConfig = {
   // In production, these come from GitHub secrets via import.meta.env

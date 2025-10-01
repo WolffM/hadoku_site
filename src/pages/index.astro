@@ -1,11 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getUserType, getAccessibleApps, type UserType } from '../config/access-control';
-
-// Get access key from URL query parameter
-const urlKey = Astro.url.searchParams.get('key') || undefined;
-const userType: UserType = getUserType(urlKey);
-const accessibleApps = getAccessibleApps(userType);
+import { appVisibility } from '../config/access-control';
 
 // App metadata for display
 const appInfo: Record<string, { title: string; description: string; icon: string }> = {
@@ -42,30 +37,88 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     <header class="header">
       <h1>Hadoku</h1>
       <p class="subtitle">Your Personal Micro-Frontend Hub</p>
-      <div class="access-badge" data-type={userType}>
-        {userType === 'admin' && '👑 Admin Access'}
-        {userType === 'friend' && '👥 Friend Access'}
-        {userType === 'public' && '👤 Public Access'}
+      <div class="access-badge" data-type="public">
+        👤 Public Access
       </div>
     </header>
 
-    <div class="apps-grid">
-      {accessibleApps.filter(app => app !== 'home').map(app => (
-        <a href={`/${app}${urlKey ? `?key=${urlKey}` : ''}`} class="app-card">
-          <div class="app-icon">{appInfo[app]?.icon || '📦'}</div>
-          <h3>{appInfo[app]?.title || app}</h3>
-          <p>{appInfo[app]?.description || 'No description'}</p>
-        </a>
-      ))}
+    <div class="apps-grid" id="apps-grid">
+      <!-- Apps will be populated by client-side script -->
     </div>
 
-    {userType === 'public' && (
-      <div class="access-info">
-        <p>👋 Welcome! Some apps require special access.</p>
-        <p>Contact the admin for access keys.</p>
-      </div>
-    )}
+    <div class="access-info" id="access-info">
+      <p>👋 Welcome! Some apps require special access.</p>
+      <p>Contact the admin for access keys.</p>
+    </div>
   </div>
+
+  <script define:vars={{ 
+    appInfo, 
+    appVisibility,
+    adminKey: import.meta.env.PUBLIC_ADMIN_KEY || 'default-admin-key',
+    friendKey: import.meta.env.PUBLIC_FRIEND_KEY || 'default-friend-key'
+  }}>
+    // Get access key from URL
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get('key');
+    
+    // Access configuration (from build-time env vars)
+    const ADMIN_KEY = adminKey;
+    const FRIEND_KEY = friendKey;
+    
+    // Determine user type based on key
+    let userType = 'public';
+    if (key === ADMIN_KEY) {
+      userType = 'admin';
+    } else if (key === FRIEND_KEY) {
+      userType = 'friend';
+    }
+    
+    // Update access badge
+    const badge = document.querySelector('.access-badge');
+    if (badge) {
+      badge.setAttribute('data-type', userType);
+      if (userType === 'admin') {
+        badge.textContent = '👑 Admin Access';
+      } else if (userType === 'friend') {
+        badge.textContent = '👥 Friend Access';
+      } else {
+        badge.textContent = '👤 Public Access';
+      }
+    }
+    
+    // Get accessible apps for this user type
+    const accessibleApps = appVisibility[userType] || ['home'];
+    
+    // Populate apps grid
+    const appsGrid = document.getElementById('apps-grid');
+    if (appsGrid) {
+      const appsToShow = accessibleApps.filter(app => app !== 'home');
+      
+      appsGrid.innerHTML = appsToShow.map(app => {
+        const info = appInfo[app] || { title: app, description: 'No description', icon: '📦' };
+        const href = `/${app}${key ? `?key=${key}` : ''}`;
+        
+        return `
+          <a href="${href}" class="app-card">
+            <div class="app-icon">${info.icon}</div>
+            <h3>${info.title}</h3>
+            <p>${info.description}</p>
+          </a>
+        `;
+      }).join('');
+    }
+    
+    // Show/hide access info based on user type
+    const accessInfo = document.getElementById('access-info');
+    if (accessInfo) {
+      if (userType === 'public') {
+        accessInfo.style.display = 'block';
+      } else {
+        accessInfo.style.display = 'none';
+      }
+    }
+  </script>
 
   <style>
     .container {
