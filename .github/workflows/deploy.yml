@@ -21,6 +21,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug repository_dispatch payload
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Action: ${{ github.event.action }}"
+          echo "Run ID: ${{ github.event.client_payload.run_id }}"
+          echo "SHA: ${{ github.event.client_payload.sha }}"
+          echo "Ref: ${{ github.event.client_payload.ref }}"
+          echo "Full payload:"
+          echo '${{ toJson(github.event) }}'
+      
       - name: Checkout
         uses: actions/checkout@v4
       
@@ -105,6 +116,20 @@ jobs:
           fi
           
           echo "✅ Token has access to hadoku-task repo"
+          
+          # Check if the run exists and has artifacts
+          echo "Debug: Checking if run ${{ github.event.client_payload.run_id }} exists..."
+          if ! gh api "repos/WolffM/hadoku-task/actions/runs/${{ github.event.client_payload.run_id }}" --silent; then
+            echo "❌ Run ${{ github.event.client_payload.run_id }} not found in hadoku-task repository"
+            echo "Debug: Listing recent runs..."
+            gh run list --repo WolffM/hadoku-task --limit 5
+            exit 1
+          fi
+          
+          echo "✅ Run exists, checking for artifacts..."
+          gh api "repos/WolffM/hadoku-task/actions/runs/${{ github.event.client_payload.run_id }}/artifacts" --jq '.artifacts[] | select(.name=="task-dist") | {name: .name, expired: .expired, created_at: .created_at}'
+          
+          echo "Debug: Attempting download..."
           gh run download ${{ github.event.client_payload.run_id }} \
             --repo WolffM/hadoku-task \
             --name task-dist \
