@@ -33,45 +33,32 @@ jobs:
       - name: Download watchparty artifact
         if: github.event.action == 'watchparty_updated'
         env:
-          GITHUB_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
         run: |
           set -euo pipefail
           temp_dir="$(mktemp -d)"
           trap 'rm -rf "$temp_dir"' EXIT
 
           echo "Downloading watchparty build from run ${{ github.event.client_payload.run_id }}"
-          
-          # Get artifacts list using GitHub API
-          ARTIFACTS_URL="https://api.github.com/repos/WolffM/hadoku-watchparty/actions/runs/${{ github.event.client_payload.run_id }}/artifacts"
-          echo "Fetching artifacts from: $ARTIFACTS_URL"
-          
-          ARTIFACTS_JSON=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-                                -H "Accept: application/vnd.github+json" \
-                                -H "X-GitHub-Api-Version: 2022-11-28" \
-                                "$ARTIFACTS_URL")
-          
-          # Extract artifact download URL for 'watchparty-dist'
-          DOWNLOAD_URL=$(echo "$ARTIFACTS_JSON" | jq -r '.artifacts[] | select(.name=="watchparty-dist") | .archive_download_url')
-          
-          if [ "$DOWNLOAD_URL" = "null" ] || [ -z "$DOWNLOAD_URL" ]; then
-            echo "❌ watchparty-dist artifact not found"
-            echo "Available artifacts:"
-            echo "$ARTIFACTS_JSON" | jq -r '.artifacts[].name'
-            exit 1
-          fi
-          
-          echo "Found artifact download URL: $DOWNLOAD_URL"
-          
-          # Download and extract artifact
-          curl -s -L -H "Authorization: Bearer $GITHUB_TOKEN" \
-               "$DOWNLOAD_URL" -o "$temp_dir/watchparty-dist.zip"
-          
-          unzip -qo "$temp_dir/watchparty-dist.zip" -d "$temp_dir/extracted"
-          
-          # Find the content directory using the same logic as the remote version
+          gh run download ${{ github.event.client_payload.run_id }} \
+            --repo WolffM/hadoku-watchparty \
+            --name watchparty-dist \
+            --dir "$temp_dir"
+
           contents_dir=""
-          search_roots=("$temp_dir/extracted")
-          
+
+          # Unzip any downloaded archives so we can operate on extracted files.
+          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
+            if [ -f "$zip_path" ]; then
+              unzip -qo "$zip_path" -d "$temp_dir/extracted"
+            fi
+          done
+
+          search_roots=("$temp_dir")
+          if [ -d "$temp_dir/extracted" ]; then
+            search_roots+=("$temp_dir/extracted")
+          fi
+
           for root in "${search_roots[@]}"; do
             candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
               \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
@@ -100,45 +87,31 @@ jobs:
       - name: Download task artifact
         if: github.event.action == 'task_updated'
         env:
-          GITHUB_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
         run: |
           set -euo pipefail
           temp_dir="$(mktemp -d)"
           trap 'rm -rf "$temp_dir"' EXIT
 
           echo "Downloading task build from run ${{ github.event.client_payload.run_id }}"
-          
-          # Get artifacts list using GitHub API
-          ARTIFACTS_URL="https://api.github.com/repos/WolffM/hadoku-task/actions/runs/${{ github.event.client_payload.run_id }}/artifacts"
-          echo "Fetching artifacts from: $ARTIFACTS_URL"
-          
-          ARTIFACTS_JSON=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-                                -H "Accept: application/vnd.github+json" \
-                                -H "X-GitHub-Api-Version: 2022-11-28" \
-                                "$ARTIFACTS_URL")
-          
-          # Extract artifact download URL for 'task-dist'
-          DOWNLOAD_URL=$(echo "$ARTIFACTS_JSON" | jq -r '.artifacts[] | select(.name=="task-dist") | .archive_download_url')
-          
-          if [ "$DOWNLOAD_URL" = "null" ] || [ -z "$DOWNLOAD_URL" ]; then
-            echo "❌ task-dist artifact not found"
-            echo "Available artifacts:"
-            echo "$ARTIFACTS_JSON" | jq -r '.artifacts[].name'
-            exit 1
-          fi
-          
-          echo "Found artifact download URL: $DOWNLOAD_URL"
-          
-          # Download and extract artifact
-          curl -s -L -H "Authorization: Bearer $GITHUB_TOKEN" \
-               "$DOWNLOAD_URL" -o "$temp_dir/task-dist.zip"
-          
-          unzip -qo "$temp_dir/task-dist.zip" -d "$temp_dir/extracted"
-          
-          # Find the content directory using the same logic as the remote version
+          gh run download ${{ github.event.client_payload.run_id }} \
+            --repo WolffM/hadoku-task \
+            --name task-dist \
+            --dir "$temp_dir"
+
           contents_dir=""
-          search_roots=("$temp_dir/extracted")
-          
+
+          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
+            if [ -f "$zip_path" ]; then
+              unzip -qo "$zip_path" -d "$temp_dir/extracted"
+            fi
+          done
+
+          search_roots=("$temp_dir")
+          if [ -d "$temp_dir/extracted" ]; then
+            search_roots+=("$temp_dir/extracted")
+          fi
+
           for root in "${search_roots[@]}"; do
             candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
               \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
@@ -167,92 +140,106 @@ jobs:
       - name: Download contact artifact
         if: github.event.action == 'contact_updated'
         env:
-          GITHUB_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
         run: |
+          set -euo pipefail
+          temp_dir="$(mktemp -d)"
+          trap 'rm -rf "$temp_dir"' EXIT
+
           echo "Downloading contact build from run ${{ github.event.client_payload.run_id }}"
-          
-          # Get artifacts list using GitHub API
-          ARTIFACTS_URL="https://api.github.com/repos/WolffM/hadoku-contact/actions/runs/${{ github.event.client_payload.run_id }}/artifacts"
-          echo "Fetching artifacts from: $ARTIFACTS_URL"
-          
-          ARTIFACTS_JSON=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-                                -H "Accept: application/vnd.github+json" \
-                                -H "X-GitHub-Api-Version: 2022-11-28" \
-                                "$ARTIFACTS_URL")
-          
-          # Extract artifact download URL for 'contact-dist'
-          DOWNLOAD_URL=$(echo "$ARTIFACTS_JSON" | jq -r '.artifacts[] | select(.name=="contact-dist") | .archive_download_url')
-          
-          if [ "$DOWNLOAD_URL" = "null" ] || [ -z "$DOWNLOAD_URL" ]; then
-            echo "❌ contact-dist artifact not found"
-            echo "Available artifacts:"
-            echo "$ARTIFACTS_JSON" | jq -r '.artifacts[].name'
+          gh run download ${{ github.event.client_payload.run_id }} \
+            --repo WolffM/hadoku-contact \
+            --name contact-dist \
+            --dir "$temp_dir"
+
+          contents_dir=""
+
+          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
+            if [ -f "$zip_path" ]; then
+              unzip -qo "$zip_path" -d "$temp_dir/extracted"
+            fi
+          done
+
+          search_roots=("$temp_dir")
+          if [ -d "$temp_dir/extracted" ]; then
+            search_roots+=("$temp_dir/extracted")
+          fi
+
+          for root in "${search_roots[@]}"; do
+            candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
+              \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
+            if [ -n "$candidate" ]; then
+              contents_dir="$(dirname "$candidate")"
+              break
+            fi
+          done
+
+          if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
+            echo "Downloaded artifact contents:"
+            find "$temp_dir" -maxdepth 4 -print
+            echo "❌ Failed to locate downloaded contact artifacts"
             exit 1
           fi
-          
-          echo "Found artifact download URL: $DOWNLOAD_URL"
-          
-          # Download and extract artifact
+
+          rm -rf ./public/mf/contact
           mkdir -p ./public/mf/contact
-          curl -s -L -H "Authorization: Bearer $GITHUB_TOKEN" \
-               "$DOWNLOAD_URL" -o contact-dist.zip
-          
-          unzip -o contact-dist.zip -d temp-contact
-          
-          # Handle nested directory structure
-          if [ -d "temp-contact/contact-dist" ]; then
-            cp -r temp-contact/contact-dist/* ./public/mf/contact/
-          else
-            cp -r temp-contact/* ./public/mf/contact/
-          fi
-          
-          rm -rf temp-contact contact-dist.zip
+          shopt -s dotglob
+          cp -a "$contents_dir"/* ./public/mf/contact/
+          shopt -u dotglob
+
           echo "✓ Downloaded contact artifacts"
           ls -la ./public/mf/contact
       
       - name: Download herodraft artifact
         if: github.event.action == 'herodraft_updated'
         env:
-          GITHUB_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
         run: |
+          set -euo pipefail
+          temp_dir="$(mktemp -d)"
+          trap 'rm -rf "$temp_dir"' EXIT
+
           echo "Downloading herodraft build from run ${{ github.event.client_payload.run_id }}"
-          
-          # Get artifacts list using GitHub API
-          ARTIFACTS_URL="https://api.github.com/repos/WolffM/hadoku-herodraft/actions/runs/${{ github.event.client_payload.run_id }}/artifacts"
-          echo "Fetching artifacts from: $ARTIFACTS_URL"
-          
-          ARTIFACTS_JSON=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-                                -H "Accept: application/vnd.github+json" \
-                                -H "X-GitHub-Api-Version: 2022-11-28" \
-                                "$ARTIFACTS_URL")
-          
-          # Extract artifact download URL for 'herodraft-dist'
-          DOWNLOAD_URL=$(echo "$ARTIFACTS_JSON" | jq -r '.artifacts[] | select(.name=="herodraft-dist") | .archive_download_url')
-          
-          if [ "$DOWNLOAD_URL" = "null" ] || [ -z "$DOWNLOAD_URL" ]; then
-            echo "❌ herodraft-dist artifact not found"
-            echo "Available artifacts:"
-            echo "$ARTIFACTS_JSON" | jq -r '.artifacts[].name'
+          gh run download ${{ github.event.client_payload.run_id }} \
+            --repo WolffM/hadoku-herodraft \
+            --name herodraft-dist \
+            --dir "$temp_dir"
+
+          contents_dir=""
+
+          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
+            if [ -f "$zip_path" ]; then
+              unzip -qo "$zip_path" -d "$temp_dir/extracted"
+            fi
+          done
+
+          search_roots=("$temp_dir")
+          if [ -d "$temp_dir/extracted" ]; then
+            search_roots+=("$temp_dir/extracted")
+          fi
+
+          for root in "${search_roots[@]}"; do
+            candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
+              \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
+            if [ -n "$candidate" ]; then
+              contents_dir="$(dirname "$candidate")"
+              break
+            fi
+          done
+
+          if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
+            echo "Downloaded artifact contents:"
+            find "$temp_dir" -maxdepth 4 -print
+            echo "❌ Failed to locate downloaded herodraft artifacts"
             exit 1
           fi
-          
-          echo "Found artifact download URL: $DOWNLOAD_URL"
-          
-          # Download and extract artifact
+
+          rm -rf ./public/mf/herodraft
           mkdir -p ./public/mf/herodraft
-          curl -s -L -H "Authorization: Bearer $GITHUB_TOKEN" \
-               "$DOWNLOAD_URL" -o herodraft-dist.zip
-          
-          unzip -o herodraft-dist.zip -d temp-herodraft
-          
-          # Handle nested directory structure
-          if [ -d "temp-herodraft/herodraft-dist" ]; then
-            cp -r temp-herodraft/herodraft-dist/* ./public/mf/herodraft/
-          else
-            cp -r temp-herodraft/* ./public/mf/herodraft/
-          fi
-          
-          rm -rf temp-herodraft herodraft-dist.zip
+          shopt -s dotglob
+          cp -a "$contents_dir"/* ./public/mf/herodraft/
+          shopt -u dotglob
+
           echo "✓ Downloaded herodraft artifacts"
           ls -la ./public/mf/herodraft
       
