@@ -26,11 +26,16 @@ jobs:
         run: |
           echo "Event: ${{ github.event_name }}"
           echo "Action: ${{ github.event.action }}"
-          echo "Run ID: ${{ github.event.client_payload.run_id }}"
+          echo "Run ID from payload: ${{ github.event.client_payload.run_id }}"
           echo "SHA: ${{ github.event.client_payload.sha }}"
           echo "Ref: ${{ github.event.client_payload.ref }}"
           echo "Full payload:"
           echo '${{ toJson(github.event) }}'
+          echo ""
+          echo "Checking what runs actually exist in hadoku-task:"
+          gh run list --repo WolffM/hadoku-task --limit 10 --json databaseId,conclusion,status,headSha,createdAt
+        env:
+          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
       
       - name: Checkout
         uses: actions/checkout@v4
