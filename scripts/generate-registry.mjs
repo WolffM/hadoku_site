@@ -31,14 +31,12 @@ const watchpartyConfig = MODE === 'production'
   ? {
       basename: '/watchparty',
       serverOrigin: 'https://api.hadoku.me',
-      defaultRoomKey: 'dev-room-1000',
       environment: MODE,
       userType: 'public'  // Default, will be overridden by client-side loader
     }
   : {
       basename: '/watchparty',
       serverOrigin: 'http://localhost:8080',
-      defaultRoomKey: 'dev-room-1000',
       environment: MODE,
       userType: 'public'  // Default, will be overridden by client-side loader
     };

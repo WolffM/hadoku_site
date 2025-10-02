@@ -77,6 +77,7 @@
         userType: userType,  // Pass userType to all apps
         ...appConfig.props
       };
+      console.log(`[mf-loader] Mounting ${appName} with props:`, props);
       await module.mount(root, props);
       console.log(`Mounted micro-app: ${appName} with userType: ${userType}`);
     } else {
