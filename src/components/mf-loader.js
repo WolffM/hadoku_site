@@ -55,14 +55,30 @@
     // Clean up blob URL
     URL.revokeObjectURL(blobUrl);
     
+    // Determine user type from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlKey = urlParams.get('key');
+    let userType = 'public';
+    
+    // Get access keys from meta tags (set by Astro at build time)
+    const adminKey = document.querySelector('meta[name="admin-key"]')?.content;
+    const friendKey = document.querySelector('meta[name="friend-key"]')?.content;
+    
+    if (urlKey && adminKey && urlKey === adminKey) {
+      userType = 'admin';
+    } else if (urlKey && friendKey && urlKey === friendKey) {
+      userType = 'friend';
+    }
+    
     // Mount the app
     if (typeof module.mount === 'function') {
       const props = {
         basename: appConfig.basename || '',
+        userType: userType,  // Pass userType to all apps
         ...appConfig.props
       };
       await module.mount(root, props);
-      console.log(`Mounted micro-app: ${appName}`);
+      console.log(`Mounted micro-app: ${appName} with userType: ${userType}`);
     } else {
       throw new Error(`Module for "${appName}" does not export a mount function`);
     }

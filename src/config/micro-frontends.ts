@@ -1,9 +1,20 @@
 // Micro-frontend configuration
 // This defines the props passed to each micro-app
 
-export interface WatchpartyConfig {
+// Common interface for all micro-apps
+export interface BaseAppProps {
+  basename?: string;
+  environment?: string;
+  userType?: 'admin' | 'friend' | 'public';
+}
+
+export interface WatchpartyConfig extends BaseAppProps {
   serverOrigin: string;
   defaultRoomKey: string;
+}
+
+export interface TaskAppProps extends BaseAppProps {
+  apiUrl?: string;  // Not currently used (uses internal API)
 }
 
 // Watchparty Development configuration
@@ -25,7 +36,7 @@ export const watchpartyConfig: WatchpartyConfig =
 // Export all app configs
 export const appConfigs = {
   watchparty: watchpartyConfig,
-  task: {}, // Task app handles its own configuration
+  task: {} as TaskAppProps, // Task app config is handled in generate-registry.mjs
   // Add other apps as needed:
   // contact: contactConfig,
   // herodraft: herodraftConfig,

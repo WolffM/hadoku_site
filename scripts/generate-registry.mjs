@@ -29,23 +29,38 @@ const HADOKU_SITE_TOKEN = process.env.HADOKU_SITE_TOKEN || '';
 // Watchparty config
 const watchpartyConfig = MODE === 'production' 
   ? {
+      basename: '/watchparty',
       serverOrigin: 'https://api.hadoku.me',
       defaultRoomKey: 'dev-room-1000',
+      environment: MODE,
+      userType: 'public'  // Default, will be overridden by client-side loader
     }
   : {
+      basename: '/watchparty',
       serverOrigin: 'http://localhost:8080',
       defaultRoomKey: 'dev-room-1000',
+      environment: MODE,
+      userType: 'public'  // Default, will be overridden by client-side loader
     };
 
-// Task config - empty, task app handles its own config
-const taskConfig = {};
+// Task config - provides default props that will be enhanced at runtime
+const taskConfig = {
+  basename: '/task',
+  apiUrl: undefined,           // Task app uses internal service worker API
+  environment: MODE,
+  userType: 'public'          // Default, will be overridden by client-side loader
+};
 
 // Generate registry
 const registry = {
   home: {
     url: '/mf/home/index.js',
     basename: '/',
-    props: {}
+    props: {
+      basename: '/',
+      environment: MODE,
+      userType: 'public'  // Default, will be overridden by client-side loader
+    }
   },
   watchparty: {
     url: '/mf/watchparty/index.js',
@@ -62,12 +77,20 @@ const registry = {
   contact: {
     url: '/mf/contact/index.js',
     basename: '/contact',
-    props: {}
+    props: {
+      basename: '/contact',
+      environment: MODE,
+      userType: 'public'  // Default, will be overridden by client-side loader
+    }
   },
   herodraft: {
     url: '/mf/herodraft/index.js',
     basename: '/herodraft',
-    props: {}
+    props: {
+      basename: '/herodraft',
+      environment: MODE,
+      userType: 'public'  // Default, will be overridden by client-side loader
+    }
   }
 };
 
