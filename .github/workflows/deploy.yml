@@ -26,263 +26,34 @@ jobs:
         run: |
           echo "Event: ${{ github.event_name }}"
           echo "Action: ${{ github.event.action }}"
-          echo "Run ID from payload: ${{ github.event.client_payload.run_id }}"
           echo "SHA: ${{ github.event.client_payload.sha }}"
           echo "Ref: ${{ github.event.client_payload.ref }}"
-          echo "Full payload:"
-          echo '${{ toJson(github.event) }}'
-          echo ""
-          echo "Checking what runs actually exist in hadoku-task:"
-          gh run list --repo WolffM/hadoku-task --limit 10 --json databaseId,conclusion,status,headSha,createdAt
-        env:
-          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
+          echo "Child repo pushed new files, now building and deploying..."
       
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main  # Always get latest from main (child just pushed to it)
+      
+      - name: Verify micro-frontend files
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          echo "Checking for micro-frontend files..."
+          if [ "${{ github.event.action }}" = "task_updated" ]; then
+            ls -la ./public/mf/task/ || echo "⚠️  Task files not found yet"
+          elif [ "${{ github.event.action }}" = "watchparty_updated" ]; then
+            ls -la ./public/mf/watchparty/ || echo "⚠️  Watchparty files not found yet"
+          elif [ "${{ github.event.action }}" = "contact_updated" ]; then
+            ls -la ./public/mf/contact/ || echo "⚠️  Contact files not found yet"
+          elif [ "${{ github.event.action }}" = "herodraft_updated" ]; then
+            ls -la ./public/mf/herodraft/ || echo "⚠️  Herodraft files not found yet"
+          fi
       
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
-      - name: Download watchparty artifact
-        if: github.event.action == 'watchparty_updated'
-        env:
-          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
-        run: |
-          set -euo pipefail
-          temp_dir="$(mktemp -d)"
-          trap 'rm -rf "$temp_dir"' EXIT
-
-          echo "Downloading watchparty build from run ${{ github.event.client_payload.run_id }}"
-          gh run download ${{ github.event.client_payload.run_id }} \
-            --repo WolffM/hadoku-watchparty \
-            --name watchparty-dist \
-            --dir "$temp_dir"
-
-          contents_dir=""
-
-          # Unzip any downloaded archives so we can operate on extracted files.
-          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
-            if [ -f "$zip_path" ]; then
-              unzip -qo "$zip_path" -d "$temp_dir/extracted"
-            fi
-          done
-
-          search_roots=("$temp_dir")
-          if [ -d "$temp_dir/extracted" ]; then
-            search_roots+=("$temp_dir/extracted")
-          fi
-
-          for root in "${search_roots[@]}"; do
-            candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
-              \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
-            if [ -n "$candidate" ]; then
-              contents_dir="$(dirname "$candidate")"
-              break
-            fi
-          done
-
-          if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
-            echo "Downloaded artifact contents:"
-            find "$temp_dir" -maxdepth 4 -print
-            echo "❌ Failed to locate downloaded watchparty artifacts"
-            exit 1
-          fi
-
-          rm -rf ./public/mf/watchparty
-          mkdir -p ./public/mf/watchparty
-          shopt -s dotglob
-          cp -a "$contents_dir"/* ./public/mf/watchparty/
-          shopt -u dotglob
-
-          echo "✓ Downloaded watchparty artifacts"
-          ls -la ./public/mf/watchparty
-      
-      - name: Download task artifact
-        if: github.event.action == 'task_updated'
-        env:
-          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
-        run: |
-          set -euo pipefail
-          temp_dir="$(mktemp -d)"
-          trap 'rm -rf "$temp_dir"' EXIT
-
-          echo "Downloading task build from run ${{ github.event.client_payload.run_id }}"
-          echo "Debug: GH_TOKEN is ${GH_TOKEN:+set}"
-          echo "Debug: Checking token access to hadoku-task repo..."
-          
-          # Test token access to the repo first
-          if ! gh api repos/WolffM/hadoku-task --silent; then
-            echo "❌ Token does not have access to WolffM/hadoku-task repository"
-            echo "Please ensure HADOKU_SITE_TOKEN has 'repo' scope and access to hadoku-task"
-            exit 1
-          fi
-          
-          echo "✅ Token has access to hadoku-task repo"
-          
-          # Check if the run exists and has artifacts
-          echo "Debug: Checking if run ${{ github.event.client_payload.run_id }} exists..."
-          if ! gh api "repos/WolffM/hadoku-task/actions/runs/${{ github.event.client_payload.run_id }}" --silent; then
-            echo "❌ Run ${{ github.event.client_payload.run_id }} not found in hadoku-task repository"
-            echo "Debug: Listing recent runs..."
-            gh run list --repo WolffM/hadoku-task --limit 5
-            exit 1
-          fi
-          
-          echo "✅ Run exists, checking for artifacts..."
-          gh api "repos/WolffM/hadoku-task/actions/runs/${{ github.event.client_payload.run_id }}/artifacts" --jq '.artifacts[] | select(.name=="task-dist") | {name: .name, expired: .expired, created_at: .created_at}'
-          
-          echo "Debug: Attempting download..."
-          gh run download ${{ github.event.client_payload.run_id }} \
-            --repo WolffM/hadoku-task \
-            --name task-dist \
-            --dir "$temp_dir"
-
-          contents_dir=""
-
-          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
-            if [ -f "$zip_path" ]; then
-              unzip -qo "$zip_path" -d "$temp_dir/extracted"
-            fi
-          done
-
-          search_roots=("$temp_dir")
-          if [ -d "$temp_dir/extracted" ]; then
-            search_roots+=("$temp_dir/extracted")
-          fi
-
-          for root in "${search_roots[@]}"; do
-            candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
-              \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
-            if [ -n "$candidate" ]; then
-              contents_dir="$(dirname "$candidate")"
-              break
-            fi
-          done
-
-          if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
-            echo "Downloaded artifact contents:"
-            find "$temp_dir" -maxdepth 4 -print
-            echo "❌ Failed to locate downloaded task artifacts"
-            exit 1
-          fi
-
-          rm -rf ./public/mf/task
-          mkdir -p ./public/mf/task
-          shopt -s dotglob
-          cp -a "$contents_dir"/* ./public/mf/task/
-          shopt -u dotglob
-
-          echo "✓ Downloaded task artifacts"
-          ls -la ./public/mf/task
-      
-      - name: Download contact artifact
-        if: github.event.action == 'contact_updated'
-        env:
-          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
-        run: |
-          set -euo pipefail
-          temp_dir="$(mktemp -d)"
-          trap 'rm -rf "$temp_dir"' EXIT
-
-          echo "Downloading contact build from run ${{ github.event.client_payload.run_id }}"
-          gh run download ${{ github.event.client_payload.run_id }} \
-            --repo WolffM/hadoku-contact \
-            --name contact-dist \
-            --dir "$temp_dir"
-
-          contents_dir=""
-
-          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
-            if [ -f "$zip_path" ]; then
-              unzip -qo "$zip_path" -d "$temp_dir/extracted"
-            fi
-          done
-
-          search_roots=("$temp_dir")
-          if [ -d "$temp_dir/extracted" ]; then
-            search_roots+=("$temp_dir/extracted")
-          fi
-
-          for root in "${search_roots[@]}"; do
-            candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
-              \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
-            if [ -n "$candidate" ]; then
-              contents_dir="$(dirname "$candidate")"
-              break
-            fi
-          done
-
-          if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
-            echo "Downloaded artifact contents:"
-            find "$temp_dir" -maxdepth 4 -print
-            echo "❌ Failed to locate downloaded contact artifacts"
-            exit 1
-          fi
-
-          rm -rf ./public/mf/contact
-          mkdir -p ./public/mf/contact
-          shopt -s dotglob
-          cp -a "$contents_dir"/* ./public/mf/contact/
-          shopt -u dotglob
-
-          echo "✓ Downloaded contact artifacts"
-          ls -la ./public/mf/contact
-      
-      - name: Download herodraft artifact
-        if: github.event.action == 'herodraft_updated'
-        env:
-          GH_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
-        run: |
-          set -euo pipefail
-          temp_dir="$(mktemp -d)"
-          trap 'rm -rf "$temp_dir"' EXIT
-
-          echo "Downloading herodraft build from run ${{ github.event.client_payload.run_id }}"
-          gh run download ${{ github.event.client_payload.run_id }} \
-            --repo WolffM/hadoku-herodraft \
-            --name herodraft-dist \
-            --dir "$temp_dir"
-
-          contents_dir=""
-
-          for zip_path in "$temp_dir"/*.zip "$temp_dir"/*/*.zip "$temp_dir"/*/*/*.zip; do
-            if [ -f "$zip_path" ]; then
-              unzip -qo "$zip_path" -d "$temp_dir/extracted"
-            fi
-          done
-
-          search_roots=("$temp_dir")
-          if [ -d "$temp_dir/extracted" ]; then
-            search_roots+=("$temp_dir/extracted")
-          fi
-
-          for root in "${search_roots[@]}"; do
-            candidate="$(find "$root" -mindepth 1 -maxdepth 4 -type f \
-              \( -name 'index.html' -o -name 'index.js' \) -print -quit)"
-            if [ -n "$candidate" ]; then
-              contents_dir="$(dirname "$candidate")"
-              break
-            fi
-          done
-
-          if [ -z "$contents_dir" ] || [ ! -d "$contents_dir" ]; then
-            echo "Downloaded artifact contents:"
-            find "$temp_dir" -maxdepth 4 -print
-            echo "❌ Failed to locate downloaded herodraft artifacts"
-            exit 1
-          fi
-
-          rm -rf ./public/mf/herodraft
-          mkdir -p ./public/mf/herodraft
-          shopt -s dotglob
-          cp -a "$contents_dir"/* ./public/mf/herodraft/
-          shopt -u dotglob
-
-          echo "✓ Downloaded herodraft artifacts"
-          ls -la ./public/mf/herodraft
       
       - name: Install dependencies
         run: npm ci
