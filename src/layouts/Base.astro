@@ -19,6 +19,18 @@ const friendKey = import.meta.env.PUBLIC_FRIEND_KEY || '';
   <meta name="admin-key" content={adminKey}>
   <meta name="friend-key" content={friendKey}>
   <title>{title}</title>
+  
+  <!-- Import map for micro-frontend dependencies -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime"
+      }
+    }
+  </script>
+  
   <style>
     * {
       margin: 0;

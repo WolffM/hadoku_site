@@ -4,14 +4,11 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-  repository_dispatch:
-    types: [watchparty_updated, task_updated, contact_updated, herodraft_updated]
 
 permissions:
   contents: read
   pages: write
   id-token: write
-  actions: read  # Need this to download artifacts from other repos
 
 concurrency:
   group: "pages"
@@ -21,33 +18,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Debug repository_dispatch payload
-        if: github.event_name == 'repository_dispatch'
-        run: |
-          echo "Event: ${{ github.event_name }}"
-          echo "Action: ${{ github.event.action }}"
-          echo "SHA: ${{ github.event.client_payload.sha }}"
-          echo "Ref: ${{ github.event.client_payload.ref }}"
-          echo "Child repo pushed new files, now building and deploying..."
-      
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: main  # Always get latest from main (child just pushed to it)
-      
-      - name: Verify micro-frontend files
-        if: github.event_name == 'repository_dispatch'
-        run: |
-          echo "Checking for micro-frontend files..."
-          if [ "${{ github.event.action }}" = "task_updated" ]; then
-            ls -la ./public/mf/task/ || echo "⚠️  Task files not found yet"
-          elif [ "${{ github.event.action }}" = "watchparty_updated" ]; then
-            ls -la ./public/mf/watchparty/ || echo "⚠️  Watchparty files not found yet"
-          elif [ "${{ github.event.action }}" = "contact_updated" ]; then
-            ls -la ./public/mf/contact/ || echo "⚠️  Contact files not found yet"
-          elif [ "${{ github.event.action }}" = "herodraft_updated" ]; then
-            ls -la ./public/mf/herodraft/ || echo "⚠️  Herodraft files not found yet"
-          fi
+          ref: main
       
       - name: Setup Node
         uses: actions/setup-node@v4
