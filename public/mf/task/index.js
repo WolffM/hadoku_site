@@ -418,7 +418,7 @@ function pt(c = {}) {
       )
     ] }),
     /* @__PURE__ */ d("div", { className: "task-app__filters", children: [
-      /* @__PURE__ */ l("button", { onClick: () => O(void 0), className: p ? "" : "on", children: "All" }),
+      /* @__PURE__ */ l("button", { onClick: () => O(void 0), className: p ? "" : "on", children: "All!" }),
       Array.from(new Set(f.flatMap((t) => t.tag?.split(" ") || []).filter(Boolean))).map(
         (t) => /* @__PURE__ */ d(
           "button",
