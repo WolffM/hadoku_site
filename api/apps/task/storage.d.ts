@@ -2,7 +2,7 @@
  * Storage layer for Task Router
  * Handles both in-memory (public) and file-based (friend/admin) storage
  */
-import type { TasksFile, StatsFile, DataType, UserType } from './types';
+import type { TasksFile, StatsFile, DataType, UserType } from './types.js';
 /**
  * Get in-memory data for public users
  */

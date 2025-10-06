@@ -1,7 +1,7 @@
 /**
  * Stats Operations - Pure functions for updating stats
  */
-import type { StatsFile, Task } from '../types';
+import type { StatsFile, Task } from '../types.js';
 /**
  * Record task creation in stats
  */

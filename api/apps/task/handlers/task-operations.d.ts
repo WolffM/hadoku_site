@@ -1,7 +1,7 @@
 /**
  * Task Operations - Pure functions for task CRUD operations
  */
-import type { TasksFile, StatsFile } from '../types';
+import type { TasksFile, StatsFile } from '../types.js';
 export interface TaskOperationResult {
     tasks: TasksFile;
     stats: StatsFile;

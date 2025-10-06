@@ -534,7 +534,7 @@ function G(t = {}) {
       )
     ] }),
     /* @__PURE__ */ _("div", { className: "task-app__filters", children: [
-      /* @__PURE__ */ m("button", { onClick: () => n(void 0), className: l ? "" : "on", children: "All!" }),
+      /* @__PURE__ */ m("button", { onClick: () => n(void 0), className: l ? "" : "on", children: "All" }),
       H(p).map(
         (k) => /* @__PURE__ */ _(
           "button",

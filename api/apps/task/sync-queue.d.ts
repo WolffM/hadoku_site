@@ -2,7 +2,7 @@
  * GitHub Sync Queue
  * Manages batching of file updates to GitHub API
  */
-import type { GitHubConfig, DataType, UserType } from './types';
+import type { GitHubConfig, DataType, UserType } from './types.js';
 /**
  * Sync Queue class
  * Tracks which files need to be synced to GitHub

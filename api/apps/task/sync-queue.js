@@ -2,7 +2,7 @@
  * GitHub Sync Queue
  * Manages batching of file updates to GitHub API
  */
-import { readUserData } from './storage';
+import { readUserData } from './storage.js';
 const GHP = 'https://api.github.com';
 /**
  * Get file from GitHub
@@ -52,7 +52,9 @@ async function ghPutFile(path, text, config, sha, message = 'update data') {
  * Tracks which files need to be synced to GitHub
  */
 export class SyncQueue {
-    queue = new Set();
+    constructor() {
+        this.queue = new Set();
+    }
     /**
      * Add a file to the sync queue
      */

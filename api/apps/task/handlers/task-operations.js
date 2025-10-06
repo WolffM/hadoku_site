@@ -1,8 +1,8 @@
 /**
  * Task Operations - Pure functions for task CRUD operations
  */
-import { generateULID } from '../utils';
-import * as StatsOps from './stats-operations';
+import { generateULID } from '../utils.js';
+import * as StatsOps from './stats-operations.js';
 /**
  * Create a new task
  */

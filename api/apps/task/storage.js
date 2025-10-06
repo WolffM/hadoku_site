@@ -4,7 +4,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { createEmptyTasksFile, createEmptyStatsFile } from './utils';
+import { createEmptyTasksFile, createEmptyStatsFile } from './utils.js';
 // In-memory storage for public users (singleton)
 const publicData = {
     tasks: createEmptyTasksFile(),

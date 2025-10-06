@@ -2,8 +2,8 @@
  * Task Operation Routes - Complete, Update, Delete
  */
 import { Router } from 'express';
-import * as TaskOps from '../handlers/task-operations';
-import { createISO } from '../utils';
+import * as TaskOps from '../handlers/task-operations.js';
+import { createISO } from '../utils.js';
 export function createTaskOperationRoutes(dataAccess) {
     const router = Router();
     /**

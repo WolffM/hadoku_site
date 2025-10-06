@@ -1,10 +1,8 @@
 /**
  * Data Access Layer - Unified interface for public vs file-based storage
  */
-import { getPublicData, setPublicData, readUserData, writeUserData } from '../storage';
+import { getPublicData, setPublicData, readUserData, writeUserData } from '../storage.js';
 export class DataAccess {
-    config;
-    syncQueue;
     constructor(config, syncQueue) {
         this.config = config;
         this.syncQueue = syncQueue;

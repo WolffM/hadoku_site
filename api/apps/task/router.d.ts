@@ -3,8 +3,8 @@
  * Main entry point for the Task API
  */
 import { Router } from 'express';
-import type { RouterConfig } from './types';
-import { SyncQueue } from './sync-queue';
+import type { RouterConfig } from './types.js';
+import { SyncQueue } from './sync-queue.js';
 export interface TaskRouter extends Router {
     syncQueue: SyncQueue;
     config: RouterConfig;

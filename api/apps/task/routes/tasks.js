@@ -2,9 +2,9 @@
  * Task Routes - GET and POST endpoints for tasks
  */
 import { Router } from 'express';
-import * as TaskOps from '../handlers/task-operations';
-import * as StatsOps from '../handlers/stats-operations';
-import { createISO } from '../utils';
+import * as TaskOps from '../handlers/task-operations.js';
+import * as StatsOps from '../handlers/stats-operations.js';
+import { createISO } from '../utils.js';
 export function createTaskRoutes(dataAccess) {
     const router = Router();
     /**

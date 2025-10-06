@@ -3,11 +3,11 @@
  * Main entry point for the Task API
  */
 import { Router } from 'express';
-import { ensureUserDataExists } from './storage';
-import { SyncQueue } from './sync-queue';
-import { DataAccess } from './handlers/data-access';
-import { createTaskRoutes } from './routes/tasks';
-import { createTaskOperationRoutes } from './routes/task-operations';
+import { ensureUserDataExists } from './storage.js';
+import { SyncQueue } from './sync-queue.js';
+import { DataAccess } from './handlers/data-access.js';
+import { createTaskRoutes } from './routes/tasks.js';
+import { createTaskOperationRoutes } from './routes/task-operations.js';
 /**
  * Create and configure the Task router
  */
