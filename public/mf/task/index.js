@@ -10,27 +10,27 @@ function A(t) {
 function B(t = "public") {
   return {
     async getTasks() {
-      return (await fetch(`/api/task?userType=${t}`)).json();
+      return (await fetch(`/task/api?userType=${t}`)).json();
     },
     async getStats() {
-      return (await fetch(`/api/stats?userType=${t}`)).json();
+      return (await fetch(`/task/api/stats?userType=${t}`)).json();
     },
     async createTask(e) {
-      return (await fetch("/api/task", { method: "POST", headers: A(t), body: JSON.stringify(e) })).json();
+      return (await fetch("/task/api", { method: "POST", headers: A(t), body: JSON.stringify(e) })).json();
     },
     async patchTask(e, s) {
-      return (await fetch(`/api/task/${e}`, { method: "PATCH", headers: A(t), body: JSON.stringify(s) })).json();
+      return (await fetch(`/task/api/${e}`, { method: "PATCH", headers: A(t), body: JSON.stringify(s) })).json();
     },
     async completeTask(e) {
-      return (await fetch(`/api/task/${e}/complete`, { method: "POST", headers: A(t) })).json();
+      return (await fetch(`/task/api/${e}/complete`, { method: "POST", headers: A(t) })).json();
     },
     async deleteTask(e) {
-      return (await fetch(`/api/task/${e}`, { method: "DELETE", headers: A(t) })).json();
+      return (await fetch(`/task/api/${e}`, { method: "DELETE", headers: A(t) })).json();
     },
     async clearPublicTasks() {
       if (t !== "public")
         throw new Error("Only public users can clear tasks");
-      return (await fetch("/api/task/clear", { method: "POST", headers: A(t) })).json();
+      return (await fetch("/task/api/clear", { method: "POST", headers: A(t) })).json();
     }
   };
 }
