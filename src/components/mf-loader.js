@@ -70,12 +70,37 @@
       userType = 'friend';
     }
     
+    // Store auth key in sessionStorage for API calls
+    if (urlKey) {
+      sessionStorage.setItem('hadoku-auth-key', urlKey);
+      // Clean URL to remove key parameter
+      const cleanUrl = new URL(window.location);
+      cleanUrl.searchParams.delete('key');
+      window.history.replaceState({}, '', cleanUrl);
+    }
+    
+    // Override fetch to automatically add auth header to all API requests
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+      const authKey = sessionStorage.getItem('hadoku-auth-key');
+      
+      // Only add auth header for same-origin API requests
+      if (authKey && typeof url === 'string' && url.startsWith('/')) {
+        options.headers = {
+          ...options.headers,
+          'X-Admin-Key': authKey
+        };
+      }
+      
+      return originalFetch(url, options);
+    };
+    
     // Mount the app
     if (typeof module.mount === 'function') {
       const props = {
+        ...appConfig.props,  // Spread registry props first (has default userType: 'public')
         basename: appConfig.basename || '',
-        userType: userType,  // Pass userType to all apps
-        ...appConfig.props
+        userType: userType   // Override with validated userType from URL key
       };
       console.log(`[mf-loader] Mounting ${appName} with props:`, props);
       await module.mount(root, props);

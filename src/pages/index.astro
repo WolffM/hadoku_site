@@ -120,7 +120,8 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     }
   </script>
 
-  <style>
+  <style is:global>
+    /* Use global styles for dynamically created elements */
     .container {
       max-width: 1200px;
       margin: 0 auto;
