@@ -92,8 +92,8 @@ SECRET_CONFIGS = {
         ]
     },
     'cloudflare': {
-        'description': 'Cloudflare deployment secrets for hadoku_site',
-        'secrets': ['CLOUDFLARE_API_TOKEN', 'ROUTE_CONFIG', 'ADMIN_KEY', 'FRIEND_KEY', 'TASK_GITHUB_TOKEN'],
+        'description': 'Deployment secrets for hadoku_site (Cloudflare and Packages)',
+        'secrets': ['CLOUDFLARE_API_TOKEN', 'ROUTE_CONFIG', 'ADMIN_KEY', 'FRIEND_KEY', 'TASK_GITHUB_TOKEN', 'DEPLOY_PACKAGE_TOKEN'],
         'repos': [
             "WolffM/hadoku_site",
         ],
@@ -101,7 +101,8 @@ SECRET_CONFIGS = {
         'secret_mapping': {
             'ADMIN_KEY': 'PUBLIC_ADMIN_KEY',
             'FRIEND_KEY': 'PUBLIC_FRIEND_KEY',
-            'TASK_GITHUB_TOKEN': 'HADOKU_SITE_TOKEN'
+            'TASK_GITHUB_TOKEN': 'HADOKU_SITE_TOKEN',
+            'DEPLOY_PACKAGE_TOKEN': 'DEPLOY_PACKAGE_TOKEN'
         }
     }
 }

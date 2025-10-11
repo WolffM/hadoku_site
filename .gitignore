@@ -9,7 +9,6 @@ dist/
 .env
 .env.*
 !.env.example
-.npmrc
 
 # macOS
 .DS_Store
