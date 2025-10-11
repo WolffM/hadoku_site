@@ -1,8 +1,12 @@
 import { defineConfig } from 'astro/config';
+import node from '@astrojs/node';
 
 export default defineConfig({
   site: 'https://hadoku.me',
-  output: 'static',
+  output: 'server',
+  adapter: node({
+    mode: 'middleware'
+  }),
   vite: {
     build: {
       target: 'esnext'

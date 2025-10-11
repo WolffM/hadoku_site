@@ -1,0 +1,19 @@
+{
+  "global_priority": "2",
+  "routes": {
+    "task": {
+      "priority": "21",
+      "cache": false
+    },
+    "watchparty": {
+      "priority": "1",
+      "cache": true,
+      "cache_ttl_seconds": 60
+    }
+  },
+  "providers": {
+    "1": "${LOCAL_BASE}",
+    "2": "${WORKER_BASE}",
+    "3": "${LAMBDA_BASE}"
+  }
+}
