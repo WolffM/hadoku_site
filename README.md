@@ -1,16 +1,16 @@
 # hadoku_site
 
-An Astro-based shell application for managing micro-frontends. Provides dynamic app loading, access control, serverless API backends, and automated deployment.
+A modular Astro-based application that serves micro-frontends and intelligently routes API requests. Built on Cloudflare's edge infrastructure with GitHub Packages integration.
 
 ## Features
 
-- **Dynamic Micro-Frontend Loading**: Load React/Vue/vanilla JS apps as ES modules
-- **Access Control**: URL-based access levels (public/friend/admin)
-- **Serverless API Backend**: Cloudflare Pages Functions for scalable APIs
-- **Dual Storage Modes**: localStorage for public users, server API for authenticated users
-- **Auto-Generated Registry**: Props and secrets injected at build time
-- **GitHub Actions Deployment**: Automated cross-repo deployments
-- **Single Dynamic Route**: One template handles all micro-apps
+- **Micro-Frontend Architecture**: Load independent React apps as ES modules with isolated bundles
+- **Universal Adapter Pattern**: Child apps export framework-agnostic handlers, parent provides adapters
+- **Intelligent Edge Routing**: Cloudflare Workers with automatic fallback between tunnel, worker, and static backends
+- **Access Control**: Key-based authentication (public/friend/admin) with runtime validation
+- **GitHub Packages Integration**: Private npm packages for child app business logic
+- **Analytics Engine Logging**: Zero-config request tracking with SQL queries
+- **Automated Package Updates**: Child apps trigger parent updates via repository dispatch
 
 ## Quick Start
 
@@ -42,22 +42,27 @@ See [docs/ACCESS_CONTROL.md](docs/ACCESS_CONTROL.md) for details.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Cloudflare Pages                            │
+│                  CLOUDFLARE EDGE INFRASTRUCTURE                  │
+├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Static Site (Astro Build - /dist)                        │  │
-│  │  ├─ Home page with app directory                          │  │
-│  │  ├─ Micro-frontend loader (mf-loader.js)                  │  │
-│  │  └─ Child app bundles (/mf/task/, /mf/watchparty/, etc.)  │  │
-│  └───────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Edge Router Worker (hadoku.me/*)                        │   │
+│  │  ├─ Intelligent fallback routing                         │   │
+│  │  ├─ Analytics Engine logging                             │   │
+│  │  └─ X-Backend-Source tracking                            │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│         ↓                    ↓                    ↓              │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐        │
+│  │ Tunnel       │   │ Workers      │   │ GitHub Pages │        │
+│  │ (localhost)  │   │ (task-api)   │   │ (static)     │        │
+│  └──────────────┘   └──────────────┘   └──────────────┘        │
 │                                                                   │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Serverless Functions (/functions)                        │  │
-│  │  └─ /task/api/[[path]].js                                 │  │
-│  │     ├─ Authenticates admin/friend users                   │  │
-│  │     ├─ Blocks public users (they use localStorage)        │  │
-│  │     └─ Routes to Express task router                      │  │
-│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    GITHUB PACKAGES (PRIVATE)                     │
+├─────────────────────────────────────────────────────────────────┤
+│  @wolffm/task@1.0.0 → TaskHandlers, TaskStorage, AuthContext    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -84,196 +89,262 @@ hadoku_site/
 │       └── [app]/               # App bundles deployed here
 │           ├── index.js
 │           └── style.css
-├── api/                          # Express server (local dev)
-│   ├── server.js                # Main server
-│   └── apps/
-│       └── task/
-│           ├── router.js        # Task Express router
-│           ├── handlers/        # Business logic
-│           └── routes/          # HTTP endpoints
-├── functions/                    # Cloudflare Pages Functions (production)
-│   └── task/
-│       └── api/
-│           └── [[path]].js      # Serverless adapter
+├── workers/                      # Cloudflare Workers
+│   ├── edge-router/             # Main traffic handler
+│   │   ├── src/
+│   │   │   ├── index.ts         # Routing + fallback logic
+│   │   │   └── logging/         # Analytics Engine
+│   │   └── wrangler.toml
+│   └── task-api/                # Task API worker
+│       ├── src/
+│       │   └── index.ts         # Hono adapter for @wolffm/task
+│       ├── package.json         # Depends on @wolffm/task
+│       └── wrangler.toml
 ├── scripts/
-│   └── generate-registry.mjs    # Generates registry with secrets
+│   ├── generate-registry.mjs    # Generates registry
+│   └── manage_github_token.py   # Syncs secrets across repos
 └── docs/
     ├── ARCHITECTURE.md          # Complete system architecture
-    ├── CLOUDFLARE_PAGES_FUNCTIONS.md  # Deployment guide
-    └── PARENT_INTEGRATION.md    # Integration guide
+    ├── API_EXPORTS.md           # Child package exports reference
+    └── GITHUB_ACTIONS_LOGS.md   # Log retrieval guide
 ```
 
 ### How It Works
 
-1. **Build Time**: `generate-registry.mjs` creates `registry.json` with environment variables
-2. **Load Time**: `mf-loader.js` fetches registry, validates auth key, imports app bundle
-3. **Runtime**: App's `mount(el, props)` function renders with validated `userType`
-4. **Access Control**: URL `?key=xxx` determines user type and which apps are visible
-5. **API Calls**: 
-   - **Public users**: Use localStorage only (zero API calls)
-   - **Admin/Friend**: Use Cloudflare Pages Functions at `/task/api/*`
+1. **Build Time**: Child apps publish to GitHub Packages → parent `update-packages.yml` workflow installs updates
+2. **Static Deployment**: Astro builds to GitHub Pages with micro-frontend bundles
+3. **Worker Deployment**: `deploy-workers.yml` deploys edge-router and task-api to Cloudflare
+4. **Request Flow**: 
+   - Browser → `hadoku.me/*` → edge-router → tunnel/worker/static (with fallback)
+   - edge-router logs all requests to Analytics Engine
+5. **Universal Adapter Pattern**: 
+   - Child exports: `TaskHandlers` (business logic), `TaskStorage` (interface)
+   - Parent implements: `GitHubStorage` (GitHub API adapter), Hono routes (HTTP layer)
 
-## Creating a Micro-App
+## Creating a Child App
 
-### 1. Use the Starter Template
+Child apps follow the **Universal Adapter Pattern**: export framework-agnostic handlers, parent provides adapters.
 
-Copy files from `docs/starter-templates/` to your new repo.
-
-### 2. Micro-App Contract
-
-Each app exports `mount` and `unmount`:
+### 1. Frontend (Micro-Frontend)
 
 ```typescript
+// entry.tsx - Mount/unmount for parent integration
 export function mount(el: HTMLElement, props: AppProps) {
-  // Render your app into el
   const root = createRoot(el);
   root.render(<App {...props} />);
 }
 
 export function unmount(el: HTMLElement) {
-  // Clean up
+  // Cleanup
 }
 ```
 
-### 3. Register in hadoku_site
-
-Edit `scripts/generate-registry.mjs`:
-
-```javascript
-// Add your app config
-myapp: {
-  url: '/mf/myapp/index.js',
-  css: '/mf/myapp/style.css',
-  basename: '/myapp',
-  props: myappConfig  // Define above with dev/prod variants
-}
-```
-
-### 4. Update Access Control
-
-Edit `src/config/access-control.ts`:
+### 2. Backend (Server Exports)
 
 ```typescript
-export const appVisibility: Record<UserType, string[]> = {
-  public: ['home'],
-  friend: ['home', 'watchparty'],
-  admin: ['home', 'watchparty', 'task', 'contact', 'herodraft', 'myapp']
+// src/server/handlers.ts - Pure business logic
+export const TaskHandlers = {
+  async getTasks(storage: TaskStorage, auth: AuthContext) {
+    // Framework-agnostic logic
+  }
 };
+
+// src/server/storage.ts - Interface for parent to implement
+export interface TaskStorage {
+  getTasks(userType: UserType): Promise<TasksFile>;
+  saveTasks(userType: UserType, tasks: TasksFile): Promise<void>;
+}
 ```
 
-### 5. Add to Dynamic Route
+### 3. Package Publishing
 
-Edit `src/pages/[app].astro`:
+```json
+// package.json
+{
+  "name": "@wolffm/task",
+  "version": "1.0.0",
+  "exports": {
+    "./api": {
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./frontend": "./dist/index.js"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}
+```
+
+### 4. Parent Integration
+
+Parent consumes the package and provides adapters:
 
 ```typescript
-const validApps = ['watchparty', 'task', 'contact', 'herodraft', 'home', 'myapp'];
+// workers/task-api/src/index.ts
+import { TaskHandlers, type TaskStorage } from '@wolffm/task/api';
+
+// Parent implements storage adapter
+const storage: TaskStorage = {
+  async getTasks(userType) {
+    // GitHub API implementation
+  }
+};
+
+// Parent creates HTTP routes
+app.get('/task/api', async (c) => {
+  const result = await TaskHandlers.getTasks(storage, auth);
+  return c.json(result);
+});
 ```
 
-See [docs/starter-templates/README.md](docs/starter-templates/README.md) for complete guide.
+See [docs/API_EXPORTS.md](docs/API_EXPORTS.md) for complete reference.
 
 ## Deployment
 
 ### Local Development
 ```bash
-# Set environment variables
-$env:ADMIN_KEY="your-admin-key"
-$env:FRIEND_KEY="your-friend-key"
+# Install dependencies
+npm install
 
-# Start Express server
-node api/server.js
-
-# In another terminal, start Astro dev server
+# Start Astro dev server
 npm run dev
 
-# Visit http://localhost:3000/task?key=your-admin-key
+# Visit http://localhost:4321
 ```
 
-### Production (Cloudflare Pages)
+### Production Deployment
 
-1. **Connect GitHub repo** to Cloudflare Pages
-2. **Configure build settings**:
-   - Build command: `npm run build`
-   - Build output directory: `dist`
-3. **Set environment variables** in Cloudflare Dashboard:
-   - `ADMIN_KEY` - Admin access UUID (use `uuidgen` or online tool)
-   - `FRIEND_KEY` - Friend access UUID
-   - `NODE_ENV=production`
-   - `TASK_DATA_PATH=/tmp/hadoku-tasks`
-4. **Push to GitHub** - Auto-deploys to Cloudflare
+**Automated via GitHub Actions:**
 
-See [docs/CLOUDFLARE_PAGES_FUNCTIONS.md](docs/CLOUDFLARE_PAGES_FUNCTIONS.md) for complete deployment guide.
+1. **GitHub Pages** (Static Site)
+   - Workflow: `.github/workflows/deploy.yml`
+   - Builds Astro site + micro-frontends
+   - Deploys to `wolffm.github.io/hadoku_site`
+
+2. **Cloudflare Workers** (API Routing)
+   - Workflow: `.github/workflows/deploy-workers.yml`
+   - Deploys `edge-router` and `task-api`
+   - Requires secrets: `CLOUDFLARE_API_TOKEN`, `ADMIN_KEY`, `FRIEND_KEY`, `GITHUB_PAT`
+
+3. **Package Updates** (Child Apps)
+   - Workflow: `.github/workflows/update-packages.yml`
+   - Listens for `repository_dispatch` events
+   - Updates `@wolffm/task` from GitHub Packages
+   - Requires secret: `DEPLOY_PACKAGE_TOKEN`
+
+**Manual Deployment:**
+```bash
+# Deploy workers
+cd workers/edge-router
+wrangler deploy
+
+cd ../task-api
+wrangler deploy
+```
+
+See [workers/README.md](workers/README.md) for worker deployment details.
 
 ## Environment Variables
 
-### GitHub Secrets (CI/CD)
-- `HADOKU_SITE_TOKEN` - GitHub PAT (shared with all apps)
-- `ADMIN_KEY` - Admin access key
-- `FRIEND_KEY` - Friend access key
+### GitHub Secrets (for Workflows)
+- `CLOUDFLARE_API_TOKEN` - Cloudflare API token for worker deployments
+- `DEPLOY_PACKAGE_TOKEN` - GitHub PAT for downloading private packages
+- `ADMIN_KEY` - Task API admin authentication
+- `FRIEND_KEY` - Task API friend authentication  
+- `GITHUB_PAT` - GitHub API token for task storage
+- `ROUTE_CONFIG` - JSON routing configuration for edge-router
 
-### Cloudflare Pages (Production)
-- `ADMIN_KEY` - Admin access key (different from dev)
-- `FRIEND_KEY` - Friend access key (different from dev)
-- `NODE_ENV=production`
-- `TASK_DATA_PATH=/tmp/hadoku-tasks`
+### Cloudflare Worker Secrets
+Set via `wrangler secret put`:
+```bash
+# task-api worker
+echo "value" | wrangler secret put ADMIN_KEY
+echo "value" | wrangler secret put FRIEND_KEY
+echo "value" | wrangler secret put GITHUB_PAT
+```
 
 ### Local Development (.env)
-- `ADMIN_KEY` - Local admin key
-- `FRIEND_KEY` - Local friend key
-- `TASK_DATA_PATH=./data/task`
-- `NODE_ENV=development`
+```bash
+ADMIN_KEY=test-admin-key
+FRIEND_KEY=test-friend-key
+MODE=development
+```
+
+See [scripts/README.md](scripts/README.md) for token management automation.
 
 ## Documentation
 
 ### Core Docs
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Complete system architecture, request flows, design patterns
-- **[CLOUDFLARE_PAGES_FUNCTIONS.md](docs/CLOUDFLARE_PAGES_FUNCTIONS.md)** - Deployment guide with troubleshooting
-- **[PARENT_INTEGRATION.md](docs/PARENT_INTEGRATION.md)** - How child apps integrate with parent
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Complete system architecture and request flows
+- **[API_EXPORTS.md](docs/API_EXPORTS.md)** - Child package exports reference
+- **[CHILD_APP_TEMPLATE.md](docs/CHILD_APP_TEMPLATE.md)** - Guide for creating child apps
+
+### Component Docs
+- **[workers/README.md](workers/README.md)** - Cloudflare Workers deployment guide
+- **[scripts/README.md](scripts/README.md)** - GitHub token management automation
+- **[docs/GITHUB_ACTIONS_LOGS.md](docs/GITHUB_ACTIONS_LOGS.md)** - Log retrieval guide
 
 ### Quick Reference
-- **Want to understand the system?** → Read [ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- **Want to deploy to production?** → Read [CLOUDFLARE_PAGES_FUNCTIONS.md](docs/CLOUDFLARE_PAGES_FUNCTIONS.md)
-- **Want to integrate a child app?** → Read [PARENT_INTEGRATION.md](docs/PARENT_INTEGRATION.md)
+- **System overview?** → [ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **Worker deployment?** → [workers/README.md](workers/README.md)
+- **Creating child apps?** → [CHILD_APP_TEMPLATE.md](docs/CHILD_APP_TEMPLATE.md)
+- **Package exports?** → [API_EXPORTS.md](docs/API_EXPORTS.md)
 
 ## Tech Stack
 
 ### Frontend
-- **[Astro](https://astro.build/)** - Static site generator
-- **[TypeScript](https://www.typescriptlang.org/)** - Type safety
-- **ES Modules** - Dynamic micro-app loading
-- **Web Components** - Custom elements
+- **[Astro](https://astro.build/)** - Static site generator with SSR
+- **[React](https://react.dev/)** - Micro-frontend framework
+- **[TypeScript](https://www.typescriptlang.org/)** - Type safety across stack
+- **ES Modules** - Dynamic micro-app loading via importmap
 
 ### Backend
-- **Express.js** - Local development server
-- **Cloudflare Pages Functions** - Production serverless API
-- **File System / localStorage** - Data storage (migrate to KV/R2 for persistence)
+- **[Cloudflare Workers](https://workers.cloudflare.com/)** - Edge computing platform
+- **[Hono](https://hono.dev/)** - Express-like framework for Workers
+- **[GitHub API](https://docs.github.com/rest)** - Task data storage
+- **[Analytics Engine](https://developers.cloudflare.com/analytics/analytics-engine/)** - Request logging with SQL queries
+
+### Package Management
+- **[GitHub Packages](https://github.com/features/packages)** - Private npm registry
+- **[@wolffm/task](https://github.com/WolffM/hadoku-task)** - Task app business logic package
 
 ### DevOps
-- **GitHub Actions** - CI/CD
-- **Cloudflare Pages** - Hosting and edge functions
+- **[GitHub Actions](https://github.com/features/actions)** - CI/CD automation
+- **[GitHub Pages](https://pages.github.com/)** - Static site hosting
+- **[Wrangler](https://developers.cloudflare.com/workers/wrangler/)** - Worker deployment CLI
 
 ## Key Features
 
-### Authentication Flow
-1. User visits `https://hadoku.me/task?key=<uuid>`
-2. Frontend validates key → determines userType (public/friend/admin)
-3. Stores key in sessionStorage, cleans URL
-4. Overrides `window.fetch` to add auth headers automatically
-5. Child app receives validated `userType` prop
+### Request Routing
+1. Browser → `https://hadoku.me/task/api/*`
+2. Edge-router worker receives request
+3. Tries backends in priority order (tunnel → worker → static)
+4. First successful response returned with `X-Backend-Source` header
+5. Request logged to Analytics Engine for monitoring
 
-### Storage Modes
-- **Public users**: localStorage only (offline-capable, zero API calls)
-- **Admin/Friend users**: Server API via Cloudflare Functions (data synced)
+### Universal Adapter Pattern
+- **Child Package**: Exports `TaskHandlers` (pure functions) + `TaskStorage` (interface)
+- **Parent Adapter**: Implements `GitHubStorage` (GitHub API) + Hono routes (HTTP)
+- **Benefits**: Business logic in child, infrastructure in parent, easy testing
 
-### Serverless Adaptation
-Same Express router code works in:
-- **Local dev**: Long-running Express server
-- **Production**: Cloudflare Pages Functions (serverless)
+### Storage Implementation
+Parent's task-api worker implements `TaskStorage` interface:
+```typescript
+{
+  getTasks(userType) → GitHub API → data/{userType}/tasks.json
+  saveTasks(userType, tasks) → GitHub API → commit to repo
+}
+```
 
 ## Performance
 
-- **Public mode**: < 1ms operations (localStorage), works offline
-- **Admin/Friend mode**: ~50-200ms API calls (serverless function)
-- **Free tier quota**: 100,000 requests/day (typical usage: < 1,000/day)
+- **Edge-router overhead**: ~5-10ms per request
+- **Tunnel latency**: ~30-70ms (local network fallback)
+- **Worker latency**: ~160-330ms (GitHub API + cold start)
+- **Static content**: ~20-50ms (GitHub Pages CDN)
+- **Analytics Engine**: Non-blocking writes, zero query cost
+- **Free tier**: 100,000 Worker requests/day, 10M analytics events/month
 
 ## License
 
