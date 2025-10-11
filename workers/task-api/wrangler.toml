@@ -3,6 +3,13 @@ main = "src/index.ts"
 compatibility_date = "2025-10-11"
 workers_dev = false
 
+# Build configuration
+[build]
+command = ""
+
+# Tell esbuild to treat node_modules as resolvable
+node_compat = true
+
 # Bind the API paths to your domain
 routes = [
   { pattern = "task-api.hadoku.me/task/api/*", zone_name = "hadoku.me" },

@@ -29,6 +29,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
       
+      - name: Create .npmrc for GitHub Packages
+        run: |
+          echo "@wolffm:registry=https://npm.pkg.github.com" > ~/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> ~/.npmrc
+      
       - name: Install dependencies
         run: npm ci
       
