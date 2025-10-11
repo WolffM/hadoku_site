@@ -71,8 +71,8 @@ jobs:
             echo "${{ secrets.FRIEND_KEY }}" | wrangler secret put FRIEND_KEY
           fi
           
-          if [ -n "${{ secrets.GITHUB_PAT }}" ]; then
-            echo "${{ secrets.GITHUB_PAT }}" | wrangler secret put GITHUB_PAT
+          if [ -n "${{ secrets.TASK_GITHUB_TOKEN }}" ]; then
+            echo "${{ secrets.TASK_GITHUB_TOKEN }}" | wrangler secret put GITHUB_PAT
           fi
           
           # Deploy

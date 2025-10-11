@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
 """
-Complete GitHub Token Management Script
+Complete GitHub Secrets Management Script
 Self-contained script that:
 1. Checks/creates virtual environment
 2. Installs dependencies
-3. Validates token
+3. Validates secrets
 4. Updates secrets in target repositories
 5. Verifies the updates
 
-Usage: python manage_github_token.py
+Usage: 
+  python manage_github_token.py                    # Update HADOKU_SITE_TOKEN in child repos
+  python manage_github_token.py --mode=cloudflare  # Update Cloudflare secrets in hadoku_site
+  python manage_github_token.py --mode=all         # Update all secrets
 """
 
 import sys
 import subprocess
 import os
 from pathlib import Path
+import argparse
 
 # Check if we're running in a virtual environment
 def is_venv():
@@ -77,28 +81,49 @@ from typing import List, Optional, Dict, Any
 # GitHub OAuth App Client ID (official GitHub CLI client ID)
 CLIENT_ID = "178c6fc778ccc68e1d6a"
 
-# Secret name to manage
-SECRET_NAME = "HADOKU_SITE_TOKEN"
-
-# Target repositories to update
-TARGET_REPOS = [
-    "WolffM/hadoku-task",
-    "WolffM/hadoku-watchparty",
-]
+# Secret configurations
+SECRET_CONFIGS = {
+    'child-repos': {
+        'description': 'HADOKU_SITE_TOKEN for child micro-app repositories',
+        'secrets': ['HADOKU_SITE_TOKEN'],
+        'repos': [
+            "WolffM/hadoku-task",
+            "WolffM/hadoku-watchparty",
+        ]
+    },
+    'cloudflare': {
+        'description': 'Cloudflare deployment secrets for hadoku_site',
+        'secrets': ['CLOUDFLARE_API_TOKEN', 'ROUTE_CONFIG', 'ADMIN_KEY', 'FRIEND_KEY', 'TASK_GITHUB_TOKEN'],
+        'repos': [
+            "WolffM/hadoku_site",
+        ],
+        # Map .env names to GitHub Secret names
+        'secret_mapping': {
+            'ADMIN_KEY': 'PUBLIC_ADMIN_KEY',
+            'FRIEND_KEY': 'PUBLIC_FRIEND_KEY',
+            'TASK_GITHUB_TOKEN': 'HADOKU_SITE_TOKEN'
+        }
+    }
+}
 
 # ============================================================================
 # GitHub Token Manager Class
 # ============================================================================
 
 class GitHubTokenManager:
-    def __init__(self):
+    def __init__(self, mode='child-repos'):
         self.token = None
         self.session = None
-        self.new_secret_value = None
+        self.mode = mode
+        self.config = SECRET_CONFIGS.get(mode)
+        if not self.config:
+            raise ValueError(f"Invalid mode: {mode}. Valid modes: {list(SECRET_CONFIGS.keys())}")
+        self.secret_values = {}
         
     def load_env(self) -> Dict[str, str]:
         """Load environment variables from .env file."""
-        env_path = Path(__file__).parent / '.env'
+        # Look for .env in the parent directory (repo root)
+        env_path = Path(__file__).parent.parent / '.env'
         env_vars = {}
         
         if env_path.exists():
@@ -112,84 +137,96 @@ class GitHubTokenManager:
         return env_vars
     
     def step1_check_token(self) -> bool:
-        """Step 1: Check if token exists in .env file."""
-        print("🔍 Step 1: Checking for token in .env file...")
+        """Step 1: Check if secrets exist in .env file."""
+        print(f"🔍 Step 1: Checking for secrets in .env file...")
+        print(f"  Mode: {self.mode} ({self.config['description']})")
         
         env = self.load_env()
-        self.new_secret_value = env.get(SECRET_NAME, '')
+        missing_secrets = []
+        secret_mapping = self.config.get('secret_mapping', {})
         
-        if not self.new_secret_value:
-            print(f"❌ {SECRET_NAME} not found in .env file")
-            print(f"Please add {SECRET_NAME} to your .env file")
+        for secret_name in self.config['secrets']:
+            # Check if there's a mapping (e.g., ADMIN_KEY -> PUBLIC_ADMIN_KEY in .env)
+            env_name = secret_mapping.get(secret_name, secret_name)
+            secret_value = env.get(env_name, '')
+            
+            if not secret_value:
+                missing_secrets.append(f"{secret_name} (looking for {env_name} in .env)")
+            else:
+                self.secret_values[secret_name] = secret_value
+                if env_name != secret_name:
+                    print(f"  ✅ Found {secret_name} (from {env_name}): {secret_value[:20]}...")
+                else:
+                    print(f"  ✅ Found {secret_name}: {secret_value[:20]}...")
+        
+        if missing_secrets:
+            print(f"❌ Missing secrets: {', '.join(missing_secrets)}")
+            print(f"Please add them to your .env file")
             return False
         
-        print(f"✅ Found token: {self.new_secret_value[:20]}...")
+        print(f"✅ All {len(self.config['secrets'])} secrets found")
         return True
     
     def step2_validate_token(self) -> bool:
-        """Step 2: Validate the token by testing it against GitHub API."""
-        print("\n🔐 Step 2: Validating token...")
+        """Step 2: Validate the secrets."""
+        print("\n🔐 Step 2: Validating secrets...")
         
-        # Test 1: Token validity (get user info)
-        print("  🧪 Testing token validity...")
-        response = requests.get(
-            "https://api.github.com/user",
-            headers={"Authorization": f"Bearer {self.new_secret_value}"}
-        )
+        # For child-repos mode, validate HADOKU_SITE_TOKEN
+        if self.mode == 'child-repos' and 'HADOKU_SITE_TOKEN' in self.secret_values:
+            token = self.secret_values['HADOKU_SITE_TOKEN']
+            
+            # Test 1: Token validity (get user info)
+            print("  🧪 Testing HADOKU_SITE_TOKEN validity...")
+            response = requests.get(
+                "https://api.github.com/user",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Token validation failed: {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+            
+            user_info = response.json()
+            print(f"✅ Token valid for user: {user_info.get('login', 'Unknown')}")
+            
+            # Check token scopes
+            scopes = response.headers.get('X-OAuth-Scopes', '')
+            if scopes:
+                print(f"  📋 Token scopes: {scopes}")
+            
+            # Test 2: Check repository access
+            print("  🧪 Testing repository access...")
+            test_repo = self.config['repos'][0]
+            response = requests.get(
+                f"https://api.github.com/repos/{test_repo}",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Repository access failed for {test_repo}: {response.status_code}")
+                return False
+            
+            print(f"✅ Repository access confirmed for {test_repo}")
         
-        if response.status_code != 200:
-            print(f"❌ Token validation failed: {response.status_code}")
-            print(f"Response: {response.text}")
-            return False
+        # For cloudflare mode, validate structure
+        elif self.mode == 'cloudflare':
+            if 'CLOUDFLARE_API_TOKEN' in self.secret_values:
+                token = self.secret_values['CLOUDFLARE_API_TOKEN']
+                print(f"  ✅ CLOUDFLARE_API_TOKEN present (length: {len(token)})")
+            
+            if 'ROUTE_CONFIG' in self.secret_values:
+                route_config = self.secret_values['ROUTE_CONFIG']
+                print(f"  🧪 Validating ROUTE_CONFIG JSON structure...")
+                try:
+                    import json
+                    config_data = json.loads(route_config)
+                    print(f"  ✅ ROUTE_CONFIG is valid JSON with keys: {list(config_data.keys())}")
+                except json.JSONDecodeError as e:
+                    print(f"  ❌ ROUTE_CONFIG is not valid JSON: {e}")
+                    return False
         
-        user_info = response.json()
-        print(f"✅ Token valid for user: {user_info.get('login', 'Unknown')}")
-        
-        # Check token scopes
-        scopes = response.headers.get('X-OAuth-Scopes', '')
-        if scopes:
-            print(f"  📋 Token scopes: {scopes}")
-        
-        # Test 2: Check repository access
-        print("  🧪 Testing repository access...")
-        test_repo = TARGET_REPOS[0] if TARGET_REPOS else "WolffM/hadoku-task"
-        response = requests.get(
-            f"https://api.github.com/repos/{test_repo}",
-            headers={"Authorization": f"Bearer {self.new_secret_value}"}
-        )
-        
-        if response.status_code != 200:
-            print(f"❌ Repository access failed for {test_repo}: {response.status_code}")
-            return False
-        
-        print(f"✅ Repository access confirmed for {test_repo}")
-        
-        # Test 3: Test the actual use case - dispatching to hadoku_site
-        print("  🧪 Testing repository dispatch to hadoku_site...")
-        response = requests.post(
-            "https://api.github.com/repos/WolffM/hadoku_site/dispatches",
-            headers={
-                "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {self.new_secret_value}",
-                "X-GitHub-Api-Version": "2022-11-28"
-            },
-            json={
-                "event_type": "task_updated",
-                "client_payload": {"ping": True, "test": "token_validation"}
-            }
-        )
-        
-        if response.status_code == 204:
-            print(f"✅ Repository dispatch successful! Token can trigger hadoku_site workflows")
-        elif response.status_code == 404:
-            print(f"⚠️  Repository dispatch returned 404 - repository might not exist or token lacks access")
-            print(f"    This token may still work, but verify repository name and permissions")
-        else:
-            print(f"⚠️  Repository dispatch returned {response.status_code}")
-            print(f"    Response: {response.text}")
-            print(f"    Token may lack dispatch permissions, but continuing...")
-        
-        print(f"✅ Token validation complete - this token will be distributed to target repositories")
+        print(f"✅ Validation complete")
         return True
     
     def authenticate_github(self) -> bool:
@@ -269,38 +306,44 @@ class GitHubTokenManager:
     
     def step3_update_secrets(self) -> bool:
         """Step 4: Update secrets in all target repositories."""
-        print(f"\n📝 Step 4: Updating {SECRET_NAME} in {len(TARGET_REPOS)} repositories...")
+        target_repos = self.config['repos']
+        secret_names = self.config['secrets']
         
+        print(f"\n📝 Step 4: Updating {len(secret_names)} secret(s) in {len(target_repos)} repository(ies)...")
+        
+        total_operations = len(target_repos) * len(secret_names)
         success_count = 0
         
-        for repo in TARGET_REPOS:
+        for repo in target_repos:
             print(f"\n  📋 Processing {repo}...")
             
             try:
-                # Get public key
+                # Get public key for this repo
                 print(f"    📥 Getting public key...")
                 url = f"https://api.github.com/repos/{repo}/actions/secrets/public-key"
                 response = self.session.get(url)
                 response.raise_for_status()
                 key_data = response.json()
                 
-                # Encrypt the secret
-                print(f"    🔐 Encrypting secret...")
-                encrypted_value = self.encrypt_secret(key_data["key"], self.new_secret_value)
-                
-                # Update the secret
-                print(f"    📤 Updating secret...")
-                url = f"https://api.github.com/repos/{repo}/actions/secrets/{SECRET_NAME}"
-                payload = {
-                    "encrypted_value": encrypted_value,
-                    "key_id": key_data["key_id"]
-                }
-                
-                response = self.session.put(url, json=payload)
-                response.raise_for_status()
-                
-                print(f"    ✅ Successfully updated {SECRET_NAME} in {repo}")
-                success_count += 1
+                # Update each secret
+                for secret_name in secret_names:
+                    secret_value = self.secret_values[secret_name]
+                    
+                    print(f"    🔐 Encrypting {secret_name}...")
+                    encrypted_value = self.encrypt_secret(key_data["key"], secret_value)
+                    
+                    print(f"    📤 Updating {secret_name}...")
+                    url = f"https://api.github.com/repos/{repo}/actions/secrets/{secret_name}"
+                    payload = {
+                        "encrypted_value": encrypted_value,
+                        "key_id": key_data["key_id"]
+                    }
+                    
+                    response = self.session.put(url, json=payload)
+                    response.raise_for_status()
+                    
+                    print(f"    ✅ Successfully updated {secret_name} in {repo}")
+                    success_count += 1
                 
             except requests.exceptions.RequestException as e:
                 print(f"    ❌ Failed to update {repo}: {e}")
@@ -309,43 +352,51 @@ class GitHubTokenManager:
             except Exception as e:
                 print(f"    ❌ Unexpected error for {repo}: {e}")
         
-        print(f"\n📊 Update Summary: {success_count}/{len(TARGET_REPOS)} successful")
-        return success_count == len(TARGET_REPOS)
+        print(f"\n📊 Update Summary: {success_count}/{total_operations} successful")
+        return success_count == total_operations
     
     def step4_verify_secrets(self) -> bool:
         """Step 5: Verify that secrets were updated successfully."""
+        target_repos = self.config['repos']
+        secret_names = self.config['secrets']
+        
         print(f"\n🔍 Step 5: Verifying secret updates...")
         
+        total_operations = len(target_repos) * len(secret_names)
         verified_count = 0
         
-        for repo in TARGET_REPOS:
+        for repo in target_repos:
             print(f"\n  📋 Verifying {repo}...")
             
-            try:
-                url = f"https://api.github.com/repos/{repo}/actions/secrets/{SECRET_NAME}"
-                response = self.session.get(url)
-                
-                if response.status_code == 200:
-                    secret_info = response.json()
-                    print(f"    ✅ Secret {SECRET_NAME} exists")
-                    print(f"    📅 Updated: {secret_info.get('updated_at', 'Unknown')}")
-                    verified_count += 1
-                elif response.status_code == 404:
-                    print(f"    ❌ Secret {SECRET_NAME} not found")
-                else:
-                    print(f"    ⚠️  Unexpected response: {response.status_code}")
+            for secret_name in secret_names:
+                try:
+                    url = f"https://api.github.com/repos/{repo}/actions/secrets/{secret_name}"
+                    response = self.session.get(url)
                     
-            except requests.exceptions.RequestException as e:
-                print(f"    ❌ Failed to verify {repo}: {e}")
-            except Exception as e:
-                print(f"    ❌ Unexpected error: {e}")
+                    if response.status_code == 200:
+                        secret_info = response.json()
+                        print(f"    ✅ Secret {secret_name} exists")
+                        print(f"       📅 Updated: {secret_info.get('updated_at', 'Unknown')}")
+                        verified_count += 1
+                    elif response.status_code == 404:
+                        print(f"    ❌ Secret {secret_name} not found")
+                    else:
+                        print(f"    ⚠️  Unexpected response for {secret_name}: {response.status_code}")
+                        
+                except requests.exceptions.RequestException as e:
+                    print(f"    ❌ Failed to verify {secret_name}: {e}")
+                except Exception as e:
+                    print(f"    ❌ Unexpected error for {secret_name}: {e}")
         
-        print(f"\n📊 Verification Summary: {verified_count}/{len(TARGET_REPOS)} verified")
-        return verified_count == len(TARGET_REPOS)
+        print(f"\n📊 Verification Summary: {verified_count}/{total_operations} verified")
+        return verified_count == total_operations
     
     def run_complete_flow(self) -> bool:
-        """Run the complete token management flow."""
-        print("🚀 GitHub Token Management - Complete Flow")
+        """Run the complete secret management flow."""
+        print("🚀 GitHub Secrets Management - Complete Flow")
+        print(f"📋 Mode: {self.mode}")
+        print(f"📝 Secrets: {', '.join(self.config['secrets'])}")
+        print(f"🎯 Target Repos: {', '.join(self.config['repos'])}")
         print("=" * 60)
         
         # Step 1: Check for token
@@ -381,11 +432,48 @@ class GitHubTokenManager:
 
 def main():
     """Main function."""
+    parser = argparse.ArgumentParser(
+        description='Manage GitHub Secrets for hadoku_site repositories',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python manage_github_token.py                    # Update HADOKU_SITE_TOKEN in child repos
+  python manage_github_token.py --mode=cloudflare  # Update Cloudflare secrets in hadoku_site
+  python manage_github_token.py --mode=all         # Update all secrets in all repos
+        """
+    )
+    
+    parser.add_argument(
+        '--mode',
+        choices=['child-repos', 'cloudflare', 'all'],
+        default='child-repos',
+        help='Which secrets to update (default: child-repos)'
+    )
+    
+    args = parser.parse_args()
+    
     try:
-        manager = GitHubTokenManager()
-        success = manager.run_complete_flow()
+        # If mode is 'all', run both modes sequentially
+        if args.mode == 'all':
+            modes = ['child-repos', 'cloudflare']
+        else:
+            modes = [args.mode]
         
-        if success:
+        all_success = True
+        
+        for mode in modes:
+            if len(modes) > 1:
+                print(f"\n{'='*60}")
+                print(f"Running mode: {mode}")
+                print(f"{'='*60}\n")
+            
+            manager = GitHubTokenManager(mode=mode)
+            success = manager.run_complete_flow()
+            
+            if not success:
+                all_success = False
+        
+        if all_success:
             print("\n✨ All done! Your GitHub secrets are up to date.")
             sys.exit(0)
         else:
