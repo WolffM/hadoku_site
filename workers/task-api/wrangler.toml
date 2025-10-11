@@ -2,8 +2,8 @@ name = "task-api"
 main = "src/index.ts"
 compatibility_date = "2025-10-11"
 
-# Routes - makes this Worker accessible at task-api.hadoku.workers.dev
-# Can also add custom domain routes here
+# Enable workers.dev subdomain
+workers_dev = true
 
 # Environment variables
 [vars]
