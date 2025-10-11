@@ -24,7 +24,6 @@ if (existsSync(envPath)) {
 
 // Get environment variables
 const MODE = process.env.MODE || 'development';
-const HADOKU_SITE_TOKEN = process.env.HADOKU_SITE_TOKEN || '';
 
 // Watchparty config
 const watchpartyConfig = MODE === 'production' 
@@ -97,8 +96,3 @@ const registryPath = join(__dirname, '..', 'public', 'mf', 'registry.json');
 writeFileSync(registryPath, JSON.stringify(registry, null, 2));
 
 console.log(`✓ Generated registry.json in ${MODE} mode`);
-console.log(`  - GitHub PAT: ${HADOKU_SITE_TOKEN ? '✓ Set' : '✗ Not set'}`);
-if (!HADOKU_SITE_TOKEN) {
-  console.log(`\n⚠️  Warning: No GitHub PAT set. Create a .env file with HADOKU_SITE_TOKEN.`);
-  console.log(`   See .env.example for template.\n`);
-}
