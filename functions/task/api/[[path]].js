@@ -6,7 +6,7 @@
  * Matches: /task/api, /task/api/*, /task/api/123/complete, etc.
  */
 
-import { createTaskRouter } from '../../../api/apps/task/router.js';
+import { createTaskRouter } from '../lib/router.js';
 
 // Environment configuration for Cloudflare Pages
 const getConfig = (env) => ({
