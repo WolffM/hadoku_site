@@ -5,41 +5,48 @@
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     PRODUCTION ENVIRONMENT                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Cloudflare Worker: edge-router                          │   │
-│  │  Route: hadoku.me/*                                      │   │
-│  │  ├─ Intelligent routing with fallback                    │   │
-│  │  ├─ Logs all requests (Analytics Engine)                │   │
-│  │  └─ X-Backend-Source header tracking                    │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                         ↓                                        │
-│  ┌─────────────────────┬────────────────────┬──────────────┐   │
-│  │  Priority 1:        │  Priority 2:       │  Fallback:   │   │
-│  │  Cloudflare Tunnel  │  Cloudflare Worker │  GitHub Pages│   │
-│  │  ↓                  │  ↓                 │  ↓           │   │
-│  │  local-api.hadoku   │  task-api.hadoku   │  Static Site │   │
-│  │  (localhost:4321)   │  (Hono + GitHub)   │  (wolffm...) │   │
-│  └─────────────────────┴────────────────────┴──────────────┘   │
-│                                                                   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         PRODUCTION ENVIRONMENT                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────┐     │
+│  │  Cloudflare Worker: edge-router (hadoku.me/*)                  │     │
+│  │  • Intelligent fallback routing (tunnel → worker → static)     │     │
+│  │  • Analytics Engine logging (SQL-queryable)                    │     │
+│  │  • X-Backend-Source header tracking                            │     │
+│  └────────────────────────────────────────────────────────────────┘     │
+│         ↓                           ↓                        ↓           │
+│  ┌───────────────┐   ┌───────────────────────┐   ┌──────────────────┐  │
+│  │  Tunnel       │   │  Cloudflare Workers   │   │  GitHub Pages    │  │
+│  │  (Priority 1) │   │  (Priority 2)         │   │  (Fallback)      │  │
+│  ├───────────────┤   ├───────────────────────┤   ├──────────────────┤  │
+│  │ localhost     │   │ task-api worker       │   │ Static HTML/JS   │  │
+│  │ via tunnel    │   │ • Hono framework      │   │ • Astro build    │  │
+│  │ (dev/home)    │   │ • @wolffm/task pkg    │   │ • Micro-frontends│  │
+│  │               │   │ • GitHub API storage  │   │                  │  │
+│  └───────────────┘   └───────────────────────┘   └──────────────────┘  │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────┐
-│                   DEVELOPMENT ENVIRONMENT                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  server/main.mjs (Express + Astro SSR)                   │   │
-│  │  Listening on: localhost:4321                            │   │
-│  │  ├─ /task/api/* → Proxy with fallback                   │   │
-│  │  ├─ /* → Astro SSR handler                              │   │
-│  │  └─ Watches route-config.json for changes               │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      GITHUB PACKAGES (PRIVATE NPM)                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│  @wolffm/task@1.0.0                                                      │
+│  • TaskHandlers (pure business logic functions)                         │
+│  • TaskStorage (interface for parent to implement)                      │
+│  • AuthContext, Task types (TypeScript definitions)                     │
+│                                                                           │
+│  Published by child → Downloaded by parent → Used in task-api worker    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       DEVELOPMENT ENVIRONMENT                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Astro Dev Server (localhost:4321)                                      │
+│  • Serves static site locally                                            │
+│  • Hot module reloading                                                  │
+│  • No API routing (use worker or tunnel)                                │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Request Flow
