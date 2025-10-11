@@ -2,8 +2,10 @@ name = "task-api"
 main = "src/index.ts"
 compatibility_date = "2025-10-11"
 
-# Enable workers.dev subdomain
-workers_dev = true
+# Custom domain route - accessible at task-api.hadoku.me
+routes = [
+  { pattern = "task-api.hadoku.me/*", zone_name = "hadoku.me" }
+]
 
 # Environment variables
 [vars]
