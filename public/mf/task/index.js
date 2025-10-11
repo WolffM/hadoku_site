@@ -621,7 +621,7 @@ function st(t = {}) {
       )
     ] }),
     /* @__PURE__ */ w("div", { className: "task-app__filters", children: [
-      /* @__PURE__ */ m("button", { onClick: () => r(void 0), className: l ? "" : "on", children: "All" }),
+      /* @__PURE__ */ m("button", { onClick: () => r(void 0), className: l ? "" : "on", children: "All!" }),
       Q(p).map(
         (k) => /* @__PURE__ */ w(
           "button",
