@@ -36,13 +36,6 @@ jobs:
         run: |
           cd workers/edge-router
           npm install -g wrangler
-          
-          # Set logging secret (GitHub PAT for writing logs)
-          if [ -n "${{ secrets.TASK_GITHUB_TOKEN }}" ]; then
-            echo "${{ secrets.TASK_GITHUB_TOKEN }}" | wrangler secret put GITHUB_PAT
-          fi
-          
-          # Deploy with injected ROUTE_CONFIG
           wrangler deploy --var ROUTE_CONFIG:"$ROUTE_CONFIG"
   
   deploy-task-api:

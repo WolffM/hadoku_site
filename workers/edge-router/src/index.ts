@@ -8,7 +8,7 @@
  * Configuration is injected from GitHub Secrets via ROUTE_CONFIG env var.
  */
 
-import { GitHubLogProvider, RequestLogger } from './logging';
+import { logToAnalytics } from './logging';
 import type { LogEntry } from './logging';
 
 interface Env {
@@ -18,12 +18,7 @@ interface Env {
   LAMBDA_BASE: string;
   STATIC_ORIGIN: string;
   TASK_API?: any; // Optional service binding
-  
-  // For logging
-  GITHUB_PAT?: string;
-  REPO_OWNER?: string;
-  REPO_NAME?: string;
-  LOG_ENABLED?: string;
+  ANALYTICS_ENGINE?: any; // Analytics Engine binding
 }
 
 interface RouteConfig {
@@ -52,19 +47,17 @@ export default {
       backend = 'static';
     }
     
-    // Log the request (async, non-blocking)
-    if (env.LOG_ENABLED !== 'false' && env.GITHUB_PAT && env.REPO_OWNER && env.REPO_NAME) {
-      const duration = Date.now() - startTime;
-      logRequest(env, {
-        timestamp: new Date().toISOString(),
-        path,
-        method: request.method,
-        backend,
-        status: response.status,
-        duration,
-        userAgent: request.headers.get('user-agent')?.substring(0, 100)
-      }).catch(err => console.error('[Logging] Failed:', err));
-    }
+    // Log to Analytics Engine (non-blocking, immediate)
+    const duration = Date.now() - startTime;
+    logToAnalytics(env, {
+      timestamp: new Date().toISOString(),
+      path,
+      method: request.method,
+      backend,
+      status: response.status,
+      duration,
+      userAgent: request.headers.get('user-agent')?.substring(0, 100)
+    });
     
     return response;
   }
@@ -203,30 +196,4 @@ function basesFor(path: string, env: Env): string[] {
     .split('')
     .map(digit => table[digit])
     .filter(Boolean); // Remove undefined values
-}
-
-/**
- * Log request to GitHub (non-blocking)
- */
-async function logRequest(env: Env, entry: LogEntry): Promise<void> {
-  if (!env.GITHUB_PAT || !env.REPO_OWNER || !env.REPO_NAME) {
-    return; // Missing required config
-  }
-  
-  const provider = new GitHubLogProvider({
-    repoOwner: env.REPO_OWNER,
-    repoName: env.REPO_NAME,
-    token: env.GITHUB_PAT
-  });
-  
-  const logger = new RequestLogger(provider, {
-    enabled: env.LOG_ENABLED !== 'false',
-    sampleRate: 0.1,      // 10% of success requests
-    errorSampleRate: 1.0  // 100% of errors
-  });
-  
-  await logger.log(entry);
-  
-  // Flush immediately (or could batch in production)
-  await logger.flush();
 }

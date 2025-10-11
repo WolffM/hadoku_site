@@ -15,13 +15,9 @@ WORKER_BASE = "https://task-api.hadoku.me"
 LAMBDA_BASE = ""
 STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"
 
-# Logging configuration
-REPO_OWNER = "WolffM"
-REPO_NAME = "hadoku_site"
-LOG_ENABLED = "true"
-
-# Secrets (set via: wrangler secret put <NAME> or GitHub Actions)
-# - GITHUB_PAT: GitHub Personal Access Token for logging to repository
+# Analytics Engine binding (automatic logging, zero setup)
+[[analytics_engine_datasets]]
+binding = "ANALYTICS_ENGINE"
 
 # Optional: Service binding to task-api Worker (faster than HTTP)
 # [[services]]
