@@ -10,7 +10,7 @@ routes = [
 # Environment variables
 [vars]
 ROUTE_CONFIG = '{"global_priority":"12"}'  # Default, overridden by GitHub Actions
-LOCAL_BASE = "https://api.hadoku.me"
+LOCAL_BASE = "https://local-api.hadoku.me"  # Tunnel host (avoid loops)
 WORKER_BASE = "https://task-api.hadoku.me"
 LAMBDA_BASE = ""
 STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"

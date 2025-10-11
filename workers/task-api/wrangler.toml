@@ -1,10 +1,12 @@
 name = "task-api"
 main = "src/index.ts"
 compatibility_date = "2025-10-11"
+workers_dev = false
 
-# Custom domain route - accessible at task-api.hadoku.me
+# Bind the API paths to your domain
 routes = [
-  { pattern = "task-api.hadoku.me/*", zone_name = "hadoku.me" }
+  { pattern = "task-api.hadoku.me/task/api/*", zone_name = "hadoku.me" },
+  { pattern = "task-api.hadoku.me/task/api", zone_name = "hadoku.me" }
 ]
 
 # Environment variables

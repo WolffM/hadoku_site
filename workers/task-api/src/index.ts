@@ -23,7 +23,7 @@ const app = new Hono<{ Bindings: Env }>();
 
 // CORS middleware
 app.use('*', cors({
-  origin: ['https://hadoku.me', 'https://api.hadoku.me', 'http://localhost:*'],
+  origin: ['https://hadoku.me', 'https://task-api.hadoku.me', 'http://localhost:*'],
   credentials: true
 }));
 
