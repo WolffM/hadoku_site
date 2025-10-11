@@ -8,6 +8,9 @@
  * Configuration is injected from GitHub Secrets via ROUTE_CONFIG env var.
  */
 
+import { GitHubLogProvider, RequestLogger } from './logging';
+import type { LogEntry } from './logging';
+
 interface Env {
   ROUTE_CONFIG: string;
   LOCAL_BASE: string;
@@ -15,6 +18,12 @@ interface Env {
   LAMBDA_BASE: string;
   STATIC_ORIGIN: string;
   TASK_API?: any; // Optional service binding
+  
+  // For logging
+  GITHUB_PAT?: string;
+  REPO_OWNER?: string;
+  REPO_NAME?: string;
+  LOG_ENABLED?: string;
 }
 
 interface RouteConfig {
@@ -24,24 +33,51 @@ interface RouteConfig {
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+    const startTime = Date.now();
+    
+    let response: Response;
+    let backend: LogEntry['backend'];
 
     // API routes: apply fallback logic
     if (path.startsWith('/task/api/') || path.startsWith('/watchparty/api/')) {
-      return handleApiRoute(request, path, env);
+      const result = await handleApiRoute(request, path, env);
+      response = result.response;
+      backend = result.backend;
+    } else {
+      // Static files: proxy to GitHub Pages
+      response = await proxyToGitHubPages(request, path, env);
+      backend = 'static';
     }
-
-    // Static files: proxy to GitHub Pages
-    return proxyToGitHubPages(request, path, env);
+    
+    // Log the request (async, non-blocking)
+    if (env.LOG_ENABLED !== 'false' && env.GITHUB_PAT && env.REPO_OWNER && env.REPO_NAME) {
+      const duration = Date.now() - startTime;
+      logRequest(env, {
+        timestamp: new Date().toISOString(),
+        path,
+        method: request.method,
+        backend,
+        status: response.status,
+        duration,
+        userAgent: request.headers.get('user-agent')?.substring(0, 100)
+      }).catch(err => console.error('[Logging] Failed:', err));
+    }
+    
+    return response;
   }
 };
 
 /**
  * Handle API routes with fallback logic
  */
-async function handleApiRoute(request: Request, path: string, env: Env): Promise<Response> {
+async function handleApiRoute(
+  request: Request, 
+  path: string, 
+  env: Env
+): Promise<{ response: Response; backend: LogEntry['backend'] }> {
   const bases = basesFor(path, env);
   
   let lastErr: Error | null = null;
@@ -75,7 +111,15 @@ async function handleApiRoute(request: Request, path: string, env: Env): Promise
       // Success - add tracing header
       const newRes = new Response(res.body, res);
       newRes.headers.set('X-Backend-Source', base);
-      return newRes;
+      
+      // Determine backend type for logging
+      let backend: LogEntry['backend'];
+      if (base === env.LOCAL_BASE) backend = 'tunnel';
+      else if (base === env.WORKER_BASE) backend = 'worker';
+      else if (base === env.LAMBDA_BASE) backend = 'lambda';
+      else backend = 'error';
+      
+      return { response: newRes, backend };
       
     } catch (e) {
       lastErr = e as Error;
@@ -85,7 +129,7 @@ async function handleApiRoute(request: Request, path: string, env: Env): Promise
   }
 
   // All backends failed
-  return new Response(
+  const errorResponse = new Response(
     JSON.stringify({ 
       error: 'All backends failed', 
       details: lastErr?.message,
@@ -99,6 +143,8 @@ async function handleApiRoute(request: Request, path: string, env: Env): Promise
       }
     }
   );
+  
+  return { response: errorResponse, backend: 'error' };
 }
 
 /**
@@ -157,4 +203,30 @@ function basesFor(path: string, env: Env): string[] {
     .split('')
     .map(digit => table[digit])
     .filter(Boolean); // Remove undefined values
+}
+
+/**
+ * Log request to GitHub (non-blocking)
+ */
+async function logRequest(env: Env, entry: LogEntry): Promise<void> {
+  if (!env.GITHUB_PAT || !env.REPO_OWNER || !env.REPO_NAME) {
+    return; // Missing required config
+  }
+  
+  const provider = new GitHubLogProvider({
+    repoOwner: env.REPO_OWNER,
+    repoName: env.REPO_NAME,
+    token: env.GITHUB_PAT
+  });
+  
+  const logger = new RequestLogger(provider, {
+    enabled: env.LOG_ENABLED !== 'false',
+    sampleRate: 0.1,      // 10% of success requests
+    errorSampleRate: 1.0  // 100% of errors
+  });
+  
+  await logger.log(entry);
+  
+  // Flush immediately (or could batch in production)
+  await logger.flush();
 }
