@@ -10,8 +10,9 @@ This template provides the structure and configuration needed to create a new ch
 
 Child apps are independent applications that:
 - Run as micro-frontends mounted in the parent app
-- Optionally provide backend API routers
-- Auto-deploy to parent on code changes
+- Optionally publish backend packages to GitHub Packages (Universal Adapter Pattern)
+- Auto-deploy frontend bundles to parent on code changes
+- Trigger parent updates when packages are published
 - Share authentication/user context from parent
 
 ---
@@ -209,9 +210,63 @@ jobs:
 
 ---
 
-## Optional: Backend API Router
+## Optional: Backend Package (Universal Adapter Pattern)
 
-If your app needs server-side logic, create an Express router.
+If your app needs server-side logic, publish a package to GitHub Packages using the Universal Adapter Pattern.
+
+### Universal Adapter Pattern Overview
+
+The Universal Adapter Pattern decouples business logic from infrastructure:
+
+- **Child exports**: Pure handler functions + storage/auth interfaces
+- **Parent implements**: Storage adapters + HTTP layer (Hono, Express, etc.)
+- **Benefits**: 
+  - Parent can swap storage (GitHub → KV → D1) without changing child
+  - Child can be tested independently with mock storage
+  - Multiple parents can use same child package
+  - Child knows nothing about parent's HTTP framework
+
+**Example Architecture:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Child Package (@wolffm/myapp)                               │
+│ Published to GitHub Packages                                │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ exports MyAppHandlers = {                                   │
+│   getData: (storage, auth) => { /* pure logic */ }         │
+│   createItem: (storage, auth, data) => { /* ... */ }       │
+│ }                                                            │
+│                                                              │
+│ exports interface MyAppStorage {                            │
+│   getFile<T>(path: string): Promise<T>                     │
+│   saveFile(path: string, data: any): Promise<void>         │
+│ }                                                            │
+│                                                              │
+│ exports type AuthContext = { userType: UserType }          │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+                     Published to GitHub Packages
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Parent Worker (workers/myapp-api)                          │
+│ Imports @wolffm/myapp from GitHub Packages                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ // Implements storage adapter                               │
+│ const storage: MyAppStorage = {                            │
+│   getFile: async (path) => { /* GitHub API */ },          │
+│   saveFile: async (path, data) => { /* GitHub API */ }    │
+│ }                                                            │
+│                                                              │
+│ // HTTP layer with Hono                                     │
+│ app.get('/myapp/api/data', authenticate, async (c) => {    │
+│   const auth = { userType: c.get('userType') }            │
+│   const data = await MyAppHandlers.getData(storage, auth) │
+│   return c.json(data)                                      │
+│ })                                                           │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### Directory Structure
 
@@ -219,85 +274,234 @@ If your app needs server-side logic, create an Express router.
 src/
 ├── App.tsx           # React frontend
 ├── entry.tsx         # Mount/unmount exports
-├── components/       # React components (optional)
-├── hooks/            # Custom hooks (optional)
-├── lib/              # Utilities & types
-└── server/           # Backend code (optional)
-    ├── router.ts                  # Express router (main entry)
-    ├── storage.ts                 # Low-level storage operations
-    ├── utils.ts                   # Utility functions
-    ├── types.ts                   # TypeScript types
-    ├── handlers/                  # Business logic (optional)
-    │   └── data-access.ts        # Data access layer
-    └── routes/                    # HTTP routes (optional)
-        └── my-routes.ts          # Route handlers
+├── components/       # React components
+├── hooks/            # Custom hooks
+├── lib/              # Utilities & shared types
+└── api/              # Backend package code (published to GitHub Packages)
+    ├── index.ts      # Main exports (handlers + interfaces)
+    ├── types.ts      # TypeScript types (exported)
+    ├── handlers.ts   # Pure business logic functions
+    └── interfaces.ts # Storage/auth interfaces for parent
 ```
 
-### Router Template
+### Package Template
 
-**`src/server/router.ts`**:
+**`package.json`** (for publishing):
+```json
+{
+  "name": "@wolffm/myapp",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/api/index.js",
+  "types": "./dist/api/index.d.ts",
+  "files": [
+    "dist/api/**/*"
+  ],
+  "exports": {
+    "./api": {
+      "import": "./dist/api/index.js",
+      "types": "./dist/api/index.d.ts"
+    }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "build": "vite build",
+    "build:api": "tsc -p tsconfig.api.json",
+    "build:all": "npm run build && npm run build:api",
+    "publish:package": "npm publish"
+  }
+}
+```
+
+**`src/api/index.ts`** (main exports):
 ```typescript
-import { Router } from 'express'
+// Export handlers (pure business logic)
+export * from './handlers.js'
 
-export interface MyAppConfig {
-  dataPath: string
-  // Add your config options
+// Export interfaces (parent implements)
+export * from './interfaces.js'
+
+// Export types (shared)
+export * from './types.js'
+```
+
+**`src/api/types.ts`**:
+```typescript
+// User types
+export type UserType = 'admin' | 'friend' | 'public'
+
+// Auth context
+export interface AuthContext {
+  userType: UserType
 }
 
-export function createMyAppRouter(config: MyAppConfig) {
-  const router = Router()
+// Data types
+export interface MyAppItem {
+  id: string
+  title: string
+  createdAt: string
+  // ... your fields
+}
+
+export interface MyAppFile {
+  items: MyAppItem[]
+}
+```
+
+**`src/api/interfaces.ts`**:
+```typescript
+// Storage interface (parent implements)
+export interface MyAppStorage {
+  getFile<T>(path: string): Promise<T>
+  saveFile(path: string, data: unknown): Promise<void>
+}
+```
+
+**`src/api/handlers.ts`**:
+```typescript
+import type { MyAppStorage, AuthContext, MyAppItem, MyAppFile } from './index.js'
+
+// Pure business logic - no HTTP, no framework coupling
+export const MyAppHandlers = {
+  // Get all items
+  getItems: async (storage: MyAppStorage, auth: AuthContext): Promise<MyAppItem[]> => {
+    const { userType } = auth
+    const path = `data/myapp/${userType}/items.json`
+    
+    try {
+      const file = await storage.getFile<MyAppFile>(path)
+      return file.items
+    } catch (error) {
+      // Return empty array if file doesn't exist
+      return []
+    }
+  },
   
-  // GET /
-  router.get('/', (req, res) => {
-    res.json({ message: 'Hello from my app!' })
-  })
+  // Create item
+  createItem: async (
+    storage: MyAppStorage,
+    auth: AuthContext,
+    data: Omit<MyAppItem, 'id' | 'createdAt'>
+  ): Promise<MyAppItem> => {
+    const { userType } = auth
+    const path = `data/myapp/${userType}/items.json`
+    
+    const newItem: MyAppItem = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      ...data
+    }
+    
+    const items = await MyAppHandlers.getItems(storage, auth)
+    items.push(newItem)
+    
+    await storage.saveFile(path, { items })
+    
+    return newItem
+  },
   
-  // POST /
-  router.post('/', (req, res) => {
-    const data = req.body
-    // Handle request
-    res.json({ ok: true })
-  })
-  
-  return router
+  // Delete item
+  deleteItem: async (
+    storage: MyAppStorage,
+    auth: AuthContext,
+    id: string
+  ): Promise<void> => {
+    const { userType } = auth
+    const path = `data/myapp/${userType}/items.json`
+    
+    const items = await MyAppHandlers.getItems(storage, auth)
+    const filtered = items.filter(item => item.id !== id)
+    
+    await storage.saveFile(path, { items: filtered })
+  }
 }
 ```
 
 ### Build Configuration
 
-**`tsconfig.server.json`**:
+**`tsconfig.api.json`**:
 ```json
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
     "target": "ES2022",
-    "outDir": "./dist/server",
-    "rootDir": "./src/server",
-    "types": ["node"]
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "types": []
   },
-  "include": ["src/server/**/*"]
+  "include": ["src/api/**/*"]
 }
 ```
 
-**`package.json`**:
-```json
-{
-  "scripts": {
-    "build": "vite build",
-    "build:router": "tsc -p tsconfig.server.json",
-    "build:all": "npm run build && npm run build:router"
-  }
-}
+### Publishing Workflow
+
+**`.github/workflows/publish.yml`**:
+```yaml
+name: Publish Package
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/api/**'
+      - 'package.json'
+      - 'tsconfig.api.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@wolffm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build package
+        run: npm run build:api
+      
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Get package version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+      
+      - name: Trigger parent update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/WolffM/hadoku_site/dispatches \
+            -f event_type=update-packages \
+            -f client_payload[package]=@wolffm/myapp \
+            -f client_payload[version]=${{ steps.version.outputs.version }}
 ```
 
 ---
 
 ## Parent Integration
 
-### How Parent Loads Your App
+### How Parent Loads Your Frontend
 
-**`hadoku_site/src/pages/myapp.astro`**:
+**`hadoku_site/src/pages/myapp/index.astro`**:
 ```astro
 ---
 // Astro page that mounts your micro-frontend
@@ -321,246 +525,262 @@ export function createMyAppRouter(config: MyAppConfig) {
 </html>
 ```
 
-### How Parent Uses Your Router
+### How Parent Uses Your Package (Worker Implementation)
 
-The parent supports **two integration patterns**:
+The parent creates a Cloudflare Worker that:
+1. Downloads your package from GitHub Packages
+2. Implements storage adapter
+3. Creates HTTP layer with Hono
+4. Calls your handlers
 
-1. **Nested Express App** (local router, e.g., task API)
-2. **Tunneled Remote API** (proxied to external server, e.g., watchparty API)
-
-Both patterns create the same stable client contract: `/myapp/api/*`
-
----
-
-#### **Pattern 1: Nested Express App (Local Router)**
-
-For lightweight APIs that run directly in the parent process (JSON commits, database queries, etc.):
-
-**Step 1: Import Your Router**
-```typescript
-import { createMyAppRouter } from './apps/myapp/router.js'
-```
-
-**Step 2: Create Nested Express App**
-```typescript
-const myAppApp = express()
-myAppApp.use('/api', createMyAppRouter({
-  dataPath: join(rootDir, 'data', 'myapp'),
-  environment
-}))
-```
-
-**Step 3: Mount as Nested App**
-```typescript
-app.use('/myapp', myAppApp)
-```
-
-This creates the stable client contract where your API is at `/myapp/api/*` and you can add other routes like `/myapp/health` without affecting the client.
-
----
-
-#### **Pattern 2: Tunneled Remote API (Proxy)**
-
-For heavy APIs that run on your local/home server (media streaming, FFmpeg, etc.):
-
-**Step 1: Create Proxy Middleware**
-```typescript
-import { createProxyMiddleware } from 'http-proxy-middleware'
-```
-
-**Step 2: Create Nested Express App with Proxy**
-```typescript
-const watchpartyApp = express()
-watchpartyApp.use('/api', createProxyMiddleware({
-  target: 'https://watchparty-api.hadoku.me',
-  changeOrigin: true
-}))
-```
-
-**Step 3: Mount as Nested App**
-```typescript
-app.use('/watchparty', watchpartyApp)
-```
-
-Client still uses `/watchparty/api/*`, but requests are proxied to your tunnel endpoint.
-
----
-
-#### **Unified Helper Function**
-
-To simplify mounting both patterns, you can use a helper:
-
-```typescript
-import express from 'express'
-import { createProxyMiddleware } from 'http-proxy-middleware'
-
-function mountMicroApp(app, name, routerFactoryOrProxy) {
-  const micro = express()
-  
-  if (typeof routerFactoryOrProxy === 'function') {
-    // Pattern 1: Local router (nested Express app)
-    micro.use('/api', routerFactoryOrProxy())
-  } else {
-    // Pattern 2: Remote proxy (tunneled API)
-    micro.use('/api', createProxyMiddleware({
-      target: routerFactoryOrProxy,
-      changeOrigin: true
-    }))
+**`hadoku_site/workers/myapp-api/package.json`**:
+```json
+{
+  "name": "myapp-api-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@wolffm/myapp": "^1.0.0",
+    "hono": "^4.0.0",
+    "@octokit/rest": "^20.0.0"
   }
-  
-  app.use(`/${name}`, micro)
-}
-
-// Example usage:
-
-// Local JSON-committing Task API
-mountMicroApp(app, 'task', () => createTaskRouter({ dataPath, environment }))
-
-// Remote Watchparty API (tunneled to your home server)
-mountMicroApp(app, 'watchparty', 'https://watchparty-api.hadoku.me')
-```
-
-**Benefits**:
-- Same client contract (`/{app}/api/*`) for both patterns
-- Easy to switch between local and remote
-- Simple, consistent mounting API
-- Future-proof for edge deployments
-
----
-
-#### **Update API Info (Optional)**
-```typescript
-// In the /api endpoint
-endpoints: {
-  health: '/health',
-  task: '/task/api',
-  myapp: '/myapp/api'  // Add your app
-}
-
-// In the /health endpoint
-services: {
-  api: 'running',
-  task: 'running',
-  myapp: 'running'  // Add your app
 }
 ```
 
-#### **Complete Example**
+**`hadoku_site/workers/myapp-api/.npmrc`** (generated in CI):
+```ini
+@wolffm:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${DEPLOY_PACKAGE_TOKEN}
+```
 
-**`hadoku_site/api/server.ts`**:
+**`hadoku_site/workers/myapp-api/wrangler.toml`**:
+```toml
+name = "myapp-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+node_compat = true
+
+[[routes]]
+pattern = "task-api.hadoku.me/myapp/api/*"
+```
+
+**`hadoku_site/workers/myapp-api/src/index.ts`**:
 ```typescript
-import express from 'express'
-import { join, dirname } from 'path'
-import { createProxyMiddleware } from 'http-proxy-middleware'
-import { createTaskRouter } from './apps/task/router.js'
-import { createMyAppRouter } from './apps/myapp/router.js'
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
+import { Octokit } from '@octokit/rest'
+import { MyAppHandlers, MyAppStorage, AuthContext, UserType } from '@wolffm/myapp/api'
 
-const app = express()
-const rootDir = dirname(__dirname)
-const environment = process.env.NODE_ENV || 'development'
-
-app.use(express.json())
-
-// Helper to mount micro-apps with either pattern
-function mountMicroApp(app, name, routerFactoryOrProxy) {
-  const micro = express()
-  
-  if (typeof routerFactoryOrProxy === 'function') {
-    // Pattern 1: Local router
-    micro.use('/api', routerFactoryOrProxy())
-  } else {
-    // Pattern 2: Remote proxy
-    micro.use('/api', createProxyMiddleware({
-      target: routerFactoryOrProxy,
-      changeOrigin: true
-    }))
-  }
-  
-  app.use(`/${name}`, micro)
+interface Env {
+  ADMIN_KEY: string
+  FRIEND_KEY: string
+  GITHUB_PAT: string
 }
 
-// Mount local task API (lightweight JSON commits)
-mountMicroApp(app, 'task', () => createTaskRouter({
-  dataPath: join(rootDir, 'data', 'task'),
-  environment
-}))
+const app = new Hono<{ Bindings: Env }>()
 
-// Mount your new local API
-mountMicroApp(app, 'myapp', () => createMyAppRouter({
-  dataPath: join(rootDir, 'data', 'myapp'),
-  environment
-}))
+app.use('/myapp/api/*', cors({ origin: 'https://hadoku.me' }))
 
-// Mount remote watchparty API (heavy media streaming)
-// Requires Cloudflare Tunnel or similar at watchparty-api.hadoku.me
-mountMicroApp(app, 'watchparty', 'https://watchparty-api.hadoku.me')
-
-// API info endpoint
-app.get('/api', (req, res) => {
-  res.json({
-    endpoints: {
-      health: '/health',
-      task: '/task/api',
-      myapp: '/myapp/api',
-      watchparty: '/watchparty/api'
+// Helper: Get auth context from request
+function getContext(c: any): { storage: MyAppStorage; auth: AuthContext } {
+  const userType = c.get('userType') as UserType
+  
+  const storage: MyAppStorage = {
+    getFile: async <T>(path: string): Promise<T> => {
+      const octokit = new Octokit({ auth: c.env.GITHUB_PAT })
+      
+      const { data } = await octokit.repos.getContent({
+        owner: 'WolffM',
+        repo: 'hadoku_site',
+        path
+      })
+      
+      if ('content' in data) {
+        const content = Buffer.from(data.content, 'base64').toString('utf-8')
+        return JSON.parse(content)
+      }
+      
+      throw new Error('File not found')
+    },
+    
+    saveFile: async (path: string, data: unknown): Promise<void> => {
+      const octokit = new Octokit({ auth: c.env.GITHUB_PAT })
+      
+      // Get current file SHA
+      let sha: string | undefined
+      try {
+        const { data: existing } = await octokit.repos.getContent({
+          owner: 'WolffM',
+          repo: 'hadoku_site',
+          path
+        })
+        if ('sha' in existing) {
+          sha = existing.sha
+        }
+      } catch (error) {
+        // File doesn't exist yet
+      }
+      
+      // Commit file
+      await octokit.repos.createOrUpdateFileContents({
+        owner: 'WolffM',
+        repo: 'hadoku_site',
+        path,
+        message: `Update ${path}`,
+        content: Buffer.from(JSON.stringify(data, null, 2)).toString('base64'),
+        sha
+      })
     }
-  })
+  }
+  
+  return {
+    storage,
+    auth: { userType }
+  }
+}
+
+// Middleware: Authenticate
+app.use('/myapp/api/*', async (c, next) => {
+  const key = c.req.header('X-Admin-Key')
+  
+  if (!key) {
+    return c.json({ error: 'No API key provided' }, 401)
+  }
+  
+  if (key === c.env.ADMIN_KEY) {
+    c.set('userType', 'admin')
+  } else if (key === c.env.FRIEND_KEY) {
+    c.set('userType', 'friend')
+  } else {
+    return c.json({ error: 'Invalid API key' }, 401)
+  }
+  
+  await next()
 })
 
-app.listen(3000)
+// Routes
+app.get('/myapp/api/', (c) => c.json({ message: 'MyApp API' }))
+
+app.get('/myapp/api/items', async (c) => {
+  const { storage, auth } = getContext(c)
+  const items = await MyAppHandlers.getItems(storage, auth)
+  return c.json(items)
+})
+
+app.post('/myapp/api/items', async (c) => {
+  const { storage, auth } = getContext(c)
+  const data = await c.req.json()
+  const item = await MyAppHandlers.createItem(storage, auth, data)
+  return c.json(item, 201)
+})
+
+app.delete('/myapp/api/items/:id', async (c) => {
+  const { storage, auth } = getContext(c)
+  const id = c.req.param('id')
+  await MyAppHandlers.deleteItem(storage, auth, id)
+  return c.json({ ok: true })
+})
+
+export default app
 ```
 
-**That's it!** The parent never needs to know about your individual endpoints - they're all encapsulated in your router or proxied transparently. Both patterns use the same stable client contract.
+### Deployment via GitHub Actions
+
+**`hadoku_site/.github/workflows/deploy-workers.yml`**:
+```yaml
+- name: Configure npm for GitHub Packages
+  run: |
+    echo "@wolffm:registry=https://npm.pkg.github.com" >> workers/myapp-api/.npmrc
+    echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> workers/myapp-api/.npmrc
+
+- name: Install dependencies
+  run: npm install
+  working-directory: workers/myapp-api
+
+- name: Deploy myapp-api worker
+  run: npx wrangler deploy
+  working-directory: workers/myapp-api
+  env:
+    CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+- name: Set worker secrets
+  run: |
+    echo "${{ secrets.ADMIN_KEY }}" | npx wrangler secret put ADMIN_KEY
+    echo "${{ secrets.FRIEND_KEY }}" | npx wrangler secret put FRIEND_KEY
+    echo "${{ secrets.GITHUB_PAT }}" | npx wrangler secret put GITHUB_PAT
+  working-directory: workers/myapp-api
+```
+
+### Benefits of This Pattern
+
+✅ **Decoupling**: Child knows nothing about Hono, Cloudflare Workers, or GitHub API  
+✅ **Flexibility**: Parent can swap storage (GitHub → KV → D1) without changing child  
+✅ **Testability**: Child can be tested with mock storage independently  
+✅ **Reusability**: Same child package works with Hono, Express, Elysia, etc.  
+✅ **Scalability**: Worker deploys globally at Cloudflare's edge  
+✅ **Automation**: Child publishes → parent updates → Workers redeploy
 
 ---
 
 ## GitHub Token Management
 
-### Token Requirements
+### Child Repository Secrets
 
-The `HADOKU_SITE_TOKEN` secret needs:
+Your child repository needs:
+
+**`HADOKU_SITE_TOKEN`** (for deploying frontend bundles):
 - **Permissions**: `repo` scope (read/write access)
-- **Purpose**: Push builds to parent repo
-- **Security**: Managed by parent admin script
+- **Purpose**: Push built frontend to parent `public/mf/myapp/`
+- **Scope**: Repository secret
 
-### Token Sync Script (Parent Repo)
+**`GITHUB_TOKEN`** (automatic, for publishing packages):
+- **Permissions**: Automatically provided by GitHub Actions
+- **Purpose**: Publish to GitHub Packages, trigger repository_dispatch
+- **Scope**: Built-in workflow token
 
-**`hadoku_site/scripts/sync-tokens.sh`**:
+### Parent Repository Secrets
+
+The parent repository needs:
+
+**`DEPLOY_PACKAGE_TOKEN`** (for downloading packages):
+- **Permissions**: `read:packages` scope
+- **Purpose**: Download @wolffm/myapp from GitHub Packages during CI
+- **Scope**: Organization or repository secret
+
+**`CLOUDFLARE_API_TOKEN`** (for deploying workers):
+- **Permissions**: Workers edit permission
+- **Purpose**: Deploy workers via wrangler
+- **Scope**: Repository secret
+
+### Token Setup Example
+
 ```bash
-#!/bin/bash
-# Sync HADOKU_SITE_TOKEN to all child app repositories
+# Child repo: Add HADOKU_SITE_TOKEN
+gh secret set HADOKU_SITE_TOKEN \
+  --repo "WolffM/hadoku-myapp" \
+  --body "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-TOKEN="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-OWNER="WolffM"
+# Parent repo: Add DEPLOY_PACKAGE_TOKEN
+gh secret set DEPLOY_PACKAGE_TOKEN \
+  --repo "WolffM/hadoku_site" \
+  --body "ghp_yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
 
-CHILD_REPOS=(
-  "hadoku-task"
-  "hadoku-watchparty"
-  "hadoku-myapp"
-)
-
-for REPO in "${CHILD_REPOS[@]}"; do
-  echo "Syncing token to $REPO..."
-  
-  gh secret set HADOKU_SITE_TOKEN \
-    --repo "$OWNER/$REPO" \
-    --body "$TOKEN"
-  
-  echo "✅ Synced to $REPO"
-done
-```
-
-**Usage**:
-```bash
-# Run from parent repository
-./scripts/sync-tokens.sh
+# Parent repo: Add CLOUDFLARE_API_TOKEN
+gh secret set CLOUDFLARE_API_TOKEN \
+  --repo "WolffM/hadoku_site" \
+  --body "your-cloudflare-api-token"
 ```
 
 ---
 
 ## Development Workflow
 
-### Local Development
+### Frontend Development
 
 ```bash
 # Install dependencies
@@ -576,39 +796,78 @@ npm run dev
 # http://localhost:5173?userType=admin
 ```
 
-### Test Server (Optional)
+### Package Development (Backend)
 
-If you have a backend router, create a test server:
+```bash
+# Install dependencies
+npm install
 
-**`test-server.ts`**:
-```typescript
-import express from 'express'
-import { createMyAppRouter } from './src/server/router.js'
+# Build package
+npm run build:api
 
-const app = express()
-app.use(express.json())
+# Verify output
+ls dist/api/
+# Should see: index.js, index.d.ts, handlers.js, etc.
 
-const myAppApp = express()
-myAppApp.use('/api', createMyAppRouter({
-  dataPath: './data'
-}))
+# Test with mock storage
+node test-handlers.mjs
+```
 
-app.use('/myapp', myAppApp)
-app.use(express.static('.'))
+**`test-handlers.mjs`** (test your handlers with mock storage):
+```javascript
+import { MyAppHandlers } from './dist/api/index.js'
 
-app.listen(3001, () => {
-  console.log('Test server: http://localhost:3001')
+// Mock storage
+const mockStorage = {
+  data: new Map(),
+  
+  getFile: async (path) => {
+    const data = mockStorage.data.get(path)
+    if (!data) throw new Error('File not found')
+    return JSON.parse(JSON.stringify(data)) // Deep clone
+  },
+  
+  saveFile: async (path, data) => {
+    mockStorage.data.set(path, JSON.parse(JSON.stringify(data))) // Deep clone
+  }
+}
+
+// Test handlers
+const auth = { userType: 'admin' }
+
+// Create item
+const item = await MyAppHandlers.createItem(mockStorage, auth, {
+  title: 'Test item'
 })
+console.log('Created:', item)
+
+// Get items
+const items = await MyAppHandlers.getItems(mockStorage, auth)
+console.log('Items:', items)
+
+// Delete item
+await MyAppHandlers.deleteItem(mockStorage, auth, item.id)
+console.log('Deleted:', item.id)
+
+console.log('✅ All tests passed')
 ```
 
 ### Deployment Flow
 
-1. **Push to main branch**
-2. **GitHub Actions builds** client and server
-3. **Workflow pushes** to parent repository
-4. **Workflow triggers** parent deployment
-5. **Parent deploys** to production
-6. **Users access** at `hadoku.me/myapp`
+#### Frontend Deployment
+1. **Push to main** (changes in `src/`)
+2. **GitHub Actions builds** frontend with Vite
+3. **Workflow pushes** `dist/index.js` to parent `public/mf/myapp/`
+4. **Parent serves** at `hadoku.me/myapp`
+
+#### Package Deployment
+1. **Push to main** (changes in `src/api/`)
+2. **GitHub Actions builds** package with TypeScript
+3. **Workflow publishes** to GitHub Packages
+4. **Workflow triggers** `repository_dispatch` to parent
+5. **Parent workflow runs** `npm update @wolffm/myapp`
+6. **Parent redeployments** Workers with new package
+7. **Workers serve** updated API at `task-api.hadoku.me/myapp/api/`
 
 ---
 
@@ -635,65 +894,140 @@ Add to workflow:
 
 ## Checklist for New App
 
+### Frontend Only
 - [ ] Clone template repository
 - [ ] Update `package.json` name
 - [ ] Update `entry.tsx` with app name
 - [ ] Update `.github/workflows/build.yml` paths
-- [ ] Add `HADOKU_SITE_TOKEN` secret
+- [ ] Add `HADOKU_SITE_TOKEN` secret to child repo
 - [ ] Create app in parent at `public/mf/myapp/`
-- [ ] Create page in parent at `src/pages/myapp.astro`
+- [ ] Create page in parent at `src/pages/myapp/index.astro`
 - [ ] Test local development
 - [ ] Test deployment workflow
-- [ ] Update parent to mount app
-- [ ] Verify production deployment
+- [ ] Verify production deployment at `hadoku.me/myapp`
+
+### With Backend Package
+- [ ] All frontend steps above, plus:
+- [ ] Create `src/api/` directory with handlers, interfaces, types
+- [ ] Add `tsconfig.api.json` for package build
+- [ ] Add `build:api` script to `package.json`
+- [ ] Update `package.json` with `publishConfig` and `exports`
+- [ ] Create `.github/workflows/publish.yml`
+- [ ] Add `DEPLOY_PACKAGE_TOKEN` secret to parent repo
+- [ ] Create parent worker at `workers/myapp-api/`
+- [ ] Add worker to `.github/workflows/deploy-workers.yml`
+- [ ] Test handlers locally with mock storage
+- [ ] Test package publishing workflow
+- [ ] Test parent worker deployment
+- [ ] Verify API at `task-api.hadoku.me/myapp/api/`
 
 ---
 
 ## Troubleshooting
 
-### Build fails
+### Frontend Issues
+
+**Build fails:**
 - Check `package.json` scripts
 - Verify TypeScript config
 - Run `npm run build` locally
 
-### Deployment fails
+**Deployment fails:**
 - Verify `HADOKU_SITE_TOKEN` secret exists
 - Check token has `repo` scope
-- Verify parent repository structure
+- Verify parent repository structure at `public/mf/myapp/`
 
-### App doesn't mount
+**App doesn't mount:**
 - Check `entry.tsx` exports `mount` and `unmount`
-- Verify parent is loading correct files
-- Check console for errors
+- Verify parent is loading correct files (`/mf/myapp/index.js`)
+- Check browser console for errors
 
-### API not working
-- Verify router is mounted in parent
-- Check API path matches client
-- Test router locally with test server
+### Package Issues
+
+**Package publish fails:**
+- Verify `package.json` has `publishConfig` and `exports`
+- Check `tsconfig.api.json` paths
+- Run `npm run build:api` locally to test
+
+**Parent can't download package:**
+- Verify `DEPLOY_PACKAGE_TOKEN` secret exists in parent repo
+- Check token has `read:packages` scope
+- Verify `.npmrc` is generated correctly in CI
+
+**Worker deploy fails:**
+- Check `workers/myapp-api/package.json` has `@wolffm/myapp` dependency
+- Verify `wrangler.toml` configuration
+- Check worker secrets are set (ADMIN_KEY, FRIEND_KEY, GITHUB_PAT)
+
+**API not working:**
+- Verify worker is deployed: `wrangler deployments list`
+- Check worker logs: `wrangler tail myapp-api`
+- Test handler logic locally with mock storage first
+- Verify DNS/routes in `wrangler.toml`
+
+### Testing Strategy
+
+1. **Test handlers locally** with mock storage (cheapest, fastest)
+2. **Test worker locally** with `wrangler dev`
+3. **Test worker in production** with `wrangler deploy`
+4. **Test via edge-router** at `hadoku.me/myapp/api/`
 
 ---
 
 ## Best Practices
 
+### Frontend
 1. **Keep entry point minimal** - Just mount/unmount logic
 2. **Export TypeScript types** - For parent integration
 3. **Support all user types** - public, friend, admin
 4. **Handle props gracefully** - Provide defaults
 5. **Clean up on unmount** - Remove listeners, timers
-6. **Test locally first** - Before deploying
-7. **Document your API** - If you have a router
-8. **Use consistent naming** - Match parent conventions
+
+### Package (Backend)
+1. **Pure functions only** - No HTTP framework coupling
+2. **Accept storage interface** - Don't hardcode GitHub API
+3. **Return data, not responses** - Let parent handle HTTP
+4. **Export TypeScript types** - Interfaces, types, contexts
+5. **Test with mock storage** - Fast, reliable unit tests
+6. **Semantic versioning** - Increment versions appropriately
+7. **Document exports** - Create API_EXPORTS.md reference
+
+### Integration
+1. **Test locally first** - Before deploying
+2. **Use repository_dispatch** - Auto-update parent
+3. **Version compatibility** - Test with multiple parent setups
+4. **Monitor Worker logs** - Use `wrangler tail`
+5. **Use consistent naming** - Match parent conventions
 
 ---
 
 ## Resources
 
-- Parent repository: [WolffM/hadoku_site](https://github.com/WolffM/hadoku_site)
-- Example app: [WolffM/hadoku-task](https://github.com/WolffM/hadoku-task)
-- Micro-frontends pattern: [Single-SPA](https://single-spa.js.org/)
-- GitHub Actions: [docs.github.com](https://docs.github.com/actions)
+### Parent Repository
+- **hadoku_site**: [WolffM/hadoku_site](https://github.com/WolffM/hadoku_site)
+- **ARCHITECTURE.md**: Complete system architecture documentation
+- **API_EXPORTS.md**: Child package exports reference
+
+### Example Implementations
+- **Task app** (frontend): [WolffM/hadoku-task](https://github.com/WolffM/hadoku-task)
+- **Task API package**: [WolffM/task-api-task-component](https://github.com/WolffM/task-api-task-component)
+- **Parent worker**: `hadoku_site/workers/task-api/`
+
+### Documentation
+- **Cloudflare Workers**: https://developers.cloudflare.com/workers/
+- **Hono Framework**: https://hono.dev/
+- **GitHub Packages**: https://docs.github.com/en/packages
+- **GitHub Actions**: https://docs.github.com/en/actions
+- **Repository Dispatch**: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#repository_dispatch
+- **Micro-frontends**: https://micro-frontends.org/
+- **Adapter Pattern**: https://refactoring.guru/design-patterns/adapter
+
+### Tools
+- **Wrangler CLI**: https://developers.cloudflare.com/workers/wrangler/
+- **GitHub CLI**: https://cli.github.com/
+- **Vite**: https://vitejs.dev/
 
 ---
 
-**Template Version**: 1.0.0  
-**Last Updated**: October 6, 2025
+**Template Version**: 2.0.0 (Universal Adapter Pattern)  
+**Last Updated**: January 2025
