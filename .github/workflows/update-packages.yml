@@ -18,7 +18,7 @@ jobs:
       - name: Create .npmrc for GitHub Packages
         run: |
           echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
       
       - name: Update package
         run: |
