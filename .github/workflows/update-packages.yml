@@ -25,6 +25,7 @@ jobs:
           PACKAGE="${{ github.event.client_payload.package }}"
           echo "Updating $PACKAGE to latest version..."
           npm install $PACKAGE@latest
+          npm install --prefix ./workers/task-api $PACKAGE@latest
       
       - name: Commit and push if changed
         run: |
