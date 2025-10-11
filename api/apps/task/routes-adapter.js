@@ -9,8 +9,8 @@ import { TaskHandlers } from './index.js';
  */
 export function createTaskRoutes(storage) {
     const router = Router();
-    // GET /api - Get all tasks
-    router.get('/api', async (req, res) => {
+    // GET / - Get all tasks
+    router.get('/', async (req, res) => {
         const userType = req.query.userType || 'public';
         const auth = { userType };
         try {
@@ -21,8 +21,8 @@ export function createTaskRoutes(storage) {
             res.status(403).json({ error: error.message });
         }
     });
-    // GET /api/stats - Get stats
-    router.get('/api/stats', async (req, res) => {
+    // GET /stats - Get stats
+    router.get('/stats', async (req, res) => {
         const userType = req.query.userType || 'public';
         const auth = { userType };
         try {
@@ -33,8 +33,8 @@ export function createTaskRoutes(storage) {
             res.status(403).json({ error: error.message });
         }
     });
-    // POST /api - Create task
-    router.post('/api', async (req, res) => {
+    // POST / - Create task
+    router.post('/', async (req, res) => {
         const userType = req.headers['x-user-type'] || 'public';
         const auth = { userType };
         try {
@@ -45,8 +45,8 @@ export function createTaskRoutes(storage) {
             res.status(403).json({ error: error.message });
         }
     });
-    // POST /api/:id/complete - Complete task
-    router.post('/api/:id/complete', async (req, res) => {
+    // POST /:id/complete - Complete task
+    router.post('/:id/complete', async (req, res) => {
         const userType = req.headers['x-user-type'] || 'public';
         const auth = { userType };
         try {
@@ -58,8 +58,8 @@ export function createTaskRoutes(storage) {
             res.status(status).json({ error: error.message });
         }
     });
-    // PATCH /api/:id - Update task
-    router.patch('/api/:id', async (req, res) => {
+    // PATCH /:id - Update task
+    router.patch('/:id', async (req, res) => {
         const userType = req.headers['x-user-type'] || 'public';
         const auth = { userType };
         try {
@@ -71,8 +71,8 @@ export function createTaskRoutes(storage) {
             res.status(status).json({ error: error.message });
         }
     });
-    // DELETE /api/:id - Delete task
-    router.delete('/api/:id', async (req, res) => {
+    // DELETE /:id - Delete task
+    router.delete('/:id', async (req, res) => {
         const userType = req.headers['x-user-type'] || 'public';
         const auth = { userType };
         try {
@@ -84,8 +84,8 @@ export function createTaskRoutes(storage) {
             res.status(status).json({ error: error.message });
         }
     });
-    // POST /api/clear - Clear tasks (public only)
-    router.post('/api/clear', async (req, res) => {
+    // POST /clear - Clear tasks (public only)
+    router.post('/clear', async (req, res) => {
         const userType = req.headers['x-user-type'] || 'public';
         const auth = { userType };
         try {
