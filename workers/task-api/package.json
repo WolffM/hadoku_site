@@ -1,0 +1,21 @@
+{
+  "name": "task-api",
+  "version": "1.0.0",
+  "description": "Task API Worker with GitHub-backed storage",
+  "main": "src/index.ts",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "keywords": ["cloudflare", "worker", "task", "api"],
+  "author": "Hadoku",
+  "license": "ISC",
+  "dependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "wrangler": "^3.92.0"
+  }
+}

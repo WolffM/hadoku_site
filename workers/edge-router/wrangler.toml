@@ -1,0 +1,21 @@
+name = "edge-router"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
+
+# Routes - handles all traffic to hadoku.me
+routes = [
+  { pattern = "hadoku.me/*", zone_name = "hadoku.me" }
+]
+
+# Environment variables
+[vars]
+ROUTE_CONFIG = '{"global_priority":"12"}'  # Default, overridden by GitHub Actions
+LOCAL_BASE = "https://api.hadoku.me"
+WORKER_BASE = "https://task-api.hadoku.workers.dev"
+LAMBDA_BASE = ""
+STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"
+
+# Optional: Service binding to task-api Worker (faster than HTTP)
+# [[services]]
+# binding = "TASK_API"
+# service = "task-api"

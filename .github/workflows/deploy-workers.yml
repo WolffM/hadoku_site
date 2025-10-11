@@ -1,0 +1,79 @@
+name: Deploy Cloudflare Workers
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches:
+      - main
+    paths:
+      - 'workers/**'
+      - '.github/workflows/deploy-workers.yml'
+  repository_dispatch:
+    types: [config_updated, deploy_workers]
+
+jobs:
+  deploy-edge-router:
+    name: Deploy Edge Router
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: |
+          cd workers/edge-router
+          npm install
+      
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ROUTE_CONFIG: ${{ secrets.ROUTE_CONFIG }}
+        run: |
+          cd workers/edge-router
+          npm install -g wrangler
+          wrangler deploy --var ROUTE_CONFIG:"$ROUTE_CONFIG"
+  
+  deploy-task-api:
+    name: Deploy Task API Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: |
+          cd workers/task-api
+          npm install
+      
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          cd workers/task-api
+          npm install -g wrangler
+          
+          # Set secrets (only if they're provided in GitHub Secrets)
+          if [ -n "${{ secrets.ADMIN_KEY }}" ]; then
+            echo "${{ secrets.ADMIN_KEY }}" | wrangler secret put ADMIN_KEY
+          fi
+          
+          if [ -n "${{ secrets.FRIEND_KEY }}" ]; then
+            echo "${{ secrets.FRIEND_KEY }}" | wrangler secret put FRIEND_KEY
+          fi
+          
+          if [ -n "${{ secrets.GITHUB_PAT }}" ]; then
+            echo "${{ secrets.GITHUB_PAT }}" | wrangler secret put GITHUB_PAT
+          fi
+          
+          # Deploy
+          wrangler deploy

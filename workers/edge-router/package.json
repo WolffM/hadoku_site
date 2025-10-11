@@ -1,0 +1,18 @@
+{
+  "name": "edge-router",
+  "version": "1.0.0",
+  "description": "Edge router Worker for hadoku.me with API fallback logic",
+  "main": "src/index.ts",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "keywords": ["cloudflare", "worker", "edge", "router"],
+  "author": "Hadoku",
+  "license": "ISC",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "wrangler": "^3.92.0"
+  }
+}

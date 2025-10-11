@@ -1,9 +1,9 @@
 # Hadoku Route Fallback Design
-**Date:** 2025-10-11 16:16:04Z  
+**Date:** 2025-10-11  
 **Owner:** Hadoku  
 **Scope:** Task app first, reusable for all micro‑apps (`/task`, `/watchparty`, …)
 
-> Goal: a unified, modular routing layer where business logic is unchanged and only *where* the request goes is configurable. Priority can be flipped live with a boolean/number without redeploys.
+> Goal: a unified, modular routing layer where business logic is unchanged and only *where* the request goes is configurable. Priority can be flipped by updating GitHub Secrets and triggering Worker redeployment via GitHub Actions.
 
 ---
 
@@ -11,60 +11,104 @@
 **Goals**
 - Keep app logic agnostic to backend location (local tunnel, Cloudflare Worker, AWS Lambda, …).
 - Support *ordered fallback*: try Provider A → if failure/timeout → Provider B → Provider C.
-- Flip order **at runtime** via a single value (e.g., `ROUTE_PRIORITY="123"`), ideally from a remote config/secret.
-- Per‑app overrides (`TASK_ROUTE_PRIORITY`, `WATCHPARTY_ROUTE_PRIORITY`), with a global default.
+- Flip order by updating GitHub Secrets and triggering automated Worker redeployment (~30 seconds).
+- Per‑app overrides (`task_priority`, `watchparty_priority`), with a global default.
 - No infinite proxy loops; clear tracing & metrics.
+- Maintain static UI on GitHub Pages while routing API traffic through Workers.
+- Centralize all configuration in GitHub (secrets, workflows, deployment).
 
 **Non‑Goals**
 - Rebuild the task/watchparty APIs themselves.
-- Heavy auth rework (we’ll forward existing headers like `X-Admin-Key`).
+- Heavy auth rework (we'll forward existing headers like `X-Admin-Key`).
 
 ---
 
 ## 2) Architecture Overview
 
 ```
-Browser (UI) ──→ Edge Router (Worker or Parent Express)
-                    │
-                    ├─ Provider 1: Local Tunnel (Express)
-                    ├─ Provider 2: Cloudflare Worker (stateless JSON API)
-                    └─ Provider 3: AWS Lambda / other
+Browser (UI on GitHub Pages)
+    │
+    ↓
+hadoku.me/* ──→ Cloudflare Worker (edge-router)
+    │
+    ├─ /task/api/*        → fallback: local tunnel → task-api Worker → lambda
+    ├─ /watchparty/api/*  → local tunnel (streaming)
+    └─ /* (static)        → GitHub Pages origin
 ```
 
+**Components:**
+- **GitHub Pages:** Hosts static UI (Astro build) at `hadoku.me`
+- **edge-router Worker:** Main traffic handler, implements fallback logic
+- **task-api Worker:** Cloudflare Function with Express-like routing (Hono/itty-router)
+- **Cloudflare Tunnel:** Exposes local/heavy APIs to the internet
+  - `api.hadoku.me` → localhost:4001 (task API)
+  - `watchparty-api.hadoku.me` → localhost:4001 (streaming server)
+
+**Request Flow:**
 - **Stable client contract:** each app calls a local path (`/task/api/*`, `/watchparty/api/*`).  
-- **Edge decides** where the request actually goes, according to `ROUTE_PRIORITY` (e.g., `123` = local → worker → lambda).
-- **Config source:** env var (build), Cloudflare KV / environment secret (runtime), or a tiny `/config` endpoint consumed by the UI (`GET /_config/route`).
+- **Edge decides** where the request actually goes, according to `ROUTE_CONFIG` from Worker env vars (e.g., `"global_priority": "12"` = local tunnel → task-api Worker).
+- **Config source:** GitHub Secrets deployed as Worker environment variables via GitHub Actions.
 
 ---
 
 ## 3) Configuration & Priority Mapping
-We move from a simple string to a structured, remotely-configurable JSON object. This provides per-app control and can be updated live without redeploying.
 
-**`route-config.json` (Example)**
+Configuration is stored in **GitHub Secrets** as a single JSON object (`ROUTE_CONFIG`). During deployment, GitHub Actions injects this into the Worker as an environment variable.
+
+**Priority String Format:**
+- Each digit maps to a provider
+- Order determines fallback sequence
+- Example: `"12"` = try local tunnel first, then task-api Worker
+
+**GitHub Secret: `ROUTE_CONFIG`**
 ```json
 {
-  "global_priority": "21",
-  "routes": {
-    "task": {
-      "priority": "213",
-      "cache": false
-    },
-    "watchparty": {
-      "priority": "1",
-      "cache": true,
-      "cache_ttl_seconds": 60
-    }
-  },
-  "providers": {
-    "1": "https://api.hadoku.me",
-    "2": "https://worker.hadoku.me",
-    "3": "https://xyz.lambda-url.aws"
-  }
+  "global_priority": "12",
+  "task_priority": "21",
+  "watchparty_priority": "1"
 }
 ```
-- **`global_priority`**: A fallback for any app not explicitly defined in `routes`.
-- **`routes`**: Per-app overrides. The key (`task`, `watchparty`) matches the first segment of the API path (`/task/api/`, `/watchparty/api/`).
-- **`providers`**: The canonical mapping of digits to base URLs.
+
+**Provider Mapping:**
+```typescript
+function basesFor(path: string, env: any): string[] {
+  const appName = path.split('/')[1]; // "task" or "watchparty"
+  
+  // Parse ROUTE_CONFIG from env (injected at deploy time)
+  const config = JSON.parse(env.ROUTE_CONFIG || '{"global_priority":"12"}');
+  
+  // Check for per-app override, then global default
+  const key = config[`${appName}_priority`] || config.global_priority || "12";
+  
+  const table: Record<string, string> = {
+    "1": env.LOCAL_BASE,       // Cloudflare Tunnel
+    "2": env.WORKER_BASE,       // task-api Worker
+    "3": env.LAMBDA_BASE        // AWS Lambda (optional)
+  };
+  
+  return String(key).split("").map(d => table[d]).filter(Boolean);
+}
+```
+
+**Worker Environment Variables (wrangler.toml):**
+```toml
+[vars]
+ROUTE_CONFIG = '{"global_priority":"12"}'  # Default, overridden by GitHub Actions
+LOCAL_BASE = "https://api.hadoku.me"
+WORKER_BASE = "https://task-api.hadoku.workers.dev"
+LAMBDA_BASE = ""                           # Optional
+STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"
+```
+
+**Deployment via GitHub Actions:**
+```yaml
+- name: Deploy edge-router Worker
+  env:
+    ROUTE_CONFIG: ${{ secrets.ROUTE_CONFIG }}
+  run: |
+    cd workers/edge-router
+    wrangler deploy --var ROUTE_CONFIG:"$ROUTE_CONFIG"
+```
 
 ---
 
@@ -121,145 +165,311 @@ This approach is no longer recommended as it complicates central control, but th
 
 ---
 
-## 6) Edge-Side Helper (Recommended)
+## 6) Edge Router Implementation (Cloudflare Worker)
 
-This is the preferred approach. The logic is updated to handle the new configuration structure and specific fallback conditions.
+### 6.1 edge-router Worker
 
-### 6.1 Cloudflare Worker (TypeScript)
+The main Worker that handles all traffic to `hadoku.me/*`.
 
-The Worker would fetch its configuration from a KV store on startup or for each request.
+**wrangler.toml:**
+```toml
+name = "edge-router"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
 
-```ts
-// In wrangler.toml, bind a KV namespace:
-// [[kv_namespaces]]
-// binding = "SETTINGS"
-// id = "your_kv_namespace_id"
+routes = [ "hadoku.me/*" ]
 
+[vars]
+ROUTE_CONFIG = '{"global_priority":"12"}'  # Default, overridden at deploy
+LOCAL_BASE = "https://api.hadoku.me"
+WORKER_BASE = "https://task-api.hadoku.workers.dev"
+LAMBDA_BASE = ""
+STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"
+
+[[services]]
+binding = "TASK_API"
+service = "task-api"
+```
+
+**src/index.ts:**
+```typescript
 export default {
-  async fetch(req, env, ctx) {
+  async fetch(req: Request, env: any, ctx: any): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
-    const appName = path.split('/')[1];
 
-    if (!path.startsWith('/task/api/') && !path.startsWith('/watchparty/api/')) {
-      return env.STATIC.fetch(req); // Pass to static site
-    }
+    // API routes: apply fallback logic
+    if (path.startsWith('/task/api/') || path.startsWith('/watchparty/api/')) {
+      const bases = basesFor(path, env);
+      
+      let lastErr: Error | null = null;
+      for (const base of bases) {
+        try {
+          const targetUrl = new URL(path, base).toString();
+          const headers = new Headers(req.headers);
+          headers.set('X-No-Fallback', '1'); // Prevent loops
+          
+          const res = await Promise.race([
+            fetch(targetUrl, { ...req, headers }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), 2500)
+            )
+          ]) as Response;
 
-    // Fetch config from KV store for live updates
-    const config = await env.SETTINGS.get('route-config', 'json');
-    if (!config) {
-      return new Response('Routing configuration not found', { status: 500 });
-    }
+          // Fallback on 404 or 5xx errors
+          if (res.status === 404 || res.status >= 500) {
+            throw new Error(`Backend returned ${res.status}`);
+          }
 
-    const bases = resolveBackends(path, config);
-    const routeConfig = config.routes[appName] || {};
-
-    // TODO: Implement caching for watchparty based on routeConfig.cache
-    // if (routeConfig.cache) { /* check cache first */ }
-
-    let lastErr;
-    for (const base of bases) {
-      try {
-        // ... (fetch logic remains similar, but check for 404/5xx)
-        const res = await raceTimeout(tryOnce(base), 2500);
-        if (res.status === 404 || res.status >= 500) {
-          throw new Error(`Backend at ${base} returned ${res.status}`);
+          // Success - add tracing header
+          const newRes = new Response(res.body, res);
+          newRes.headers.set('X-Backend-Source', base);
+          return newRes;
+        } catch (e) {
+          lastErr = e as Error;
+          console.log(`Failed ${base}: ${lastErr.message}`);
         }
-        // ... (return successful response)
-      } catch (e) {
-        lastErr = e;
       }
+
+      return new Response(
+        JSON.stringify({ error: 'All backends failed', details: lastErr?.message }),
+        { status: 502, headers: { 'Content-Type': 'application/json' }}
+      );
     }
-    return new Response(JSON.stringify({ error: String(lastErr) }), { status: 502 });
+
+    // Static files: proxy to GitHub Pages
+    return fetch(new URL(path, env.STATIC_ORIGIN), req);
   }
+};
+
+function basesFor(path: string, env: any): string[] {
+  const appName = path.split('/')[1];
+  
+  // Parse ROUTE_CONFIG (injected at deploy time from GitHub Secret)
+  const config = JSON.parse(env.ROUTE_CONFIG || '{"global_priority":"12"}');
+  const key = config[`${appName}_priority`] || config.global_priority || "12";
+  
+  const table: Record<string, string> = {
+    "1": env.LOCAL_BASE,
+    "2": env.WORKER_BASE,
+    "3": env.LAMBDA_BASE
+  };
+  
+  return String(key).split("").map(d => table[d]).filter(Boolean);
 }
 ```
 
-### 6.2 Parent Express (Node) as Router
+### 6.2 task-api Worker (Cloudflare Function)
 
-The Express server will use a file watcher (`chokidar`) to reload the JSON config without restarting the server.
+A dedicated Worker that implements the task API using Hono or itty-router.
 
-```js
-import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
-import fs from 'fs';
-import chokidar from 'chokidar';
+**wrangler.toml:**
+```toml
+name = "task-api"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
 
-const app = express();
-const CONFIG_PATH = './route-config.json';
+routes = [ "task-api.hadoku.workers.dev/*" ]
 
-// Load config and watch for changes
-let routeConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-chokidar.watch(CONFIG_PATH).on('change', () => {
-  console.log('Routing config changed, reloading...');
-  try {
-    routeConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-  } catch (e) {
-    console.error('Failed to reload routing config:', e);
+[vars]
+REPO_OWNER = "WolffM"
+REPO_NAME = "hadoku_site"
+REPO_BRANCH = "main"
+
+# Set via: wrangler secret put GITHUB_PAT
+# Set via: wrangler secret put ADMIN_KEY
+```
+
+**src/index.ts (sketch using Hono):**
+```typescript
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+// Middleware: authenticate
+app.use('*', async (c, next) => {
+  const adminKey = c.env.ADMIN_KEY;
+  const providedKey = c.req.header('X-Admin-Key');
+  
+  if (providedKey === adminKey) {
+    c.set('userType', 'admin');
+  } else {
+    c.set('userType', 'public');
   }
+  
+  await next();
 });
 
-// ... (resolveBackends function here) ...
+// Routes
+app.get('/', (c) => {
+  if (c.get('userType') === 'public') {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+  // Fetch tasks from GitHub
+  return c.json({ tasks: [] });
+});
 
-app.use(['/task/api', '/watchparty/api'], (req, res, next) => {
-  const bases = resolveBackends(req.path, routeConfig);
-  const appName = req.path.split('/')[1];
-  const appConfig = routeConfig.routes[appName] || {};
+app.post('/', async (c) => {
+  if (c.get('userType') === 'public') {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+  const body = await c.req.json();
+  // Create task in GitHub
+  return c.json({ success: true, task: body }, 201);
+});
 
-  // TODO: Implement caching for watchparty based on appConfig.cache
-  
-  let i = 0;
-  const tryNext = () => {
-    if (i >= bases.length) return res.status(502).json({ error: 'All backends failed' });
-    
-    createProxyMiddleware({
-      target: bases[i++],
-      changeOrigin: true,
-      // ... (proxy options) ...
-      onError: (err, req, res) => {
-        // This triggers on connection errors. We also need to handle 404/5xx.
-        tryNext();
-      },
-      onProxyRes: (proxyRes, req, res) => {
-        if (proxyRes.statusCode === 404 || proxyRes.statusCode >= 500) {
-          // If we get a bad status, try the next backend.
-          tryNext();
-        } else {
-          // Otherwise, send the response to the client.
-          res.status(proxyRes.statusCode).send(proxyRes.statusMessage);
-        }
-      }
-    })(req, res, next);
-  };
+// ... more routes ...
 
-  tryNext();
+export default app;
+```
+
+---
+
+## 7) Cloudflare Tunnel Configuration
+
+Expose local APIs to the internet via Cloudflare Tunnel.
+
+**config.yml:**
+```yaml
+tunnel: <your-tunnel-uuid>
+credentials-file: /path/to/<uuid>.json
+
+ingress:
+  - hostname: api.hadoku.me
+    service: http://localhost:4001
+  - hostname: watchparty-api.hadoku.me
+    service: http://localhost:4001
+  - service: http_status:404
+```
+
+**Setup Commands:**
+```bash
+# Create tunnel
+cloudflared tunnel create hadoku-site-prod
+
+# Route DNS (creates CNAME automatically)
+cloudflared tunnel route dns hadoku-site-prod api.hadoku.me
+cloudflared tunnel route dns hadoku-site-prod watchparty-api.hadoku.me
+
+# Run tunnel
+cloudflared tunnel run hadoku-site-prod
+```
+
+**Local server.js updates:**
+The local Express server no longer needs to handle static Astro pages (that's now on GitHub Pages). It only serves API routes for tunnel traffic.
+
+```javascript
+// api/server.js - Now API-only for tunnel
+import express from 'express';
+import { createTaskRouter } from './apps/task/router.js';
+
+const app = express();
+const PORT = process.env.PORT || 4001;
+
+app.use(express.json());
+app.use(cors({ origin: '*' })); // Worker will proxy
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'local-tunnel-api' });
+});
+
+// Task API
+app.use('/task/api', authenticate, createTaskRouter({ 
+  dataPath: './data/task',
+  environment: 'development'
+}));
+
+app.listen(PORT, () => {
+  console.log(`🚇 Tunnel API listening on ${PORT}`);
 });
 ```
 
 ---
 
-## 7) Config & Live Flips
+## 8) Live Flipping of ROUTE_CONFIG
 
-The process is now to update the `route-config.json` file (for Express) or the `route-config` key in Cloudflare KV.
+Configuration updates are managed via **GitHub Secrets** and automated Worker redeployment.
 
-### 7.1 The Configuration File
-A single `route-config.json` file at the root of the project becomes the source of truth.
+### 8.1 Manual Update via GitHub UI
 
-### 7.2 Flip Script (Manual)
-The script now just needs to read, modify, and write a JSON file or update a KV key.
+1. Go to repository **Settings → Secrets and variables → Actions**
+2. Update `ROUTE_CONFIG` secret with new JSON:
+   ```json
+   {
+     "global_priority": "21",
+     "task_priority": "12",
+     "watchparty_priority": "1"
+   }
+   ```
+3. Trigger Worker redeployment via GitHub Actions (manual dispatch or commit)
 
-**PowerShell (for local `route-config.json`):**
-```powershell
-param([string]$app = "task", [string]$priority = "21")
+### 8.2 Automated Update via Python Script
 
-$configFile = "./route-config.json"
-$config = Get-Content $configFile | ConvertFrom-Json
+Use the extended `scripts/manage_github_token.py` script to update routing configuration:
 
-$config.routes.$app.priority = $priority
+```bash
+# Update routing config for hadoku_site repository
+python scripts/manage_github_token.py \
+  --secret ROUTE_CONFIG \
+  --value '{"global_priority":"21","task_priority":"12"}'
+```
 
-$config | ConvertTo-Json -Depth 5 | Set-Content $configFile
+The script will:
+1. Authenticate with GitHub API
+2. Encrypt the new configuration
+3. Update the `ROUTE_CONFIG` secret in hadoku_site repository
+4. Optionally trigger a Worker redeployment workflow
 
-Write-Host "Updated $app priority to $priority in $configFile"
+### 8.3 Deployment Workflow
+
+Create `.github/workflows/deploy-workers.yml` to redeploy Workers when secrets change:
+
+```yaml
+name: Deploy Cloudflare Workers
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    paths:
+      - 'workers/**'
+  repository_dispatch:
+    types: [config_updated]
+
+jobs:
+  deploy-edge-router:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install wrangler
+        run: npm install -g wrangler
+      
+      - name: Deploy edge-router
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ROUTE_CONFIG: ${{ secrets.ROUTE_CONFIG }}
+        run: |
+          cd workers/edge-router
+          wrangler deploy --var ROUTE_CONFIG:"$ROUTE_CONFIG"
+```
+
+### 8.4 Quick Flip Commands
+
+```bash
+# Flip to prefer Workers over tunnel
+python scripts/manage_github_token.py --flip worker-first
+
+# Flip to prefer tunnel over Workers
+python scripts/manage_github_token.py --flip tunnel-first
+
+# Custom config
+python scripts/manage_github_token.py --config route-config.json
 ```
 
 ---
@@ -276,21 +486,70 @@ This remains unchanged. Validating credentials at the edge before proxying is ke
 
 ## 10) Testing Matrix
 The matrix expands slightly:
-- **Config changes:** Verify a live config change reroutes new requests correctly without a server restart.
+- **Config changes:** Verify updating GitHub Secret and redeploying Worker correctly changes routing behavior (~30 seconds).
 - **Fallback triggers:** Test that a backend returning `404`, `500`, or `503` correctly triggers a fallback, but a `401` or `403` does not.
+- **Deployment automation:** Verify GitHub Actions workflow correctly injects `ROUTE_CONFIG` into Worker environment.
 
 ---
 
 ## 11) Rollout Plan
-The plan is now more concrete.
-1.  **Create `route-config.json`** at the project root with initial settings.
-2.  **Implement the Edge Router** (Express is a good starting point as it's explicit).
-    -   Install dependencies: `express`, `http-proxy-middleware`, `chokidar`, `dotenv`.
-    -   Create the server file (`src/server.js`).
-    -   Update `astro.config.mjs` to use the Express adapter.
-3.  **Populate `.env`** with the required base URLs for providers.
-4.  **Test** the fallback logic and live-reload mechanism locally.
-5.  **Confirm** child apps work without any changes.
+
+### Phase 1: Infrastructure Setup
+1. **Create GitHub Secret for routing config**
+   - Add `ROUTE_CONFIG` secret to hadoku_site repository
+   - Initial value: `{"global_priority":"12","task_priority":"21","watchparty_priority":"1"}`
+2. **Create edge-router Worker** with fallback logic
+   - Set up wrangler.toml with routes and vars
+   - Implement basesFor() function that parses ROUTE_CONFIG
+   - Deploy to Cloudflare via GitHub Actions
+3. **Create task-api Worker** with Hono/itty-router
+   - Port Express task router logic
+   - Set up wrangler.toml
+   - Configure secrets (ADMIN_KEY, GITHUB_PAT)
+   - Deploy to Cloudflare
+
+### Phase 2: Tunnel Configuration
+4. **Set up Cloudflare Tunnel**
+   - Create tunnel: `cloudflared tunnel create hadoku-site-prod`
+   - Create config.yml with ingress rules
+   - Route DNS for api.hadoku.me and watchparty-api.hadoku.me
+   - Test tunnel connectivity
+5. **Update local api/server.js**
+   - Remove Astro static serving (now on GitHub Pages)
+   - Keep only API routes for tunnel traffic
+   - Listen on port 4001
+
+### Phase 3: DNS & Static Hosting
+6. **Configure DNS**
+   - Point `hadoku.me` to GitHub Pages (CNAME or A record)
+   - Cloudflare Tunnel creates CNAMEs for api.hadoku.me automatically
+   - Or: Use apex routing through edge-router Worker
+7. **Create GitHub Actions deployment workflow**
+   - Set up `.github/workflows/deploy-workers.yml`
+   - Configure to inject `ROUTE_CONFIG` secret into Worker vars
+   - Add manual trigger and repository_dispatch for config updates
+8. **Update GitHub Pages**
+   - Keep existing Astro static build
+   - No changes needed to build process
+
+### Phase 4: Testing & Validation
+9. **Test fallback logic**
+   - Verify local tunnel → Worker fallback
+   - Test with tunnel down (should fall back to Worker)
+   - Test with both down (should return 502)
+10. **Test configuration updates**
+   - Update `ROUTE_CONFIG` via Python script
+   - Trigger Worker redeployment via GitHub Actions
+   - Verify routing behavior changes (~30 seconds)
+   - Test per-app overrides (task_priority, watchparty_priority)
+11. **Extend Python management script**
+   - Add support for updating `ROUTE_CONFIG` secret
+   - Add helper commands for common flips (tunnel-first, worker-first)
+   - Add ability to trigger Worker redeployment workflow
+12. **Verify child apps**
+    - Confirm task app works without changes
+    - Test authentication flow
+    - Verify data persistence
 
 ---
 
@@ -300,30 +559,99 @@ The plan is now more concrete.
 
 ---
 
-## 13) Quick Reference (Env Vars & Config)
+## 13) Quick Reference
 
-**`route-config.json`**
+### Architecture Stack
+```
+┌─────────────────────────────────────────────────────┐
+│ Browser                                              │
+└────────────────┬────────────────────────────────────┘
+                 │
+                 ↓
+┌─────────────────────────────────────────────────────┐
+│ hadoku.me (DNS)                                      │
+│   ├─ Static files → GitHub Pages                    │
+│   └─ API routes → edge-router Worker                │
+└────────────────┬────────────────────────────────────┘
+                 │
+                 ↓
+┌─────────────────────────────────────────────────────┐
+│ edge-router Worker (Cloudflare)                     │
+│   ├─ Fallback logic                                 │
+│   ├─ Reads ROUTE_PRIORITY from KV                   │
+│   └─ Routes to: tunnel → task-api Worker → lambda   │
+└────┬───────────────────────┬────────────────────────┘
+     │                       │
+     ↓                       ↓
+┌──────────────┐      ┌──────────────────┐
+│ Tunnel       │      │ task-api Worker  │
+│ (local APIs) │      │ (Cloudflare)     │
+└──────────────┘      └──────────────────┘
+```
+
+### Configuration Files
+
+**edge-router wrangler.toml:**
+```toml
+name = "edge-router"
+routes = [ "hadoku.me/*" ]
+[vars]
+ROUTE_CONFIG = '{"global_priority":"12"}'  # Overridden by GitHub Actions
+LOCAL_BASE = "https://api.hadoku.me"
+WORKER_BASE = "https://task-api.hadoku.workers.dev"
+STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"
+```
+
+**task-api wrangler.toml:**
+```toml
+name = "task-api"
+routes = [ "task-api.hadoku.workers.dev/*" ]
+[vars]
+REPO_OWNER = "WolffM"
+REPO_NAME = "hadoku_site"
+```
+
+**Tunnel config.yml:**
+```yaml
+tunnel: <uuid>
+ingress:
+  - hostname: api.hadoku.me
+    service: http://localhost:4001
+  - hostname: watchparty-api.hadoku.me
+    service: http://localhost:4001
+  - service: http_status:404
+```
+
+### Priority Strings
+- `"1"` = Local tunnel only
+- `"2"` = Worker only
+- `"12"` = Try tunnel, fallback to Worker
+- `"21"` = Try Worker, fallback to tunnel
+- `"123"` = Try tunnel → Worker → Lambda
+
+### GitHub Secret: ROUTE_CONFIG
 ```json
 {
-  "global_priority": "2",
-  "routes": {
-    "task": { "priority": "21" },
-    "watchparty": { "priority": "1" }
-  },
-  "providers": {
-    "1": "${LOCAL_BASE}",
-    "2": "${WORKER_BASE}",
-    "3": "${LAMBDA_BASE}"
-  }
+  "global_priority": "12",
+  "task_priority": "21",
+  "watchparty_priority": "1"
 }
 ```
-*Note: The server would need to replace `${VAR}` tokens with actual environment variable values upon loading the config.*
 
-**.env**
-```env
-# Provider base URLs
-LOCAL_BASE=http://localhost:4001
-WORKER_BASE=https://worker.hadoku.me
-LAMBDA_BASE=https://your-lambda-url.aws
+### Python Script Usage
+```bash
+# View current config
+python scripts/manage_github_token.py --show-config
+
+# Update config
+python scripts/manage_github_token.py \
+  --secret ROUTE_CONFIG \
+  --value '{"global_priority":"21"}'
+
+# Quick flips
+python scripts/manage_github_token.py --flip tunnel-first
+python scripts/manage_github_token.py --flip worker-first
+
+# Trigger Worker redeployment after update
+python scripts/manage_github_token.py --deploy-workers
 ```
-This setup provides a clean separation between the routing *structure* (JSON) and the routing *destinations* (env vars).

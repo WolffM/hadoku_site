@@ -1,0 +1,160 @@
+/**
+ * Edge Router Worker for hadoku.me
+ * 
+ * Handles all traffic to hadoku.me/* with intelligent API fallback routing.
+ * - API routes (/task/api/*, /watchparty/api/*): Apply fallback logic
+ * - Static routes: Proxy to GitHub Pages
+ * 
+ * Configuration is injected from GitHub Secrets via ROUTE_CONFIG env var.
+ */
+
+interface Env {
+  ROUTE_CONFIG: string;
+  LOCAL_BASE: string;
+  WORKER_BASE: string;
+  LAMBDA_BASE: string;
+  STATIC_ORIGIN: string;
+  TASK_API?: any; // Optional service binding
+}
+
+interface RouteConfig {
+  global_priority: string;
+  task_priority?: string;
+  watchparty_priority?: string;
+}
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // API routes: apply fallback logic
+    if (path.startsWith('/task/api/') || path.startsWith('/watchparty/api/')) {
+      return handleApiRoute(request, path, env);
+    }
+
+    // Static files: proxy to GitHub Pages
+    return proxyToGitHubPages(request, path, env);
+  }
+};
+
+/**
+ * Handle API routes with fallback logic
+ */
+async function handleApiRoute(request: Request, path: string, env: Env): Promise<Response> {
+  const bases = basesFor(path, env);
+  
+  let lastErr: Error | null = null;
+  
+  for (const base of bases) {
+    try {
+      const targetUrl = new URL(path, base).toString();
+      
+      // Clone headers and add loop prevention
+      const headers = new Headers(request.headers);
+      headers.set('X-No-Fallback', '1');
+      
+      // Create request with timeout
+      const res = await Promise.race([
+        fetch(targetUrl, {
+          method: request.method,
+          headers,
+          body: request.body,
+          redirect: 'manual'
+        }),
+        new Promise<Response>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout after 2500ms')), 2500)
+        )
+      ]);
+
+      // Fallback on 404 or 5xx errors (but not 401, 403, etc.)
+      if (res.status === 404 || res.status >= 500) {
+        throw new Error(`Backend returned HTTP ${res.status}`);
+      }
+
+      // Success - add tracing header
+      const newRes = new Response(res.body, res);
+      newRes.headers.set('X-Backend-Source', base);
+      return newRes;
+      
+    } catch (e) {
+      lastErr = e as Error;
+      console.log(`Failed ${base}: ${lastErr.message}`);
+      // Continue to next provider
+    }
+  }
+
+  // All backends failed
+  return new Response(
+    JSON.stringify({ 
+      error: 'All backends failed', 
+      details: lastErr?.message,
+      attempted: bases
+    }),
+    { 
+      status: 502, 
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Backend-Source': 'none'
+      }
+    }
+  );
+}
+
+/**
+ * Proxy static content to GitHub Pages
+ */
+async function proxyToGitHubPages(request: Request, path: string, env: Env): Promise<Response> {
+  const targetUrl = new URL(path, env.STATIC_ORIGIN).toString();
+  
+  try {
+    const res = await fetch(targetUrl, {
+      method: request.method,
+      headers: request.headers,
+      redirect: 'follow'
+    });
+    
+    // Add header to indicate source
+    const newRes = new Response(res.body, res);
+    newRes.headers.set('X-Backend-Source', 'github-pages');
+    return newRes;
+    
+  } catch (e) {
+    return new Response(`Failed to fetch from GitHub Pages: ${(e as Error).message}`, {
+      status: 502,
+      headers: { 'Content-Type': 'text/plain' }
+    });
+  }
+}
+
+/**
+ * Determine ordered list of backend URLs to try based on routing config
+ */
+function basesFor(path: string, env: Env): string[] {
+  const appName = path.split('/')[1]; // "task" or "watchparty"
+  
+  // Parse ROUTE_CONFIG (injected at deploy time from GitHub Secret)
+  let config: RouteConfig;
+  try {
+    config = JSON.parse(env.ROUTE_CONFIG || '{"global_priority":"12"}');
+  } catch (e) {
+    console.error('Failed to parse ROUTE_CONFIG, using default:', e);
+    config = { global_priority: '12' };
+  }
+  
+  // Check for per-app override, then global default
+  const key = config[`${appName}_priority` as keyof RouteConfig] || config.global_priority || '12';
+  
+  // Provider mapping
+  const table: Record<string, string> = {
+    '1': env.LOCAL_BASE,    // Cloudflare Tunnel
+    '2': env.WORKER_BASE,   // task-api Worker
+    '3': env.LAMBDA_BASE    // AWS Lambda (optional)
+  };
+  
+  // Convert priority string to ordered array of base URLs
+  return String(key)
+    .split('')
+    .map(digit => table[digit])
+    .filter(Boolean); // Remove undefined values
+}

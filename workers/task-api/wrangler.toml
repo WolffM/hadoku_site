@@ -1,0 +1,17 @@
+name = "task-api"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
+
+# Routes - makes this Worker accessible at task-api.hadoku.workers.dev
+# Can also add custom domain routes here
+
+# Environment variables
+[vars]
+REPO_OWNER = "WolffM"
+REPO_NAME = "hadoku_site"
+REPO_BRANCH = "main"
+
+# Secrets (set via: wrangler secret put <NAME>)
+# - ADMIN_KEY: Admin access key
+# - FRIEND_KEY: Friend access key  
+# - GITHUB_PAT: GitHub Personal Access Token for API access
