@@ -2,16 +2,17 @@ name = "edge-router"
 main = "src/index.ts"
 compatibility_date = "2025-10-11"
 
-# Routes - handles all traffic to hadoku.me
+# Routes - only intercept API paths, let static content pass through
 routes = [
-  { pattern = "hadoku.me/*", zone_name = "hadoku.me" }
+  { pattern = "hadoku.me/task/api*", zone_name = "hadoku.me" },
+  { pattern = "hadoku.me/watchparty/api*", zone_name = "hadoku.me" }
 ]
 
 # Environment variables
 [vars]
-ROUTE_CONFIG = '{"global_priority":"12"}'  # Default, overridden by GitHub Actions
+ROUTE_CONFIG = '{"global_priority":"12"}'  # Priority: 1=tunnel, 2=worker (enabled!)
 LOCAL_BASE = "https://local-api.hadoku.me"  # Tunnel host (avoid loops)
-WORKER_BASE = "https://task-api.hadoku.me"
+WORKER_BASE = "https://task-api.jamescannon4237-cfd.workers.dev"  # Task API Worker
 LAMBDA_BASE = ""
 STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"
 

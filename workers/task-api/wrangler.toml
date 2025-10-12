@@ -1,7 +1,7 @@
 name = "task-api"
 main = "src/index.ts"
 compatibility_date = "2025-10-11"
-workers_dev = false
+workers_dev = true
 
 # Build configuration
 [build]
@@ -10,11 +10,11 @@ command = ""
 # Tell esbuild to treat node_modules as resolvable
 node_compat = true
 
-# Bind the API paths to your domain
-routes = [
-  { pattern = "task-api.hadoku.me/task/api/*", zone_name = "hadoku.me" },
-  { pattern = "task-api.hadoku.me/task/api", zone_name = "hadoku.me" }
-]
+# Routes removed - edge-router will proxy to workers.dev URL
+# routes = [
+#   { pattern = "task-api.hadoku.me/task/api/*", zone_name = "hadoku.me" },
+#   { pattern = "task-api.hadoku.me/task/api", zone_name = "hadoku.me" }
+# ]
 
 # Environment variables
 [vars]
