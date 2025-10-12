@@ -15,10 +15,7 @@ import type { TaskStorage, AuthContext, UserType, TasksFile, StatsFile } from '@
 interface Env {
 	ADMIN_KEY: string;
 	FRIEND_KEY: string;
-	GITHUB_PAT: string;
-	REPO_OWNER: string;
-	REPO_NAME: string;
-	REPO_BRANCH: string;
+	TASKS_KV: KVNamespace;
 }
 
 // Define a custom context type for Hono
@@ -66,59 +63,37 @@ app.use('*', async (c, next) => {
 	await next();
 });
 
-// 3. GitHub Storage Implementation
+// 3. Workers KV Storage Implementation
 // This is the parent's responsibility - adapt storage to the environment.
-function createGitHubStorage(env: Env): TaskStorage {
-	const baseUrl = `https://api.github.com/repos/${env.REPO_OWNER}/${env.REPO_NAME}/contents`;
-	const headers = {
-		Authorization: `token ${env.GITHUB_PAT}`,
-		Accept: 'application/vnd.github.v3+json',
-	};
-
-	// Generic get/save helpers
-	async function getFile<T>(path: string, defaultValue: T): Promise<T> {
-		const response = await fetch(`${baseUrl}/${path}?ref=${env.REPO_BRANCH}`, { headers });
-		if (!response.ok) return defaultValue;
-		const data: any = await response.json();
-		return JSON.parse(atob(data.content));
-	}
-
-	async function saveFile(path: string, content: any, message: string): Promise<void> {
-		const getResponse = await fetch(`${baseUrl}/${path}?ref=${env.REPO_BRANCH}`, { headers });
-		const sha = getResponse.ok ? (await getResponse.json() as any).sha : undefined;
-		
-		await fetch(`${baseUrl}/${path}`, {
-			method: 'PUT',
-			headers: { ...headers, 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				message,
-				content: btoa(JSON.stringify(content, null, 2)),
-				sha,
-				branch: env.REPO_BRANCH,
-			}),
-		});
-	}
-
+function createKVStorage(env: Env): TaskStorage {
 	return {
-		getTasks: (userType: UserType) => getFile(`data/${userType}/tasks.json`, {
-			version: 1,
-			tasks: [],
-			updatedAt: new Date().toISOString(),
-		} as TasksFile),
+		getTasks: async (userType: UserType) => {
+			const data = await env.TASKS_KV.get(`${userType}:tasks`, 'json');
+			return data || {
+				version: 1,
+				tasks: [],
+				updatedAt: new Date().toISOString(),
+			} as TasksFile;
+		},
 
-		saveTasks: (userType: UserType, tasks: TasksFile) =>
-			saveFile(`data/${userType}/tasks.json`, tasks, `Update tasks for ${userType}`),
+		saveTasks: async (userType: UserType, tasks: TasksFile) => {
+			await env.TASKS_KV.put(`${userType}:tasks`, JSON.stringify(tasks));
+		},
 
-		getStats: (userType: UserType) => getFile(`data/${userType}/stats.json`, {
-			version: 2,
-			counters: { totalCreated: 0, totalCompleted: 0, totalDeleted: 0 },
-			timeline: [],
-			tasks: {},
-			updatedAt: new Date().toISOString(),
-		} as StatsFile),
+		getStats: async (userType: UserType) => {
+			const data = await env.TASKS_KV.get(`${userType}:stats`, 'json');
+			return data || {
+				version: 2,
+				counters: { created: 0, completed: 0, edited: 0, deleted: 0 },
+				timeline: [],
+				tasks: {},
+				updatedAt: new Date().toISOString(),
+			} as StatsFile;
+		},
 
-		saveStats: (userType: UserType, stats: StatsFile) =>
-			saveFile(`data/${userType}/stats.json`, stats, `Update stats for ${userType}`),
+		saveStats: async (userType: UserType, stats: StatsFile) => {
+			await env.TASKS_KV.put(`${userType}:stats`, JSON.stringify(stats));
+		},
 	};
 }
 
@@ -133,7 +108,7 @@ app.get('/task/api/health', (c) => {
 
 // 5. Helper to get storage and auth from context
 const getContext = (c: Context<AppContext>) => ({
-	storage: createGitHubStorage(c.env),
+	storage: createKVStorage(c.env),
 	auth: c.get('authContext'),
 });
 

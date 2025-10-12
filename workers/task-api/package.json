@@ -8,12 +8,17 @@
     "dev": "wrangler dev",
     "tail": "wrangler tail"
   },
-  "keywords": ["cloudflare", "worker", "task", "api"],
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "task",
+    "api"
+  ],
   "author": "Hadoku",
   "license": "ISC",
   "dependencies": {
-    "hono": "^4.0.0",
-    "@wolffm/task": "^1.0.0"
+    "@wolffm/task": "^1.0.0-9f1fb71",
+    "hono": "^4.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",

@@ -1,25 +1,25 @@
-import { jsxs as w, jsx as m } from "react/jsx-runtime";
+import { jsxs as w, jsx as k } from "react/jsx-runtime";
 import { createRoot as K } from "react-dom/client";
 import { useState as C, useRef as U, useEffect as J } from "react";
 function H() {
-  const t = Date.now().toString(36).toUpperCase().padStart(8, "0"), a = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((e) => (e % 36).toString(36).toUpperCase()).join("");
-  return t + a.slice(0, 18);
+  const t = Date.now().toString(36).toUpperCase().padStart(8, "0"), s = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((a) => (a % 36).toString(36).toUpperCase()).join("");
+  return t + s.slice(0, 18);
 }
-const P = "hadoku-public-tasks", L = "hadoku-public-stats";
-function F() {
-  const t = localStorage.getItem(P);
-  return t ? JSON.parse(t) : {
+const B = (t) => `hadoku-${t}-tasks`, L = (t) => `hadoku-${t}-stats`;
+function F(t = "public") {
+  const s = localStorage.getItem(B(t));
+  return s ? JSON.parse(s) : {
     version: 1,
     updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
     tasks: []
   };
 }
-function I(t) {
-  t.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(P, JSON.stringify(t));
+function I(t, s = "public") {
+  t.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(B(s), JSON.stringify(t));
 }
-function R() {
-  const t = localStorage.getItem(L);
-  return t ? JSON.parse(t) : {
+function R(t = "public") {
+  const s = localStorage.getItem(L(t));
+  return s ? JSON.parse(s) : {
     version: 2,
     updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
     counters: {
@@ -32,240 +32,264 @@ function R() {
     tasks: {}
   };
 }
-function z(t) {
-  t.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(L, JSON.stringify(t));
+function z(t, s = "public") {
+  t.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(L(s), JSON.stringify(t));
 }
-function x(t, a) {
-  const e = R();
+function x(t, s, a = "public") {
+  const e = R(a);
   e.counters[t]++, e.timeline.push({
     t: (/* @__PURE__ */ new Date()).toISOString(),
     event: t,
-    id: a.id
-  }), e.tasks[a.id] = {
-    id: a.id,
-    title: a.title,
-    tag: a.tag,
-    state: a.state,
-    createdAt: a.createdAt,
-    updatedAt: a.updatedAt,
-    closedAt: a.closedAt
-  }, z(e);
+    id: s.id
+  }), e.tasks[s.id] = {
+    id: s.id,
+    title: s.title,
+    tag: s.tag,
+    state: s.state,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
+    closedAt: s.closedAt
+  }, z(e, a);
 }
-function Y() {
+function q(t = "public") {
   return {
     async getTasks() {
-      return F();
+      return F(t);
     },
     async getStats() {
-      return R();
+      return R(t);
     },
-    async createTask(t) {
-      const a = F(), e = (/* @__PURE__ */ new Date()).toISOString(), s = {
+    async createTask(s) {
+      const a = F(t), e = (/* @__PURE__ */ new Date()).toISOString(), n = {
         id: H(),
-        title: t.title,
-        tag: t.tag || null,
+        title: s.title,
+        tag: s.tag || null,
         state: "Active",
         createdAt: e,
         updatedAt: e,
         closedAt: null
       };
-      return a.tasks.push(s), I(a), x("created", s), s;
+      return a.tasks.push(n), I(a, t), x("created", n, t), n;
     },
-    async patchTask(t, a) {
-      const e = F(), s = e.tasks.find((n) => n.id === t);
-      if (!s)
+    async patchTask(s, a) {
+      const e = F(t), n = e.tasks.find((r) => r.id === s);
+      if (!n)
         throw new Error("Task not found");
-      return a.title !== void 0 && (s.title = a.title), a.tag !== void 0 && (s.tag = a.tag), s.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), I(e), x("edited", s), s;
+      return a.title !== void 0 && (n.title = a.title), a.tag !== void 0 && (n.tag = a.tag), n.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), I(e, t), x("edited", n, t), n;
     },
-    async completeTask(t) {
-      const a = F(), e = a.tasks.find((n) => n.id === t);
+    async completeTask(s) {
+      const a = F(t), e = a.tasks.find((r) => r.id === s);
       if (!e)
         throw new Error("Task not found");
-      const s = (/* @__PURE__ */ new Date()).toISOString();
-      return e.state = "Completed", e.updatedAt = s, e.closedAt = s, I(a), x("completed", e), e;
+      const n = (/* @__PURE__ */ new Date()).toISOString();
+      return e.state = "Completed", e.updatedAt = n, e.closedAt = n, I(a, t), x("completed", e, t), e;
     },
-    async deleteTask(t) {
-      const a = F(), e = a.tasks.find((n) => n.id === t);
+    async deleteTask(s) {
+      const a = F(t), e = a.tasks.find((r) => r.id === s);
       if (!e)
         throw new Error("Task not found");
-      const s = (/* @__PURE__ */ new Date()).toISOString();
-      return e.state = "Deleted", e.updatedAt = s, e.closedAt = s, I(a), x("deleted", e), e;
+      const n = (/* @__PURE__ */ new Date()).toISOString();
+      return e.state = "Deleted", e.updatedAt = n, e.closedAt = n, I(a, t), x("deleted", e, t), e;
     },
     async clearPublicTasks() {
-      return localStorage.removeItem(P), localStorage.removeItem(L), { message: "All tasks cleared" };
+      return localStorage.removeItem(B(t)), localStorage.removeItem(L(t)), { message: "All tasks cleared" };
     }
   };
 }
-function E(t) {
+function P(t) {
   return {
     "Content-Type": "application/json",
     "X-User-Type": t
   };
 }
-function q(t = "public") {
-  return t === "public" ? Y() : {
+function V(t = "public") {
+  const s = q(t);
+  return t === "public" ? s : {
     async getTasks() {
-      return (await fetch(`/task/api?userType=${t}`)).json();
+      const a = await s.getTasks();
+      return fetch(`/task/api?userType=${t}`).then((e) => e.json()).then((e) => {
+        console.log("Background sync: tasks synced from server");
+      }).catch((e) => console.error("Background sync failed:", e)), a;
     },
     async getStats() {
-      return (await fetch(`/task/api/stats?userType=${t}`)).json();
+      const a = await s.getStats();
+      return fetch(`/task/api/stats?userType=${t}`).then((e) => e.json()).then((e) => {
+        console.log("Background sync: stats synced from server");
+      }).catch((e) => console.error("Background sync failed:", e)), a;
     },
     async createTask(a) {
-      return (await fetch("/task/api", { method: "POST", headers: E(t), body: JSON.stringify(a) })).json();
+      const e = await s.createTask(a);
+      return fetch("/task/api", {
+        method: "POST",
+        headers: P(t),
+        body: JSON.stringify(a)
+      }).catch((n) => console.error("Failed to sync createTask:", n)), e;
     },
     async patchTask(a, e) {
-      return (await fetch(`/task/api/${a}`, { method: "PATCH", headers: E(t), body: JSON.stringify(e) })).json();
+      const n = await s.patchTask(a, e);
+      return fetch(`/task/api/${a}`, {
+        method: "PATCH",
+        headers: P(t),
+        body: JSON.stringify(e)
+      }).catch((r) => console.error("Failed to sync patchTask:", r)), n;
     },
     async completeTask(a) {
-      return (await fetch(`/task/api/${a}/complete`, { method: "POST", headers: E(t) })).json();
+      const e = await s.completeTask(a);
+      return fetch(`/task/api/${a}/complete`, {
+        method: "POST",
+        headers: P(t)
+      }).catch((n) => console.error("Failed to sync completeTask:", n)), e;
     },
     async deleteTask(a) {
-      return (await fetch(`/task/api/${a}`, { method: "DELETE", headers: E(t) })).json();
+      await s.deleteTask(a), fetch(`/task/api/${a}`, {
+        method: "DELETE",
+        headers: P(t)
+      }).catch((e) => console.error("Failed to sync deleteTask:", e));
     },
     async clearPublicTasks() {
       throw new Error("Clear operation only available for public users");
     }
   };
 }
-function G(t) {
-  const a = (n) => n.replace(/\s+/g, "-"), e = t.match(/^["']([^"']+)["']\s*(.*)$/);
-  if (e) {
-    const n = e[1], r = e[2].match(/#[^\s#]+/g)?.map((u) => a(u.slice(1))) || [];
-    return { title: n, tag: r.join(" ") || void 0 };
+function X(t) {
+  const s = (n) => n.replace(/\s+/g, "-"), a = t.match(/^["']([^"']+)["']\s*(.*)$/);
+  if (a) {
+    const n = a[1], o = a[2].match(/#[^\s#]+/g)?.map((u) => s(u.slice(1))) || [];
+    return { title: n, tag: o.join(" ") || void 0 };
   }
-  const s = t.match(/^(.+?)\s+(#.+)$/);
-  if (s) {
-    const n = s[1], r = s[2].match(/#[^\s#]+/g)?.map((u) => a(u.slice(1))) || [];
-    return { title: n, tag: r.join(" ") || void 0 };
+  const e = t.match(/^(.+?)\s+(#.+)$/);
+  if (e) {
+    const n = e[1], o = e[2].match(/#[^\s#]+/g)?.map((u) => s(u.slice(1))) || [];
+    return { title: n, tag: o.join(" ") || void 0 };
   }
   return { title: t };
 }
-function V(t, a = 6) {
-  const e = t.flatMap((n) => n.tag?.split(" ") || []).filter(Boolean), s = {};
-  return e.forEach((n) => s[n] = (s[n] || 0) + 1), Object.entries(s).sort((n, l) => l[1] - n[1]).slice(0, a).map(([n]) => n);
+function G(t, s = 6) {
+  const a = t.flatMap((n) => n.tag?.split(" ") || []).filter(Boolean), e = {};
+  return a.forEach((n) => e[n] = (e[n] || 0) + 1), Object.entries(e).sort((n, r) => r[1] - n[1]).slice(0, s).map(([n]) => n);
 }
-function M(t, a) {
-  return t.filter((e) => e.tag?.split(" ").includes(a));
+function j(t, s) {
+  return t.filter((a) => a.tag?.split(" ").includes(s));
 }
-function X(t, a, e) {
-  return t.filter((s) => {
-    if (e) {
-      const n = s.tag?.split(" ") || [];
-      return n.includes(e) && !a.some((l) => n.includes(l));
+function Q(t, s, a) {
+  return t.filter((e) => {
+    if (a) {
+      const n = e.tag?.split(" ") || [];
+      return n.includes(a) && !s.some((r) => n.includes(r));
     } else {
-      const n = s.tag?.split(" ") || [];
-      return !a.some((l) => n.includes(l));
+      const n = e.tag?.split(" ") || [];
+      return !s.some((r) => n.includes(r));
     }
   });
 }
-function Q(t) {
-  return Array.from(new Set(t.flatMap((a) => a.tag?.split(" ") || []).filter(Boolean)));
+function W(t) {
+  return Array.from(new Set(t.flatMap((s) => s.tag?.split(" ") || []).filter(Boolean)));
 }
-function W({ userType: t, isPublic: a }) {
-  const [e, s] = C([]), [n, l] = C(/* @__PURE__ */ new Set()), r = q(t);
+function Y({ userType: t, isPublic: s }) {
+  const [a, e] = C([]), [n, r] = C(/* @__PURE__ */ new Set()), o = V(t);
   async function u() {
-    await g();
+    await p();
   }
-  async function g() {
-    const o = await r.getTasks();
-    s((o.tasks || []).filter((c) => c.state === "Active"));
+  async function p() {
+    const c = await o.getTasks();
+    e((c.tasks || []).filter((l) => l.state === "Active"));
   }
-  function p() {
+  function g() {
     try {
-      const o = new BroadcastChannel("tasks");
-      o.postMessage({ type: "tasks-updated" }), o.close();
-    } catch (o) {
-      console.warn("Failed to broadcast task update:", o);
+      const c = new BroadcastChannel("tasks");
+      c.postMessage({ type: "tasks-updated" }), c.close();
+    } catch (c) {
+      console.warn("Failed to broadcast task update:", c);
     }
   }
-  async function S(o) {
-    if (o = o.trim(), !!o)
+  async function S(c) {
+    if (c = c.trim(), !!c)
       try {
-        const c = G(o);
-        return await r.createTask(c), await g(), p(), !0;
-      } catch (c) {
-        return alert(c.message || "Failed to create task"), !1;
+        const l = X(c);
+        return await o.createTask(l), await p(), g(), !0;
+      } catch (l) {
+        return alert(l.message || "Failed to create task"), !1;
       }
   }
-  async function b(o) {
-    const c = `complete-${o}`;
-    if (!n.has(c)) {
-      l((i) => /* @__PURE__ */ new Set([...i, c]));
+  async function b(c) {
+    const l = `complete-${c}`;
+    if (!n.has(l)) {
+      r((i) => /* @__PURE__ */ new Set([...i, l]));
       try {
-        await r.completeTask(o), await g(), p();
+        await o.completeTask(c), await p(), g();
       } catch (i) {
         i?.message?.includes("404") || alert(i.message || "Failed to complete task");
       } finally {
-        l((i) => {
+        r((i) => {
           const T = new Set(i);
-          return T.delete(c), T;
+          return T.delete(l), T;
         });
       }
     }
   }
-  async function A(o) {
-    const c = `delete-${o}`;
-    if (!n.has(c)) {
-      l((i) => /* @__PURE__ */ new Set([...i, c]));
+  async function A(c) {
+    const l = `delete-${c}`;
+    if (!n.has(l)) {
+      r((i) => /* @__PURE__ */ new Set([...i, l]));
       try {
-        await r.deleteTask(o), await g(), p();
+        await o.deleteTask(c), await p(), g();
       } catch (i) {
         i?.message?.includes("404") || alert(i.message || "Failed to delete task");
       } finally {
-        l((i) => {
+        r((i) => {
           const T = new Set(i);
-          return T.delete(c), T;
+          return T.delete(l), T;
         });
       }
     }
   }
-  async function f(o) {
-    const c = prompt("Enter tag (without #):");
-    if (!c) return;
-    const i = c.trim().replace(/\s+/g, "-"), T = e.find((N) => N.id === o);
+  async function f(c) {
+    const l = prompt("Enter tag (without #):");
+    if (!l) return;
+    const i = l.trim().replace(/\s+/g, "-"), T = a.find((N) => N.id === c);
     if (!T) return;
     const v = T.tag?.split(" ") || [];
     if (v.includes(i)) return;
-    const O = [...v, i].join(" ");
+    const $ = [...v, i].join(" ");
     try {
-      await r.patchTask(o, { tag: O }), await g(), p();
+      await o.patchTask(c, { tag: $ }), await p(), g();
     } catch (N) {
       alert(N.message || "Failed to add tag");
     }
   }
-  async function h(o, c) {
+  async function h(c, l) {
     try {
-      await r.patchTask(o, c), await g(), p();
+      await o.patchTask(c, l), await p(), g();
     } catch (i) {
       throw i;
     }
   }
-  async function y(o) {
-    if (confirm(`Clear all tasks with #${o} tag?`))
+  async function y(c) {
+    if (confirm(`Clear all tasks with #${c} tag?`))
       try {
-        const c = e.filter((i) => i.tag?.split(" ").includes(o));
-        for (const i of c)
-          await r.deleteTask(i.id);
-        await g(), p();
-      } catch (c) {
-        alert(c.message || "Failed to clear tagged tasks");
+        const l = a.filter((i) => i.tag?.split(" ").includes(c));
+        for (const i of l)
+          await o.deleteTask(i.id);
+        await p(), g();
+      } catch (l) {
+        alert(l.message || "Failed to clear tagged tasks");
       }
   }
-  async function _(o) {
+  async function _(c) {
     if (confirm("Clear all remaining tasks?"))
       try {
-        for (const c of o)
-          await r.deleteTask(c.id);
-        await g(), p();
-      } catch (c) {
-        alert(c.message || "Failed to clear remaining tasks");
+        for (const l of c)
+          await o.deleteTask(l.id);
+        await p(), g();
+      } catch (l) {
+        alert(l.message || "Failed to clear remaining tasks");
       }
   }
   return {
-    tasks: e,
+    tasks: a,
     pendingOperations: n,
     initialLoad: u,
-    reload: g,
+    reload: p,
     addTask: S,
     completeTask: b,
     deleteTask: A,
@@ -275,154 +299,154 @@ function W({ userType: t, isPublic: a }) {
     clearRemainingTasks: _
   };
 }
-function Z({ tasks: t, onTaskUpdate: a }) {
-  const [e, s] = C(null), [n, l] = C(null);
-  function r(f, h) {
+function Z({ tasks: t, onTaskUpdate: s }) {
+  const [a, e] = C(null), [n, r] = C(null);
+  function o(f, h) {
     f.dataTransfer.setData("text/plain", h), f.dataTransfer.effectAllowed = "copy";
   }
   function u(f, h) {
-    f.preventDefault(), f.dataTransfer.dropEffect = "copy", s(h);
+    f.preventDefault(), f.dataTransfer.dropEffect = "copy", e(h);
   }
-  function g(f) {
-    f.currentTarget.contains(f.relatedTarget) || s(null);
+  function p(f) {
+    f.currentTarget.contains(f.relatedTarget) || e(null);
   }
-  async function p(f, h) {
-    f.preventDefault(), s(null);
+  async function g(f, h) {
+    f.preventDefault(), e(null);
     const y = f.dataTransfer.getData("text/plain"), _ = t.find((i) => i.id === y);
     if (!_) return;
-    const o = _.tag?.split(" ") || [];
-    if (o.includes(h)) {
+    const c = _.tag?.split(" ") || [];
+    if (c.includes(h)) {
       console.log(`Task already has tag: ${h}`);
       return;
     }
-    const c = [...o, h].join(" ");
-    console.log(`Adding tag "${h}" to task "${_.title}". New tags: "${c}"`);
+    const l = [...c, h].join(" ");
+    console.log(`Adding tag "${h}" to task "${_.title}". New tags: "${l}"`);
     try {
-      await a(y, { tag: c });
+      await s(y, { tag: l });
     } catch (i) {
       console.error("Failed to add tag:", i), alert(i.message || "Failed to add tag");
     }
   }
   function S(f, h) {
-    f.preventDefault(), f.dataTransfer.dropEffect = "copy", l(h);
+    f.preventDefault(), f.dataTransfer.dropEffect = "copy", r(h);
   }
   function b(f) {
-    f.currentTarget.contains(f.relatedTarget) || l(null);
+    f.currentTarget.contains(f.relatedTarget) || r(null);
   }
   async function A(f, h) {
-    f.preventDefault(), l(null);
+    f.preventDefault(), r(null);
     const y = f.dataTransfer.getData("text/plain"), _ = t.find((i) => i.id === y);
     if (!_) return;
-    const o = _.tag?.split(" ") || [];
-    if (o.includes(h)) {
+    const c = _.tag?.split(" ") || [];
+    if (c.includes(h)) {
       console.log(`Task already has tag: ${h}`);
       return;
     }
-    const c = [...o, h].join(" ");
-    console.log(`Adding tag "${h}" to task "${_.title}" via filter drop. New tags: "${c}"`);
+    const l = [...c, h].join(" ");
+    console.log(`Adding tag "${h}" to task "${_.title}" via filter drop. New tags: "${l}"`);
     try {
-      await a(y, { tag: c });
+      await s(y, { tag: l });
     } catch (i) {
       console.error("Failed to add tag via filter drop:", i), alert(i.message || "Failed to add tag");
     }
   }
   return {
-    dragOverTag: e,
+    dragOverTag: a,
     dragOverFilter: n,
-    onDragStart: r,
+    onDragStart: o,
     onDragOver: u,
-    onDragLeave: g,
-    onDrop: p,
+    onDragLeave: p,
+    onDrop: g,
     onFilterDragOver: S,
     onFilterDragLeave: b,
     onFilterDrop: A
   };
 }
 function tt() {
-  const [t, a] = C({});
-  function e(r) {
-    a((u) => {
-      const g = u[r] || null;
-      let p;
-      return g === null ? p = "desc" : g === "desc" ? p = "asc" : p = null, { ...u, [r]: p };
+  const [t, s] = C({});
+  function a(o) {
+    s((u) => {
+      const p = u[o] || null;
+      let g;
+      return p === null ? g = "desc" : p === "desc" ? g = "asc" : g = null, { ...u, [o]: g };
     });
   }
-  function s(r, u) {
-    return u ? [...r].sort((g, p) => {
-      const S = new Date(g.createdAt).getTime(), b = new Date(p.createdAt).getTime();
+  function e(o, u) {
+    return u ? [...o].sort((p, g) => {
+      const S = new Date(p.createdAt).getTime(), b = new Date(g.createdAt).getTime();
       return u === "asc" ? S - b : b - S;
-    }) : r;
+    }) : o;
   }
-  function n(r) {
-    return r === "asc" ? "↑" : r === "desc" ? "↓" : "↕";
+  function n(o) {
+    return o === "asc" ? "↑" : o === "desc" ? "↓" : "↕";
   }
-  function l(r) {
-    return r === "asc" ? "Sorted by age (oldest first) - click to sort newest first" : r === "desc" ? "Sorted by age (newest first) - click to disable sorting" : "Click to sort by age (newest first)";
+  function r(o) {
+    return o === "asc" ? "Sorted by age (oldest first) - click to sort newest first" : o === "desc" ? "Sorted by age (newest first) - click to disable sorting" : "Click to sort by age (newest first)";
   }
   return {
     sortDirections: t,
-    toggleSort: e,
-    sortTasksByAge: s,
+    toggleSort: a,
+    sortTasksByAge: e,
     getSortIcon: n,
-    getSortTitle: l
+    getSortTitle: r
   };
 }
 function et(t) {
-  const a = /* @__PURE__ */ new Date(), e = new Date(t), s = a.getTime() - e.getTime(), n = Math.floor(s / 1e3), l = Math.floor(n / 60), r = Math.floor(l / 60), u = Math.floor(r / 24);
-  return n < 60 ? `${n}s ago` : l < 60 ? `${l}m ago` : r < 24 ? `${r}h ago` : `${u}d ago`;
+  const s = /* @__PURE__ */ new Date(), a = new Date(t), e = s.getTime() - a.getTime(), n = Math.floor(e / 1e3), r = Math.floor(n / 60), o = Math.floor(r / 60), u = Math.floor(o / 24);
+  return n < 60 ? `${n}s ago` : r < 60 ? `${r}m ago` : o < 24 ? `${o}h ago` : `${u}d ago`;
 }
-function j({
+function E({
   task: t,
-  isDraggable: a = !0,
-  pendingOperations: e,
-  onComplete: s,
+  isDraggable: s = !0,
+  pendingOperations: a,
+  onComplete: e,
   onDelete: n,
-  onAddTag: l,
-  onDragStart: r
+  onAddTag: r,
+  onDragStart: o
 }) {
-  const u = e.has(`complete-${t.id}`), g = e.has(`delete-${t.id}`);
+  const u = a.has(`complete-${t.id}`), p = a.has(`delete-${t.id}`);
   return /* @__PURE__ */ w(
     "li",
     {
       className: "task-app__item",
-      draggable: a,
-      onDragStart: r ? (p) => r(p, t.id) : void 0,
+      draggable: s,
+      onDragStart: o ? (g) => o(g, t.id) : void 0,
       children: [
         /* @__PURE__ */ w("div", { className: "task-app__item-content", children: [
           /* @__PURE__ */ w("div", { className: "task-app__item-title-row", children: [
-            /* @__PURE__ */ m("div", { className: "task-app__item-title", children: t.title }),
-            /* @__PURE__ */ m("div", { className: "task-app__item-age", children: et(t.createdAt) })
+            /* @__PURE__ */ k("div", { className: "task-app__item-title", children: t.title }),
+            /* @__PURE__ */ k("div", { className: "task-app__item-age", children: et(t.createdAt) })
           ] }),
-          t.tag && /* @__PURE__ */ m("div", { className: "task-app__item-tag", children: t.tag.split(" ").map((p) => `#${p}`).join(" ") })
+          t.tag && /* @__PURE__ */ k("div", { className: "task-app__item-tag", children: t.tag.split(" ").map((g) => `#${g}`).join(" ") })
         ] }),
         /* @__PURE__ */ w("div", { className: "task-app__item-actions", children: [
-          /* @__PURE__ */ m(
+          /* @__PURE__ */ k(
             "button",
             {
               className: "task-app__action-btn task-app__complete-btn",
-              onClick: () => s(t.id),
+              onClick: () => e(t.id),
               title: "Complete task",
-              disabled: u || g,
+              disabled: u || p,
               children: u ? "⏳" : "✓"
             }
           ),
-          /* @__PURE__ */ m(
+          /* @__PURE__ */ k(
             "button",
             {
               className: "task-app__action-btn task-app__delete-btn",
               onClick: () => n(t.id),
               title: "Delete task",
-              disabled: u || g,
-              children: g ? "⏳" : "×"
+              disabled: u || p,
+              children: p ? "⏳" : "×"
             }
           ),
-          /* @__PURE__ */ m(
+          /* @__PURE__ */ k(
             "button",
             {
               className: "task-app__action-btn task-app__tag-btn",
-              onClick: () => l(t.id),
+              onClick: () => r(t.id),
               title: "Add tag",
-              disabled: u || g,
+              disabled: u || p,
               children: "🏷️"
             }
           )
@@ -431,20 +455,20 @@ function j({
     }
   );
 }
-function B(t) {
+function M(t) {
   return t === 2 ? { columns: 2, useTags: 2, maxPerColumn: 1 / 0 } : t === 3 ? { columns: 3, useTags: 3, maxPerColumn: 1 / 0 } : t >= 4 && t <= 5 ? { columns: 2, useTags: 4, maxPerColumn: 10 } : { columns: 3, useTags: 6, maxPerColumn: 10 };
 }
 function at({
   tasks: t,
-  topTags: a,
-  filter: e,
-  sortDirections: s,
+  topTags: s,
+  filter: a,
+  sortDirections: e,
   dragOverTag: n,
-  pendingOperations: l,
-  onComplete: r,
+  pendingOperations: r,
+  onComplete: o,
   onDelete: u,
-  onAddTag: g,
-  onDragStart: p,
+  onAddTag: p,
+  onDragStart: g,
   onDragOver: S,
   onDragLeave: b,
   onDrop: A,
@@ -452,28 +476,28 @@ function at({
   sortTasksByAge: h,
   getSortIcon: y,
   getSortTitle: _,
-  clearTasksByTag: o,
-  clearRemainingTasks: c
+  clearTasksByTag: c,
+  clearRemainingTasks: l
 }) {
-  const i = a.length, T = t.filter((d) => e ? d.tag?.split(" ").includes(e) || !1 : !0);
+  const i = s.length, T = t.filter((d) => a ? d.tag?.split(" ").includes(a) || !1 : !0);
   if (i <= 1)
-    return /* @__PURE__ */ m("ul", { className: "task-app__list", children: T.map((d) => /* @__PURE__ */ m(
-      j,
+    return /* @__PURE__ */ k("ul", { className: "task-app__list", children: T.map((d) => /* @__PURE__ */ k(
+      E,
       {
         task: d,
-        pendingOperations: l,
-        onComplete: r,
+        pendingOperations: r,
+        onComplete: o,
         onDelete: u,
-        onAddTag: g,
-        onDragStart: p
+        onAddTag: p,
+        onDragStart: g
       },
       d.id
     )) });
-  const v = B(i), O = X(t, a, e).filter((d) => e ? d.tag?.split(" ").includes(e) || !1 : !0), N = a.slice(0, v.useTags).filter((d) => e ? M(t, d).some((D) => D.tag?.split(" ").includes(e)) : !0), k = B(N.length);
+  const v = M(i), $ = Q(t, s, a).filter((d) => a ? d.tag?.split(" ").includes(a) || !1 : !0), N = s.slice(0, v.useTags).filter((d) => a ? j(t, d).some((D) => D.tag?.split(" ").includes(a)) : !0), m = M(N.length);
   return /* @__PURE__ */ w("div", { className: "task-app__dynamic-layout", children: [
-    N.length > 0 && /* @__PURE__ */ m("div", { className: `task-app__tag-grid task-app__tag-grid--${k.columns}col`, children: N.map((d) => {
-      let $ = M(t, d);
-      return e && ($ = $.filter((D) => D.tag?.split(" ").includes(e) || !1)), $ = $.slice(0, v.maxPerColumn), /* @__PURE__ */ w(
+    N.length > 0 && /* @__PURE__ */ k("div", { className: `task-app__tag-grid task-app__tag-grid--${m.columns}col`, children: N.map((d) => {
+      let O = j(t, d);
+      return a && (O = O.filter((D) => D.tag?.split(" ").includes(a) || !1)), O = O.slice(0, v.maxPerColumn), /* @__PURE__ */ w(
         "div",
         {
           className: `task-app__tag-column ${n === d ? "task-app__tag-column--drag-over" : ""}`,
@@ -487,35 +511,35 @@ function at({
                 d
               ] }),
               /* @__PURE__ */ w("div", { className: "task-app__header-actions", children: [
-                /* @__PURE__ */ m(
+                /* @__PURE__ */ k(
                   "button",
                   {
-                    className: `task-app__sort-btn ${s[d] ? "task-app__sort-btn--active" : ""}`,
+                    className: `task-app__sort-btn ${e[d] ? "task-app__sort-btn--active" : ""}`,
                     onClick: () => f(d),
-                    title: _(s[d]),
-                    children: y(s[d])
+                    title: _(e[d]),
+                    children: y(e[d])
                   }
                 ),
-                /* @__PURE__ */ m(
+                /* @__PURE__ */ k(
                   "button",
                   {
                     className: "task-app__clear-tag-btn",
-                    onClick: () => o(d),
+                    onClick: () => c(d),
                     title: `Clear all #${d} tasks`,
                     children: "🗑️"
                   }
                 )
               ] })
             ] }),
-            /* @__PURE__ */ m("ul", { className: "task-app__list task-app__list--column", children: h($, s[d]).map((D) => /* @__PURE__ */ m(
-              j,
+            /* @__PURE__ */ k("ul", { className: "task-app__list task-app__list--column", children: h(O, e[d]).map((D) => /* @__PURE__ */ k(
+              E,
               {
                 task: D,
                 isDraggable: !1,
-                pendingOperations: l,
-                onComplete: r,
+                pendingOperations: r,
+                onComplete: o,
                 onDelete: u,
-                onAddTag: g
+                onAddTag: p
               },
               D.id
             )) })
@@ -524,39 +548,39 @@ function at({
         d
       );
     }) }),
-    O.length > 0 && /* @__PURE__ */ w("div", { className: "task-app__remaining", children: [
+    $.length > 0 && /* @__PURE__ */ w("div", { className: "task-app__remaining", children: [
       /* @__PURE__ */ w("div", { className: "task-app__tag-header-row", children: [
-        /* @__PURE__ */ m("h3", { className: "task-app__remaining-header", children: "Other Tasks" }),
+        /* @__PURE__ */ k("h3", { className: "task-app__remaining-header", children: "Other Tasks" }),
         /* @__PURE__ */ w("div", { className: "task-app__header-actions", children: [
-          /* @__PURE__ */ m(
+          /* @__PURE__ */ k(
             "button",
             {
-              className: `task-app__sort-btn ${s.other ? "task-app__sort-btn--active" : ""}`,
+              className: `task-app__sort-btn ${e.other ? "task-app__sort-btn--active" : ""}`,
               onClick: () => f("other"),
-              title: _(s.other),
-              children: y(s.other)
+              title: _(e.other),
+              children: y(e.other)
             }
           ),
-          /* @__PURE__ */ m(
+          /* @__PURE__ */ k(
             "button",
             {
               className: "task-app__clear-tag-btn",
-              onClick: () => c(O),
+              onClick: () => l($),
               title: "Clear all remaining tasks",
               children: "🗑️"
             }
           )
         ] })
       ] }),
-      /* @__PURE__ */ m("ul", { className: "task-app__list", children: h(O, s.other).map((d) => /* @__PURE__ */ m(
-        j,
+      /* @__PURE__ */ k("ul", { className: "task-app__list", children: h($, e.other).map((d) => /* @__PURE__ */ k(
+        E,
         {
           task: d,
-          pendingOperations: l,
-          onComplete: r,
+          pendingOperations: r,
+          onComplete: o,
           onDelete: u,
-          onAddTag: g,
-          onDragStart: p
+          onAddTag: p,
+          onDragStart: g
         },
         d.id
       )) })
@@ -564,8 +588,8 @@ function at({
   ] });
 }
 function st(t = {}) {
-  const { basename: a = "/task", apiUrl: e, environment: s, userType: n = "public" } = t, [l, r] = C(void 0), u = U(null), g = n === "public", {
-    tasks: p,
+  const { basename: s = "/task", apiUrl: a, environment: e, userType: n = "public" } = t, [r, o] = C(void 0), u = U(null), p = n === "public", {
+    tasks: g,
     pendingOperations: S,
     initialLoad: b,
     reload: A,
@@ -573,42 +597,42 @@ function st(t = {}) {
     completeTask: h,
     deleteTask: y,
     addTagToTask: _,
-    updateTaskTags: o,
-    clearTasksByTag: c,
+    updateTaskTags: c,
+    clearTasksByTag: l,
     clearRemainingTasks: i
-  } = W({ userType: n, isPublic: g }), T = Z({
-    tasks: p,
-    onTaskUpdate: o
+  } = Y({ userType: n, isPublic: p }), T = Z({
+    tasks: g,
+    onTaskUpdate: c
   }), v = tt();
   J(() => {
     b(), u.current?.focus();
     try {
-      const k = new BroadcastChannel("tasks");
-      return k.onmessage = (d) => {
+      const m = new BroadcastChannel("tasks");
+      return m.onmessage = (d) => {
         d.data?.type === "tasks-updated" && A();
-      }, () => k.close();
+      }, () => m.close();
     } catch {
     }
   }, [n]);
-  async function O(k) {
-    await f(k) && u.current && (u.current.value = "", u.current.focus());
+  async function $(m) {
+    await f(m) && u.current && (u.current.value = "", u.current.focus());
   }
-  const N = V(p);
+  const N = G(g);
   return /* @__PURE__ */ w("div", { className: "task-app", children: [
-    /* @__PURE__ */ m("h1", { className: "task-app__header", children: "Tasks" }),
+    /* @__PURE__ */ k("h1", { className: "task-app__header", children: "Tasks" }),
     /* @__PURE__ */ w("div", { className: "task-app__controls", children: [
-      /* @__PURE__ */ m(
+      /* @__PURE__ */ k(
         "input",
         {
           ref: u,
           className: "task-app__input",
           placeholder: "Type a task and press Enter…",
-          onKeyDown: (k) => {
-            k.key === "Enter" && !k.shiftKey && (k.preventDefault(), O(k.target.value)), k.key === "k" && (k.ctrlKey || k.metaKey) && (k.preventDefault(), u.current?.focus());
+          onKeyDown: (m) => {
+            m.key === "Enter" && !m.shiftKey && (m.preventDefault(), $(m.target.value)), m.key === "k" && (m.ctrlKey || m.metaKey) && (m.preventDefault(), u.current?.focus());
           }
         }
       ),
-      /* @__PURE__ */ m(
+      /* @__PURE__ */ k(
         "button",
         {
           className: "task-app__info-btn",
@@ -621,31 +645,31 @@ function st(t = {}) {
       )
     ] }),
     /* @__PURE__ */ w("div", { className: "task-app__filters", children: [
-      /* @__PURE__ */ m("button", { onClick: () => r(void 0), className: l ? "" : "on", children: "All!" }),
-      Q(p).map(
-        (k) => /* @__PURE__ */ w(
+      /* @__PURE__ */ k("button", { onClick: () => o(void 0), className: r ? "" : "on", children: "All!" }),
+      W(g).map(
+        (m) => /* @__PURE__ */ w(
           "button",
           {
-            onClick: () => r(k),
-            className: `${l === k ? "on" : ""} ${T.dragOverFilter === k ? "task-app__filter-drag-over" : ""}`,
-            onDragOver: (d) => T.onFilterDragOver(d, k),
+            onClick: () => o(m),
+            className: `${r === m ? "on" : ""} ${T.dragOverFilter === m ? "task-app__filter-drag-over" : ""}`,
+            onDragOver: (d) => T.onFilterDragOver(d, m),
             onDragLeave: T.onFilterDragLeave,
-            onDrop: (d) => T.onFilterDrop(d, k),
+            onDrop: (d) => T.onFilterDrop(d, m),
             children: [
               "#",
-              k
+              m
             ]
           },
-          k
+          m
         )
       )
     ] }),
-    /* @__PURE__ */ m(
+    /* @__PURE__ */ k(
       at,
       {
-        tasks: p,
+        tasks: g,
         topTags: N,
-        filter: l,
+        filter: r,
         sortDirections: v.sortDirections,
         dragOverTag: T.dragOverTag,
         pendingOperations: S,
@@ -660,20 +684,20 @@ function st(t = {}) {
         sortTasksByAge: v.sortTasksByAge,
         getSortIcon: v.getSortIcon,
         getSortTitle: v.getSortTitle,
-        clearTasksByTag: c,
+        clearTasksByTag: l,
         clearRemainingTasks: i
       }
     )
   ] });
 }
-function it(t, a = {}) {
-  const e = new URLSearchParams(window.location.search), s = a.userType || e.get("userType") || "public", n = { ...a, userType: s }, l = K(t);
-  l.render(/* @__PURE__ */ m(st, { ...n })), t.__root = l, console.log("[task-app] Mounted successfully", n);
+function ct(t, s = {}) {
+  const a = new URLSearchParams(window.location.search), e = s.userType || a.get("userType") || "public", n = { ...s, userType: e }, r = K(t);
+  r.render(/* @__PURE__ */ k(st, { ...n })), t.__root = r, console.log("[task-app] Mounted successfully", n);
 }
-function ct(t) {
+function it(t) {
   t.__root?.unmount();
 }
 export {
-  it as mount,
-  ct as unmount
+  ct as mount,
+  it as unmount
 };
