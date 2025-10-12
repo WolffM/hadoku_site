@@ -221,7 +221,7 @@ The Universal Adapter Pattern decouples business logic from infrastructure:
 - **Child exports**: Pure handler functions + storage/auth interfaces
 - **Parent implements**: Storage adapters + HTTP layer (Hono, Express, etc.)
 - **Benefits**: 
-  - Parent can swap storage (GitHub → KV → D1) without changing child
+  - Parent can swap storage (KV → D1 → R2) without changing child
   - Child can be tested independently with mock storage
   - Multiple parents can use same child package
   - Child knows nothing about parent's HTTP framework
@@ -255,8 +255,8 @@ The Universal Adapter Pattern decouples business logic from infrastructure:
 │                                                              │
 │ // Implements storage adapter                               │
 │ const storage: MyAppStorage = {                            │
-│   getFile: async (path) => { /* GitHub API */ },          │
-│   saveFile: async (path, data) => { /* GitHub API */ }    │
+│   getFile: async (path) => { /* Workers KV */ },          │
+│   saveFile: async (path, data) => { /* Workers KV */ }    │
 │ }                                                            │
 │                                                              │
 │ // HTTP layer with Hono                                     │
@@ -718,8 +718,8 @@ export default app
 
 ### Benefits of This Pattern
 
-✅ **Decoupling**: Child knows nothing about Hono, Cloudflare Workers, or GitHub API  
-✅ **Flexibility**: Parent can swap storage (GitHub → KV → D1) without changing child  
+✅ **Decoupling**: Child knows nothing about Hono, Cloudflare Workers, or Workers KV  
+✅ **Flexibility**: Parent can swap storage (KV → D1 → R2) without changing child  
 ✅ **Testability**: Child can be tested with mock storage independently  
 ✅ **Reusability**: Same child package works with Hono, Express, Elysia, etc.  
 ✅ **Scalability**: Worker deploys globally at Cloudflare's edge  
@@ -985,7 +985,7 @@ Add to workflow:
 
 ### Package (Backend)
 1. **Pure functions only** - No HTTP framework coupling
-2. **Accept storage interface** - Don't hardcode GitHub API
+2. **Accept storage interface** - Don't hardcode Workers KV or any specific storage
 3. **Return data, not responses** - Let parent handle HTTP
 4. **Export TypeScript types** - Interfaces, types, contexts
 5. **Test with mock storage** - Fast, reliable unit tests

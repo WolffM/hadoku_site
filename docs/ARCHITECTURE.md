@@ -23,7 +23,7 @@
 │  │ localhost     │   │ task-api worker       │   │ Static HTML/JS   │  │
 │  │ via tunnel    │   │ • Hono framework      │   │ • Astro build    │  │
 │  │ (dev/home)    │   │ • @wolffm/task pkg    │   │ • Micro-frontends│  │
-│  │               │   │ • GitHub API storage  │   │                  │  │
+│  │               │   │ • Workers KV storage  │   │                  │  │
 │  └───────────────┘   └───────────────────────┘   └──────────────────┘  │
 │                                                                           │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -85,8 +85,8 @@
 5. Try priority "2": https://task-api.hadoku.me/task/api/tasks
 6. task-api Worker responds:
    - Imports @wolffm/task from GitHub Packages
-   - Calls TaskHandlers with GitHub storage adapter
-   - GitHub storage commits to data/task/ directory
+   - Calls TaskHandlers with Workers KV storage adapter
+   - KV storage persists to TASKS_KV namespace
 7. edge-router logs request to Analytics Engine (backend='worker')
 8. Response → Browser with X-Backend-Source: worker
 ```
@@ -124,7 +124,7 @@ For API testing, point directly to deployed workers or tunnel.
 - **task-api:**
   - Hono 4.0.0 framework (Express-like for Workers)
   - @wolffm/task package from GitHub Packages (Universal Adapter)
-  - GitHub API storage via TaskStorage adapter
+  - Workers KV storage via TaskStorage adapter
   - Authentication via X-Admin-Key header
   - TypeScript + Hono + Octokit
 
@@ -132,7 +132,7 @@ For API testing, point directly to deployed workers or tunnel.
 - **Runtime:** Astro dev server only (static site)
 - **API Testing:** Use deployed workers or tunnel directly
 - **Local Mode:** Task app uses public mode (localStorage)
-- **Storage:** localStorage for development, GitHub API for production
+- **Storage:** localStorage for public users, Workers KV for admin/friend users
 
 ### Universal Adapter Pattern
 - **Child Packages:** @wolffm/task, @wolffm/watchparty (private GitHub Packages)
@@ -201,8 +201,8 @@ app.get('/task/api/tasks', authenticate, async (c) => {
 ```
 
 **Benefits:**
-- Child doesn't know about Hono, GitHub API, or Cloudflare Workers
-- Parent can swap storage (GitHub → KV → D1) without changing child
+- Child doesn't know about Hono, Workers KV, or Cloudflare Workers
+- Parent can swap storage (KV → D1 → R2) without changing child
 - Child can be tested independently with mock storage
 - Multiple parents can use same child (Workers, Express, Deno)
 
@@ -336,7 +336,7 @@ ROUTE_CONFIG='{"global_priority":"12","routes":{"task":{"priority":"12"}},"provi
 # Worker Secrets (set via wrangler secret put in deploy workflow)
 ADMIN_KEY=<production-uuid>
 FRIEND_KEY=<production-uuid>
-GITHUB_PAT=<github-pat-for-task-storage>
+# GITHUB_PAT no longer needed - using Workers KV for storage
 ```
 
 ### Production Workers (Runtime)
@@ -354,7 +354,7 @@ binding = "ANALYTICS_ENGINE"
 **task-api** (wrangler secrets, set via CLI):
 - `ADMIN_KEY` - Admin authentication key
 - `FRIEND_KEY` - Friend authentication key
-- `GITHUB_PAT` - GitHub Personal Access Token for data storage
+- ~~`GITHUB_PAT`~~ - No longer needed (now using Workers KV)
 
 ### Local Development
 
@@ -431,11 +431,11 @@ User Action → React State → fetch('/task/api/tasks', { X-Admin-Key })
 - ✅ CORS configured for hadoku.me origin
 - ✅ Public mode uses localStorage (zero API calls)
 
-### GitHub Storage
-- ✅ Commits signed with GitHub PAT
-- ✅ Data separated by userType (data/task/admin/, data/task/friend/)
-- ✅ Repository private (only Worker can read/write)
-- ✅ Git history provides audit trail
+### Workers KV Storage
+- ✅ Globally distributed key-value store
+- ✅ Data separated by userType (admin:tasks, friend:tasks, etc.)
+- ✅ Eventually consistent (typically <60s propagation)
+- ✅ Free tier: 100K reads/day, 1K writes/day, 1GB storage
 
 ## Performance Characteristics
 
@@ -449,17 +449,18 @@ User Action → React State → fetch('/task/api/tasks', { X-Admin-Key })
 - **Initial Load:** ~50KB (HTML + JS bundle)
 - **Operations:** 
   - Tunnel hit: ~50-100ms (local network)
-  - Worker fallback: ~150-300ms (GitHub API latency)
+  - Worker fallback: ~20-50ms (Workers KV read latency)
 - **Offline:** ❌ Requires API access
 - **Cost:** ~5-20 requests/day per user
 
 ### Cloudflare Free Tier Limits
 - **Workers:** 100,000 requests/day
+- **Workers KV:** 100,000 reads/day, 1,000 writes/day, 1GB storage
 - **Analytics Engine:** 10,000,000 events/month (all logged)
-- **GitHub API:** 5,000 requests/hour with PAT
 - **Expected Usage:** 
   - Static: ~100-500 requests/day (edge-router → GitHub Pages)
   - API: ~10-50 requests/day (edge-router → task-api)
+  - KV: ~20-100 reads/day, ~5-20 writes/day
   - **Total:** < 1% of free tier quota
 
 ### Request Latency Breakdown
@@ -467,9 +468,10 @@ User Action → React State → fetch('/task/api/tasks', { X-Admin-Key })
 Edge-router overhead:     ~5-10ms
 Tunnel latency:          ~20-50ms (local network)
 Worker latency:          ~50-100ms (cold start) / ~10-20ms (warm)
-GitHub API latency:      ~100-200ms (US East)
+Workers KV read:         ~10-30ms (globally distributed)
+Workers KV write:        ~20-50ms (with replication)
 Total (tunnel):          ~30-70ms
-Total (worker fallback): ~160-330ms
+Total (worker fallback): ~80-170ms
 ```
 
 ## Development Workflow
@@ -680,8 +682,8 @@ hadoku_site/
 │   │
 │   └── task-api/                # Task API Worker (Universal Adapter)
 │       ├── src/
-│       │   └── index.ts         # Hono app + GitHub storage adapter
-│       ├── wrangler.toml        # Worker config (routes, secrets)
+│       │   └── index.ts         # Hono app + Workers KV storage adapter
+│       ├── wrangler.toml        # Worker config (KV binding, secrets)
 │       ├── package.json         # Dependencies (@wolffm/task, hono)
 │       ├── tsconfig.json        # TypeScript config
 │       └── .npmrc               # GitHub Packages auth (generated in CI)
@@ -721,7 +723,7 @@ hadoku_site/
 - ✅ **GitHub Actions CI/CD**: Automated deployment with package downloads
 - ✅ **Analytics Engine**: SQL-queryable logging (10M events/month free tier)
 - ✅ **Intelligent Routing**: Fallback logic (tunnel → worker → static)
-- ✅ **GitHub API Storage**: Persistent task data in data/task/ directory
+- ✅ **Workers KV Storage**: Persistent task data in globally distributed KV store
 - ✅ **Micro-frontends**: Dynamic loading with auto-generated registry
 - ✅ **Authentication**: X-Admin-Key header with admin/friend/public modes
 - ✅ **Public Mode**: localStorage-only (zero API calls, fully offline)
@@ -779,23 +781,24 @@ Browser → Cloudflare Pages + Functions
 Browser → edge-router Worker (hadoku.me/*)
        → Intelligent fallback (tunnel → task-api → static)
        → task-api Worker imports @wolffm/task from GitHub Packages
-       → GitHub API (persistent storage)
+       → Workers KV (persistent storage)
 ```
 ✅ **Benefits:**
 - **Decoupling**: Child logic separated from parent infrastructure
-- **Flexibility**: Parent can swap Hono → Elysia, GitHub → KV without touching child
+- **Flexibility**: Parent can swap Hono → Elysia, KV → D1 without touching child
 - **Testability**: Child can be tested with mock storage
 - **Reusability**: Same child package works with multiple parent frameworks
-- **Persistence**: GitHub storage with full audit trail (git history)
+- **Persistence**: Workers KV with global distribution and eventual consistency
 - **Fallback**: Multi-backend routing with automatic failover
 - **Observability**: Analytics Engine logging with zero configuration
 - **Automation**: Child publishes → parent auto-updates → Workers redeploy
+- **Performance**: Sub-50ms KV reads, globally distributed
 
 ### Phase 3: Service Bindings (Future)
 ```
 Browser → edge-router Worker
        → Service Binding (no HTTP) → task-api Worker
-       → Cloudflare KV (cache) + GitHub API (source of truth)
+       → Workers KV (primary storage)
 ```
 🔮 **Future Advantages:**
 - Sub-millisecond Worker-to-Worker communication

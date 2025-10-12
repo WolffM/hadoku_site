@@ -44,7 +44,7 @@
 5. ✅ **Analytics Engine** - Built-in logging with SQL queries
 6. ✅ **Repository Dispatch** - Child triggers parent updates automatically
 7. ✅ **Hono Framework** - Express-like framework for Workers
-8. ✅ **GitHub API Storage** - Persistent storage via commits
+8. ✅ **Workers KV Storage** - Persistent storage via globally distributed KV
 
 ### References Removed
 - ❌ Express server (api/server.js, server/main.mjs)
