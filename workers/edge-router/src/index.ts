@@ -37,7 +37,7 @@ export default {
     let backend: LogEntry['backend'];
 
     // API routes: apply fallback logic
-    if (path.startsWith('/task/api/') || path.startsWith('/watchparty/api/')) {
+    if (path.startsWith('/task/api') || path.startsWith('/watchparty/api')) {
       const result = await handleApiRoute(request, path, env);
       response = result.response;
       backend = result.backend;

@@ -55,34 +55,40 @@
     // Clean up blob URL
     URL.revokeObjectURL(blobUrl);
     
-    // Determine user type from URL parameter
+    // Determine user type from URL parameter or localStorage
     const urlParams = new URLSearchParams(window.location.search);
     const urlKey = urlParams.get('key');
+    const storedKey = localStorage.getItem('hadoku-auth-key');
+    const activeKey = urlKey || storedKey;
     let userType = 'public';
     
     // Get access keys from meta tags (set by Astro at build time)
     const adminKey = document.querySelector('meta[name="admin-key"]')?.content;
     const friendKey = document.querySelector('meta[name="friend-key"]')?.content;
     
-    if (urlKey && adminKey && urlKey === adminKey) {
+    if (activeKey && adminKey && activeKey === adminKey) {
       userType = 'admin';
-    } else if (urlKey && friendKey && urlKey === friendKey) {
+    } else if (activeKey && friendKey && activeKey === friendKey) {
       userType = 'friend';
     }
     
-    // Store auth key in sessionStorage for API calls
+    // Store auth key in localStorage for API calls (persists across refreshes)
     if (urlKey) {
-      sessionStorage.setItem('hadoku-auth-key', urlKey);
+      localStorage.setItem('hadoku-auth-key', urlKey);
       // Clean URL to remove key parameter
       const cleanUrl = new URL(window.location);
       cleanUrl.searchParams.delete('key');
       window.history.replaceState({}, '', cleanUrl);
     }
     
+    // If we have a stored key but no URL key, update URL to show user they're authenticated
+    // (optional - helps with debugging)
+    console.log(`[mf-loader] Using key: ${activeKey ? 'present' : 'none'}, userType: ${userType}`);
+    
     // Override fetch to automatically add auth header to all API requests
     const originalFetch = window.fetch;
     window.fetch = function(url, options = {}) {
-      const authKey = sessionStorage.getItem('hadoku-auth-key');
+      const authKey = localStorage.getItem('hadoku-auth-key');
       
       // Only add auth header for same-origin API requests
       if (authKey && typeof url === 'string' && url.startsWith('/')) {
