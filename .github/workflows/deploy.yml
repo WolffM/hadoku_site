@@ -49,6 +49,11 @@ jobs:
             exit 1
           fi
 
+      - name: Generate registry
+        env:
+          MODE: production
+        run: npm run generate-registry
+
       - name: Build with Astro
         env:
           HADOKU_SITE_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
