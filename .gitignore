@@ -31,3 +31,12 @@ public/mf/registry.json
 
 # task app data (managed at runtime, not committed to parent)
 data/task/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+*.pyc
+__pycache__/
+scripts/.venv/

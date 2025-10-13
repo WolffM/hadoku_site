@@ -46,8 +46,13 @@ jobs:
           # Query GitHub API to read scopes without printing token
           headers=$(curl -s -D - -o /dev/null -H "Authorization: token $TOKEN" https://api.github.com/user | tr -d '\r')
           echo "$headers" | grep -i '^x-oauth-scopes:' || { echo '⚠️ Could not read OAuth scopes header'; }
-          echo "$headers" | grep -i '^x-oauth-scopes:' | grep -qi 'read:packages' || { echo '❌ Token missing read:packages scope'; exit 1; }
-          echo "✓ Token has read:packages scope"
+          # Accept either read:packages or write:packages (write includes read permissions)
+          if echo "$headers" | grep -i '^x-oauth-scopes:' | grep -qiE 'read:packages|write:packages'; then
+            echo "✓ Token has packages scope"
+          else
+            echo '❌ Token missing read:packages or write:packages scope'
+            exit 1
+          fi
           # Minimal registry probe (will 404 but should authenticate)
           status=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" https://npm.pkg.github.com/@wolffm)
           echo "Registry probe HTTP $status (expected 200/401/404; 401 means auth failure)"
