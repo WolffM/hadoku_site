@@ -5,11 +5,17 @@ on:
     types: [package_updated]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  packages: read
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - uses: actions/setup-node@v4
         with:
