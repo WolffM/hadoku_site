@@ -26,8 +26,8 @@ jobs:
       
       - name: Create .npmrc for GitHub Packages
         run: |
-          echo "@wolffm:registry=https://npm.pkg.github.com" > ~/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> ~/.npmrc
+          echo "@wolffm:registry=https://npm.pkg.github.com" > workers/edge-router/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> workers/edge-router/.npmrc
       
       - name: Install dependencies
         run: |
@@ -57,8 +57,8 @@ jobs:
       
       - name: Create .npmrc for GitHub Packages
         run: |
-          echo "@wolffm:registry=https://npm.pkg.github.com" > ~/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> ~/.npmrc
+          echo "@wolffm:registry=https://npm.pkg.github.com" > workers/task-api/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> workers/task-api/.npmrc
       
       - name: Install dependencies
         run: |
