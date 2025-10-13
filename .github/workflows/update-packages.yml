@@ -40,17 +40,22 @@ jobs:
           cp .npmrc ./workers/task-api/
           npm install --prefix ./workers/task-api $PACKAGE@latest
           echo "✅ Updated workers/task-api/package.json and package-lock.json"
+          
+          # Update task bundle (copies dist files to public/mf/task/)
+          echo "📦 Updating task micro-frontend bundle..."
+          npm run update-task-bundle
+          echo "✅ Updated public/mf/task/ bundle files"
       
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Check if any package files changed
-          if git diff --quiet package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json; then
+          # Check if any package files or bundle files changed
+          if git diff --quiet package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/task/; then
             echo "ℹ️  No package updates needed"
           else
-            git add package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json
+            git add package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/task/
             git commit -m "chore: update ${{ github.event.client_payload.package }} to latest"
             git push
             echo "✅ Updated package and pushed changes"
