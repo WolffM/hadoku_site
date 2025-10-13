@@ -28,15 +28,12 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@wolffm'
       
-      - name: Create scoped .npmrc for GitHub Packages
+      - name: Configure npm authentication
         run: |
-          echo "@wolffm:registry=https://npm.pkg.github.com" > ~/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> ~/.npmrc
-          echo "always-auth=true" >> ~/.npmrc
-          echo "loglevel=error" >> ~/.npmrc
+          echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
+          echo "always-auth=true" >> .npmrc
       
       - name: Sanity check token scopes (redacted)
         env:
@@ -59,13 +56,9 @@ jobs:
           if [ "$status" = "401" ]; then echo '❌ Registry auth failed with provided token'; exit 1; fi
       
       - name: Install dependencies (private packages)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.DEPLOY_PACKAGE_TOKEN }}
         run: npm ci --no-audit --no-fund
 
       - name: Update task micro-frontend bundle
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.DEPLOY_PACKAGE_TOKEN }}
         run: npm run update-task-bundle
       
       - name: Debug environment variables
