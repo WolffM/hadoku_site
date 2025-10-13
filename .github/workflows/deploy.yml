@@ -28,16 +28,39 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@wolffm'
       
-      - name: Create .npmrc for GitHub Packages
+      - name: Create scoped .npmrc for GitHub Packages
         run: |
           echo "@wolffm:registry=https://npm.pkg.github.com" > ~/.npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> ~/.npmrc
+          echo "always-auth=true" >> ~/.npmrc
+          echo "loglevel=error" >> ~/.npmrc
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Sanity check token scopes (redacted)
+        env:
+          TOKEN: ${{ secrets.DEPLOY_PACKAGE_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "❌ DEPLOY_PACKAGE_TOKEN is empty"; exit 1; fi
+          # Query GitHub API to read scopes without printing token
+          headers=$(curl -s -D - -o /dev/null -H "Authorization: token $TOKEN" https://api.github.com/user | tr -d '\r')
+          echo "$headers" | grep -i '^x-oauth-scopes:' || { echo '⚠️ Could not read OAuth scopes header'; }
+          echo "$headers" | grep -i '^x-oauth-scopes:' | grep -qi 'read:packages' || { echo '❌ Token missing read:packages scope'; exit 1; }
+          echo "✓ Token has read:packages scope"
+          # Minimal registry probe (will 404 but should authenticate)
+          status=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" https://npm.pkg.github.com/@wolffm)
+          echo "Registry probe HTTP $status (expected 200/401/404; 401 means auth failure)"
+          if [ "$status" = "401" ]; then echo '❌ Registry auth failed with provided token'; exit 1; fi
+      
+      - name: Install dependencies (private packages)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.DEPLOY_PACKAGE_TOKEN }}
+        run: npm ci --no-audit --no-fund
 
       - name: Update task micro-frontend bundle
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.DEPLOY_PACKAGE_TOKEN }}
         run: npm run update-task-bundle
       
       - name: Debug environment variables
