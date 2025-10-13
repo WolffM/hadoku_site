@@ -51,7 +51,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         const module = await import(absoluteUrl);
         if (module.mount) {
-          module.mount(root);
+          // Get runtime props from URL parameters
+          const urlParams = new URLSearchParams(window.location.search);
+          const key = urlParams.get('key');
+          
+          // Determine userType from key parameter
+          const adminKey = document.querySelector('meta[name="admin-key"]')?.getAttribute('content') || '';
+          const friendKey = document.querySelector('meta[name="friend-key"]')?.getAttribute('content') || '';
+          
+          let userType = 'public';
+          let userId = 'public';
+          
+          if (key) {
+            if (key === adminKey) {
+              userType = 'admin';
+              userId = 'admin';
+            } else if (key === friendKey) {
+              userType = 'friend';
+              userId = 'friend';
+            } else {
+              // Unknown key - treat as userId for friend/admin context
+              userType = 'admin';
+              userId = key;
+            }
+          }
+          
+          // Merge registry props with runtime overrides
+          const runtimeProps = {
+            ...appConfig.props,
+            userType,
+            userId
+          };
+          
+          console.log(`Mounting ${appName} with props:`, runtimeProps);
+          module.mount(root, runtimeProps);
           console.log('Micro-app mounted successfully.');
         } else {
           console.error('Micro-app module does not have a mount function.');
