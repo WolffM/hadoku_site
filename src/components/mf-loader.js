@@ -43,21 +43,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Load JS module (URL already includes cache-busting version param)
+    // Note: importmap is already defined in Base.astro, so we don't recreate it
     if (appConfig.url) {
-      const importMap = {
-        imports: {
-          "react": "https://esm.sh/react@18.2.0",
-          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client"
-        }
-      };
-
       const moduleScript = `
-        const importMap = ${JSON.stringify(importMap)};
-        const im = document.createElement('script');
-        im.type = 'importmap';
-        im.textContent = JSON.stringify(importMap);
-        document.head.append(im);
-
         import("${appConfig.url}")
           .then(module => {
             if (module.mount) {
