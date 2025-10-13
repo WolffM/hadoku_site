@@ -6,6 +6,12 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Read package.json to get versions for cache busting
+const packageJsonPath = join(__dirname, '..', 'package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+const taskVersion = packageJson.dependencies['@wolffm/task'].replace('^', '');
+const timestamp = Date.now(); // Fallback for apps without versions
+
 // Load .env file if it exists (for local development)
 const envPath = join(__dirname, '..', '.env');
 if (existsSync(envPath)) {
@@ -48,10 +54,10 @@ const taskConfig = {
   userType: 'public'          // Default, will be overridden by client-side loader
 };
 
-// Generate registry
+// Generate registry with cache-busting query parameters
 const registry = {
   home: {
-    url: '/mf/home/index.js',
+    url: `/mf/home/index.js?v=${timestamp}`,
     basename: '/',
     props: {
       basename: '/',
@@ -60,19 +66,19 @@ const registry = {
     }
   },
   watchparty: {
-    url: '/mf/watchparty/index.js',
-    css: '/mf/watchparty/style.css',
+    url: `/mf/watchparty/index.js?v=${timestamp}`,
+    css: `/mf/watchparty/style.css?v=${timestamp}`,
     basename: '/watchparty',
     props: watchpartyConfig
   },
   task: {
-    url: '/mf/task/index.js',
-    css: '/mf/task/style.css',
+    url: `/mf/task/index.js?v=${taskVersion}`,
+    css: `/mf/task/style.css?v=${taskVersion}`,
     basename: '/task',
     props: taskConfig
   },
   contact: {
-    url: '/mf/contact/index.js',
+    url: `/mf/contact/index.js?v=${timestamp}`,
     basename: '/contact',
     props: {
       basename: '/contact',
@@ -81,7 +87,7 @@ const registry = {
     }
   },
   herodraft: {
-    url: '/mf/herodraft/index.js',
+    url: `/mf/herodraft/index.js?v=${timestamp}`,
     basename: '/herodraft',
     props: {
       basename: '/herodraft',

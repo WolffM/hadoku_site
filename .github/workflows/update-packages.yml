@@ -45,6 +45,11 @@ jobs:
           echo "📦 Updating task micro-frontend bundle..."
           npm run update-task-bundle
           echo "✅ Updated public/mf/task/ bundle files"
+          
+          # Regenerate registry with new version numbers for cache busting
+          echo "📦 Regenerating registry with cache-busting version..."
+          npm run generate-registry
+          echo "✅ Updated public/mf/registry.json with new versions"
       
       - name: Commit and push if changed
         run: |
@@ -52,10 +57,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Check if any package files or bundle files changed
-          if git diff --quiet package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/task/; then
+          if git diff --quiet package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/; then
             echo "ℹ️  No package updates needed"
           else
-            git add package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/task/
+            git add package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/
             git commit -m "chore: update ${{ github.event.client_payload.package }} to latest"
             git push
             echo "✅ Updated package and pushed changes"
