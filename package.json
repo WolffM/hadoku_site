@@ -7,13 +7,16 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "generate-registry": "node scripts/generate-registry.mjs"
+    "generate-registry": "node scripts/generate-registry.mjs",
+    "update-task-bundle": "node scripts/update-task-bundle.mjs",
+    "prebuild": "npm run update-task-bundle && npm run generate-registry"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@astrojs/node": "^9.4.6",
+    "@wolffm/task": "^2.0.0",
     "astro": "^5.14.1",
     "chokidar": "^4.0.3",
     "compression": "^1.7.4",

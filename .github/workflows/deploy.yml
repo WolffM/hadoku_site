@@ -36,6 +36,9 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
+
+      - name: Update task micro-frontend bundle
+        run: npm run update-task-bundle
       
       - name: Debug environment variables
         env:
@@ -49,7 +52,7 @@ jobs:
             exit 1
           fi
 
-      - name: Generate registry
+      - name: Generate registry (uses prebuild hook)
         env:
           MODE: production
         run: npm run generate-registry
