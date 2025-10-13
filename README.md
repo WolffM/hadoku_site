@@ -2,16 +2,31 @@
 
 A modular personal site with micro-frontends and intelligent API routing. Built on Cloudflare Workers with automated child app integration.
 
-## Quick Start
+## 🚀 Quick Start
+
+**First time setup?** See **[SETUP.md](SETUP.md)** for complete instructions.
 
 ```bash
-# Development
+# 1. Copy environment files
+cp .env.example .env
+cp .npmrc.example .npmrc
+
+# 2. Edit .env and .npmrc with your tokens
+
+# 3. Verify setup
+python scripts/verify_and_install.py
+
+# 4. Install dependencies
 npm install
+
+# 5. Development
 npm run dev
 
-# Build
+# 6. Build
 npm run build
 ```
+
+**Quick Reference:** See **[CHECKLIST.md](CHECKLIST.md)** for setup checklist and troubleshooting.
 
 ## What's Inside
 
@@ -83,15 +98,32 @@ Production deployment is automated via GitHub Actions:
 
 See **[workers/README.md](workers/README.md)** for deployment details.
 
-## Documentation
+## 📚 Documentation
 
+### Getting Started
+| Document | Purpose |
+|----------|---------|
+| **[SETUP.md](SETUP.md)** | 🎯 Complete setup guide with environment configuration |
+| **[CHECKLIST.md](CHECKLIST.md)** | ✅ Quick reference checklist for setup and troubleshooting |
+
+### System Documentation
 | Document | Purpose |
 |----------|---------|
 | **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Complete system architecture, request flows, design patterns |
 | **[CHILD_APP_TEMPLATE.md](docs/CHILD_APP_TEMPLATE.md)** | Guide for creating new child apps with Universal Adapter Pattern |
-| **[API_EXPORTS.md](docs/API_EXPORTS.md)** | Child package exports reference (@wolffm/task) |
 | **[workers/README.md](workers/README.md)** | Cloudflare Workers deployment guide |
-| **[scripts/README.md](scripts/README.md)** | GitHub token management automation |
+| **[scripts/README.md](scripts/README.md)** | Management scripts documentation |
+
+## 🔄 Automatic Package Updates
+
+When a child repository (e.g., `hadoku-task`) publishes a new version of `@wolffm/task`:
+
+1. **Child repo** publishes to GitHub Packages
+2. **Child repo** sends `repository_dispatch` event
+3. **This repo** automatically updates via `.github/workflows/update-packages.yml`
+4. **Package updates** trigger deployment workflows
+
+See **[SETUP.md#automatic-package-updates](SETUP.md#automatic-package-updates)** for details.
 
 ## License
 

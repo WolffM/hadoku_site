@@ -23,23 +23,34 @@ jobs:
       - name: Update package
         run: |
           PACKAGE="${{ github.event.client_payload.package }}"
-          echo "Updating $PACKAGE to latest version..."
-          npm install $PACKAGE@latest
+          echo "📦 Updating $PACKAGE to latest version..."
           
-          echo "Preparing to install in worker directory..."
+          # Update root package
+          npm install $PACKAGE@latest
+          echo "✅ Updated root package.json and package-lock.json"
+          
+          # Update worker directory
+          echo "📦 Updating $PACKAGE in workers/task-api..."
           cp .npmrc ./workers/task-api/
           npm install --prefix ./workers/task-api $PACKAGE@latest
+          echo "✅ Updated workers/task-api/package.json and package-lock.json"
       
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          if git diff --quiet package.json package-lock.json; then
-            echo "No package updates needed"
+          # Check if any package files changed
+          if git diff --quiet package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json; then
+            echo "ℹ️  No package updates needed"
           else
-            git add package.json package-lock.json
-            git commit -m "chore: update ${{ github.event.client_payload.package }}"
+            git add package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json
+            git commit -m "chore: update ${{ github.event.client_payload.package }} to latest"
             git push
             echo "✅ Updated package and pushed changes"
           fi
+      
+      - name: Trigger deployment
+        if: success()
+        run: |
+          echo "🚀 Package update complete. Deployment workflows will be triggered automatically."
