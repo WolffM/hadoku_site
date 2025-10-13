@@ -45,24 +45,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load JS module (URL already includes cache-busting version param)
     // Note: importmap is already defined in Base.astro, so we don't recreate it
     if (appConfig.url) {
-      const moduleScript = `
-        import("${appConfig.url}")
-          .then(module => {
-            if (module.mount) {
-              module.mount(root);
-              console.log('Micro-app mounted successfully.');
-            } else {
-              console.error('Micro-app module does not have a mount function.');
-            }
-          })
-          .catch(err => console.error('Error loading micro-app module:', err));
-      `;
+      // Convert to absolute URL for proper module resolution
+      const absoluteUrl = new URL(appConfig.url, window.location.origin).href;
       
-      const blob = new Blob([moduleScript], { type: 'application/javascript' });
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Dynamically import the blob script
-      await import(blobUrl);
+      try {
+        const module = await import(absoluteUrl);
+        if (module.mount) {
+          module.mount(root);
+          console.log('Micro-app mounted successfully.');
+        } else {
+          console.error('Micro-app module does not have a mount function.');
+        }
+      } catch (err) {
+        console.error('Error loading micro-app module:', err);
+      }
     }
   } catch (error) {
     console.error('Failed to load micro-app:', error);
