@@ -10,7 +10,7 @@
 import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { TaskHandlers } from '@wolffm/task/api';
-import type { TaskStorage, AuthContext, UserType, TasksFile, StatsFile } from '@wolffm/task/api';
+import type { TaskStorage, AuthContext, UserType, TasksFile, StatsFile, BoardsFile } from '@wolffm/task/api';
 
 interface Env {
 	ADMIN_KEY: string;
@@ -66,33 +66,56 @@ app.use('*', async (c, next) => {
 // 3. Workers KV Storage Implementation
 // This is the parent's responsibility - adapt storage to the environment.
 function createKVStorage(env: Env): TaskStorage {
+	// Helper to normalize userId (public users may not provide one)
+	const uid = (userId?: string) => userId || 'public';
+	const boardKey = (userType: string, userId: string | undefined) => `boards:${userType}:${uid(userId)}`;
+	const tasksKey = (userType: string, userId: string | undefined, boardId: string) => `tasks:${userType}:${uid(userId)}:${boardId}`;
+	const statsKey = (userType: string, userId: string | undefined, boardId: string) => `stats:${userType}:${uid(userId)}:${boardId}`;
+
 	return {
-		getTasks: async (userType: UserType) => {
-			const data = await env.TASKS_KV.get(`${userType}:tasks`, 'json');
-			return data || {
+		// --- Boards ---
+		async getBoards(userType: UserType, userId?: string) {
+			const data = await env.TASKS_KV.get(boardKey(userType, userId), 'json') as BoardsFile | null;
+			if (data) return data;
+			// Default with a single 'main' board
+			return {
+				version: 1,
+				boards: [ { id: 'main', name: 'main', tags: [] } ],
+				updatedAt: new Date().toISOString(),
+			};
+		},
+		async saveBoards(userType: UserType, userId: string | undefined, boards: BoardsFile) {
+			await env.TASKS_KV.put(boardKey(userType, userId), JSON.stringify(boards));
+		},
+
+		// --- Tasks (board scoped) ---
+		async getTasks(userType: UserType, userId: string | undefined, boardId: string) {
+			const data = await env.TASKS_KV.get(tasksKey(userType, userId, boardId), 'json') as TasksFile | null;
+			if (data) return data;
+			return {
 				version: 1,
 				tasks: [],
 				updatedAt: new Date().toISOString(),
-			} as TasksFile;
+			};
+		},
+		async saveTasks(userType: UserType, userId: string | undefined, boardId: string, tasks: TasksFile) {
+			await env.TASKS_KV.put(tasksKey(userType, userId, boardId), JSON.stringify(tasks));
 		},
 
-		saveTasks: async (userType: UserType, tasks: TasksFile) => {
-			await env.TASKS_KV.put(`${userType}:tasks`, JSON.stringify(tasks));
-		},
-
-		getStats: async (userType: UserType) => {
-			const data = await env.TASKS_KV.get(`${userType}:stats`, 'json');
-			return data || {
+		// --- Stats (board scoped) ---
+		async getStats(userType: UserType, userId: string | undefined, boardId: string) {
+			const data = await env.TASKS_KV.get(statsKey(userType, userId, boardId), 'json') as StatsFile | null;
+			if (data) return data;
+			return {
 				version: 2,
 				counters: { created: 0, completed: 0, edited: 0, deleted: 0 },
 				timeline: [],
 				tasks: {},
 				updatedAt: new Date().toISOString(),
-			} as StatsFile;
+			};
 		},
-
-		saveStats: async (userType: UserType, stats: StatsFile) => {
-			await env.TASKS_KV.put(`${userType}:stats`, JSON.stringify(stats));
+		async saveStats(userType: UserType, userId: string | undefined, boardId: string, stats: StatsFile) {
+			await env.TASKS_KV.put(statsKey(userType, userId, boardId), JSON.stringify(stats));
 		},
 	};
 }
@@ -113,50 +136,121 @@ const getContext = (c: Context<AppContext>) => ({
 });
 
 // 6. Task API Routes - Thin adapters to TaskHandlers
-app.get('/task/api', async (c) => {
+// ---- v2 Endpoints ----
+
+// Get all boards (and optionally tasks per board depending on handler design)
+app.get('/task/api/boards', async (c) => {
 	const { storage, auth } = getContext(c);
-	const result = await TaskHandlers.getTasks(storage, auth);
+	const userId = c.req.query('userId');
+	const result = await TaskHandlers.getBoards(storage, { ...auth, userId });
 	return c.json(result);
 });
 
+// Create a new board
+app.post('/task/api/boards', async (c) => {
+	const { storage, auth } = getContext(c);
+	const { boardId } = await c.req.json();
+	if (!boardId) return c.json({ error: 'boardId required' }, 400);
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.createBoard(storage, { ...auth, userId }, boardId);
+	return c.json(result, 201);
+});
+
+// Delete a board
+app.delete('/task/api/boards/:boardId', async (c) => {
+	const { storage, auth } = getContext(c);
+	const boardId = c.req.param('boardId');
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	await TaskHandlers.deleteBoard(storage, { ...auth, userId }, boardId);
+	return c.json({ success: true });
+});
+
+// Get tasks for a board
+app.get('/task/api/tasks', async (c) => {
+	const { storage, auth } = getContext(c);
+	const userId = c.req.query('userId');
+	const boardId = c.req.query('boardId') || 'main';
+	const result = await TaskHandlers.getTasks(storage, { ...auth, userId }, boardId);
+	return c.json(result);
+});
+
+// Create task (boardId required)
 app.post('/task/api', async (c) => {
 	const { storage, auth } = getContext(c);
-	const input = await c.req.json();
-	const result = await TaskHandlers.createTask(storage, auth, input);
-	return c.json(result);
+	const body = await c.req.json();
+	const { boardId = 'main', ...input } = body;
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.createTask(storage, { ...auth, userId }, input, boardId);
+	return c.json(result, 201);
 });
 
-app.put('/task/api/:id', async (c) => {
+// Update task
+app.patch('/task/api/:id', async (c) => {
 	const { storage, auth } = getContext(c);
 	const id = c.req.param('id');
-	const input = await c.req.json();
-	const result = await TaskHandlers.updateTask(storage, auth, id, input);
+	const body = await c.req.json();
+	const { boardId = 'main', ...input } = body;
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.updateTask(storage, { ...auth, userId }, id, input, boardId);
 	return c.json(result);
 });
 
+// Complete task
 app.post('/task/api/:id/complete', async (c) => {
 	const { storage, auth } = getContext(c);
 	const id = c.req.param('id');
-	const result = await TaskHandlers.completeTask(storage, auth, id);
+	const body = await c.req.json().catch(() => ({}));
+	const boardId = body.boardId || c.req.query('boardId') || 'main';
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.completeTask(storage, { ...auth, userId }, id, boardId);
 	return c.json(result);
 });
 
+// Delete task
 app.delete('/task/api/:id', async (c) => {
 	const { storage, auth } = getContext(c);
 	const id = c.req.param('id');
-	await TaskHandlers.deleteTask(storage, auth, id);
+	const body = await c.req.json().catch(() => ({}));
+	const boardId = body.boardId || c.req.query('boardId') || 'main';
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	await TaskHandlers.deleteTask(storage, { ...auth, userId }, id, boardId);
 	return c.json({ success: true });
 });
 
-app.delete('/task/api', async (c) => {
-	const { storage, auth } = getContext(c);
-	await TaskHandlers.clearTasks(storage, auth);
-	return c.json({ success: true });
-});
-
+// Get stats for a board
 app.get('/task/api/stats', async (c) => {
 	const { storage, auth } = getContext(c);
-	const result = await TaskHandlers.getStats(storage, auth);
+	const userId = c.req.query('userId');
+	const boardId = c.req.query('boardId') || 'main';
+	const result = await TaskHandlers.getStats(storage, { ...auth, userId }, boardId);
+	return c.json(result);
+});
+
+// Create tag on board
+app.post('/task/api/tags', async (c) => {
+	const { storage, auth } = getContext(c);
+	const { boardId = 'main', tag } = await c.req.json();
+	if (!tag) return c.json({ error: 'tag required' }, 400);
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.createTag(storage, { ...auth, userId }, boardId, tag);
+	return c.json(result);
+});
+
+// Delete tag from board
+app.delete('/task/api/tags', async (c) => {
+	const { storage, auth } = getContext(c);
+	const { boardId = 'main', tag } = await c.req.json();
+	if (!tag) return c.json({ error: 'tag required' }, 400);
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.deleteTag(storage, { ...auth, userId }, boardId, tag);
+	return c.json(result);
+});
+
+// Backwards compatibility: old v1 list endpoint (maps to main board)
+app.get('/task/api', async (c) => {
+	const { storage, auth } = getContext(c);
+	const userId = c.req.query('userId');
+	const result = await TaskHandlers.getTasks(storage, { ...auth, userId }, 'main');
 	return c.json(result);
 });
 
