@@ -100,10 +100,12 @@ async function handleApiRoute(
       const headers = new Headers(request.headers);
       headers.set('X-No-Fallback', '1');
       
-      // Inject the key if we have one from the session
+      // Inject the key AND userId if we have one from the session
       if (key) {
         headers.set('X-User-Key', key);
-        console.log(`Injected key from session ${sessionId} -> ${key.substring(0, 8)}...`);
+        // userId is the key itself (for admin key "admin", userId will be "admin")
+        headers.set('X-User-Id', key);
+        console.log(`Injected key from session ${sessionId} -> ${key.substring(0, 8)}... (userId: ${key})`);
       }
       
       // Create request with timeout

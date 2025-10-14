@@ -67,7 +67,7 @@ app.use('*', async (c, next) => {
 	await next();
 });
 
-// 3. Workers KV Storage Implementation
+	// 3. Workers KV Storage Implementation
 // This is the parent's responsibility - adapt storage to the environment.
 function createKVStorage(env: Env): TaskStorage {
 	// Helper to normalize userId (public users may not provide one)
@@ -79,7 +79,9 @@ function createKVStorage(env: Env): TaskStorage {
 	return {
 		// --- Boards ---
 		async getBoards(userType: UserType, userId?: string) {
-			const data = await env.TASKS_KV.get(boardKey(userType, userId), 'json') as BoardsFile | null;
+			const key = boardKey(userType, userId);
+			console.log(`[KV] getBoards - key: ${key}`);
+			const data = await env.TASKS_KV.get(key, 'json') as BoardsFile | null;
 			if (data) return data;
 			// Default with a single 'main' board
 			return {
@@ -89,12 +91,21 @@ function createKVStorage(env: Env): TaskStorage {
 			};
 		},
 		async saveBoards(userType: UserType, userId: string | undefined, boards: BoardsFile) {
-			await env.TASKS_KV.put(boardKey(userType, userId), JSON.stringify(boards));
+			const key = boardKey(userType, userId);
+			console.log(`[KV] saveBoards - key: ${key}, boards:`, boards);
+			await env.TASKS_KV.put(key, JSON.stringify(boards));
 		},
 
 		// --- Tasks (board scoped) ---
 		async getTasks(userType: UserType, userId: string | undefined, boardId: string) {
-			const data = await env.TASKS_KV.get(tasksKey(userType, userId, boardId), 'json') as TasksFile | null;
+			const key = tasksKey(userType, userId, boardId);
+			console.log(`[KV] getTasks - key: ${key}`);
+			const data = await env.TASKS_KV.get(key, 'json') as TasksFile | null;
+			if (data) {
+				console.log(`[KV] getTasks - found: ${data.tasks.length} tasks, first 5 IDs:`, data.tasks.slice(0, 5).map((t: any) => t.id));
+			} else {
+				console.log(`[KV] getTasks - found: none`);
+			}
 			if (data) return data;
 			return {
 				version: 1,
@@ -103,12 +114,17 @@ function createKVStorage(env: Env): TaskStorage {
 			};
 		},
 		async saveTasks(userType: UserType, userId: string | undefined, boardId: string, tasks: TasksFile) {
-			await env.TASKS_KV.put(tasksKey(userType, userId, boardId), JSON.stringify(tasks));
+			const key = tasksKey(userType, userId, boardId);
+			console.log(`[KV] saveTasks - key: ${key}, tasks:`, tasks.tasks.length, 'items');
+			await env.TASKS_KV.put(key, JSON.stringify(tasks));
+			console.log(`[KV] saveTasks - complete`);
 		},
 
 		// --- Stats (board scoped) ---
 		async getStats(userType: UserType, userId: string | undefined, boardId: string) {
-			const data = await env.TASKS_KV.get(statsKey(userType, userId, boardId), 'json') as StatsFile | null;
+			const key = statsKey(userType, userId, boardId);
+			console.log(`[KV] getStats - key: ${key}`);
+			const data = await env.TASKS_KV.get(key, 'json') as StatsFile | null;
 			if (data) return data;
 			return {
 				version: 2,
@@ -119,12 +135,12 @@ function createKVStorage(env: Env): TaskStorage {
 			};
 		},
 		async saveStats(userType: UserType, userId: string | undefined, boardId: string, stats: StatsFile) {
-			await env.TASKS_KV.put(statsKey(userType, userId, boardId), JSON.stringify(stats));
+			const key = statsKey(userType, userId, boardId);
+			console.log(`[KV] saveStats - key: ${key}`);
+			await env.TASKS_KV.put(key, JSON.stringify(stats));
 		},
 	};
-}
-
-// 4. Health Check
+}// 4. Health Check
 app.get('/task/api/health', (c) => {
 	return c.json({
 		status: 'ok',
@@ -145,7 +161,13 @@ const getContext = (c: Context<AppContext>) => ({
 // Get all boards (and optionally tasks per board depending on handler design)
 app.get('/task/api/boards', async (c) => {
 	const { storage, auth } = getContext(c);
-	const userId = c.req.query('userId');
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	console.log(`[GET /task/api/boards] Headers:`, {
+		'X-User-Id': c.req.header('X-User-Id'),
+		'X-User-Key': c.req.header('X-User-Key'),
+		'X-Session-Id': c.req.header('X-Session-Id')
+	});
+	console.log(`[GET /task/api/boards] userType: ${auth.userType}, userId: ${userId}`);
 	const result = await TaskHandlers.getBoards(storage, { ...auth, userId });
 	return c.json(result);
 });
@@ -155,6 +177,17 @@ app.post('/task/api/boards', async (c) => {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	
+	// Validate required fields
+	if (!body.id) {
+		console.error(`[POST /task/api/boards] ERROR: Missing required field 'id' in request body`);
+		return c.json({ error: 'Missing required field: id' }, 400);
+	}
+	if (!body.name || typeof body.name !== 'string' || body.name.trim() === '') {
+		console.error(`[POST /task/api/boards] ERROR: Missing or invalid required field 'name'`);
+		return c.json({ error: 'Missing or invalid required field: name' }, 400);
+	}
+	
 	const result = await TaskHandlers.createBoard(storage, { ...auth, userId }, body);
 	return c.json(result, 201);
 });
@@ -164,6 +197,13 @@ app.delete('/task/api/boards/:boardId', async (c) => {
 	const { storage, auth } = getContext(c);
 	const boardId = c.req.param('boardId');
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	
+	// Validate boardId is provided
+	if (!boardId || boardId.trim() === '') {
+		console.error(`[DELETE /task/api/boards/:boardId] ERROR: Missing board ID in URL`);
+		return c.json({ error: 'Missing required parameter: board ID' }, 400);
+	}
+	
 	await TaskHandlers.deleteBoard(storage, { ...auth, userId }, boardId);
 	return c.json({ success: true });
 });
@@ -171,7 +211,7 @@ app.delete('/task/api/boards/:boardId', async (c) => {
 // Get tasks for a board
 app.get('/task/api/tasks', async (c) => {
 	const { storage, auth } = getContext(c);
-	const userId = c.req.query('userId');
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
 	const boardId = c.req.query('boardId') || 'main';
 	const result = await TaskHandlers.getBoardTasks(storage, { ...auth, userId }, boardId);
 	return c.json(result);
@@ -183,7 +223,26 @@ app.post('/task/api', async (c) => {
 	const body = await c.req.json();
 	const { boardId = 'main', ...input } = body;
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	
+	// Validate required fields
+	if (!input.id) {
+		console.error(`[POST /task/api] ERROR: Missing required field 'id' in request body`);
+		return c.json({ error: 'Missing required field: id' }, 400);
+	}
+	if (!input.title || typeof input.title !== 'string' || input.title.trim() === '') {
+		console.error(`[POST /task/api] ERROR: Missing or invalid required field 'title'`);
+		return c.json({ error: 'Missing or invalid required field: title' }, 400);
+	}
+	
+	console.log(`[POST /task/api] Headers:`, {
+		'X-User-Id': c.req.header('X-User-Id'),
+		'X-User-Key': c.req.header('X-User-Key'),
+		'X-Session-Id': c.req.header('X-Session-Id')
+	});
+	console.log(`[POST /task/api] userType: ${auth.userType}, userId: ${userId}, boardId: ${boardId}`);
+	console.log(`[POST /task/api] input:`, input);
 	const result = await TaskHandlers.createTask(storage, { ...auth, userId }, input, boardId);
+	console.log(`[POST /task/api] result:`, result);
 	return c.json(result, 201);
 });
 
@@ -194,6 +253,13 @@ app.patch('/task/api/:id', async (c) => {
 	const body = await c.req.json();
 	const { boardId = 'main', ...input } = body;
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	
+	// Validate task ID is provided
+	if (!id || id.trim() === '') {
+		console.error(`[PATCH /task/api/:id] ERROR: Missing task ID in URL`);
+		return c.json({ error: 'Missing required parameter: task ID' }, 400);
+	}
+	
 	const result = await TaskHandlers.updateTask(storage, { ...auth, userId }, id, input, boardId);
 	return c.json(result);
 });
@@ -205,6 +271,19 @@ app.post('/task/api/:id/complete', async (c) => {
 	const body = await c.req.json().catch(() => ({}));
 	const boardId = body.boardId || c.req.query('boardId') || 'main';
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	
+	// Validate task ID is provided
+	if (!id || id.trim() === '') {
+		console.error(`[POST /task/api/:id/complete] ERROR: Missing task ID in URL`);
+		return c.json({ error: 'Missing required parameter: task ID' }, 400);
+	}
+	
+	console.log(`[POST /task/api/:id/complete] Headers:`, {
+		'X-User-Id': c.req.header('X-User-Id'),
+		'X-User-Key': c.req.header('X-User-Key'),
+		'X-Session-Id': c.req.header('X-Session-Id')
+	});
+	console.log(`[POST /task/api/:id/complete] id: ${id}, userType: ${auth.userType}, userId: ${userId}, boardId: ${boardId}`);
 	const result = await TaskHandlers.completeTask(storage, { ...auth, userId }, id, boardId);
 	return c.json(result);
 });
@@ -216,6 +295,19 @@ app.delete('/task/api/:id', async (c) => {
 	const body = await c.req.json().catch(() => ({}));
 	const boardId = body.boardId || c.req.query('boardId') || 'main';
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	
+	// Validate task ID is provided
+	if (!id || id.trim() === '') {
+		console.error(`[DELETE /task/api/:id] ERROR: Missing task ID in URL`);
+		return c.json({ error: 'Missing required parameter: task ID' }, 400);
+	}
+	
+	console.log(`[DELETE /task/api/:id] Headers:`, {
+		'X-User-Id': c.req.header('X-User-Id'),
+		'X-User-Key': c.req.header('X-User-Key'),
+		'X-Session-Id': c.req.header('X-Session-Id')
+	});
+	console.log(`[DELETE /task/api/:id] id: ${id}, userType: ${auth.userType}, userId: ${userId}, boardId: ${boardId}`);
 	await TaskHandlers.deleteTask(storage, { ...auth, userId }, id, boardId);
 	return c.json({ success: true });
 });
@@ -223,7 +315,7 @@ app.delete('/task/api/:id', async (c) => {
 // Get stats for a board
 app.get('/task/api/stats', async (c) => {
 	const { storage, auth } = getContext(c);
-	const userId = c.req.query('userId');
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
 	const boardId = c.req.query('boardId') || 'main';
 	const result = await TaskHandlers.getBoardStats(storage, { ...auth, userId }, boardId);
 	return c.json(result);
@@ -234,6 +326,17 @@ app.post('/task/api/tags', async (c) => {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	
+	// Validate required fields
+	if (!body.boardId) {
+		console.error(`[POST /task/api/tags] ERROR: Missing required field 'boardId' in request body`);
+		return c.json({ error: 'Missing required field: boardId' }, 400);
+	}
+	if (!body.tag || typeof body.tag !== 'string' || body.tag.trim() === '') {
+		console.error(`[POST /task/api/tags] ERROR: Missing or invalid required field 'tag'`);
+		return c.json({ error: 'Missing or invalid required field: tag' }, 400);
+	}
+	
 	const result = await TaskHandlers.createTag(storage, { ...auth, userId }, body);
 	return c.json(result);
 });
@@ -243,6 +346,17 @@ app.delete('/task/api/tags', async (c) => {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	
+	// Validate required fields
+	if (!body.boardId) {
+		console.error(`[DELETE /task/api/tags] ERROR: Missing required field 'boardId' in request body`);
+		return c.json({ error: 'Missing required field: boardId' }, 400);
+	}
+	if (!body.tag || typeof body.tag !== 'string' || body.tag.trim() === '') {
+		console.error(`[DELETE /task/api/tags] ERROR: Missing or invalid required field 'tag'`);
+		return c.json({ error: 'Missing or invalid required field: tag' }, 400);
+	}
+	
 	const result = await TaskHandlers.deleteTag(storage, { ...auth, userId }, body);
 	return c.json(result);
 });
