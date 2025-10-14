@@ -17,7 +17,7 @@
   "author": "Hadoku",
   "license": "ISC",
   "dependencies": {
-    "@wolffm/task": "^2.2.17",
+    "@wolffm/task": "^2.2.18",
     "hono": "^4.0.0"
   },
   "devDependencies": {
