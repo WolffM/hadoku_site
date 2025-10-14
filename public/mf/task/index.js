@@ -1,34 +1,34 @@
-import { jsxs as A, jsx as k, Fragment as Pt } from "react/jsx-runtime";
-import { createRoot as Rt } from "react-dom/client";
-import { useState as N, useMemo as Jt, useEffect as st, useRef as pt } from "react";
-function Ut() {
-  const t = Date.now().toString(36).toUpperCase().padStart(8, "0"), e = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((a) => (a % 36).toString(36).toUpperCase()).join("");
-  return t + e.slice(0, 18);
+import { jsxs as A, jsx as k, Fragment as Re } from "react/jsx-runtime";
+import { createRoot as Je } from "react-dom/client";
+import { useState as N, useMemo as Ue, useEffect as ee, useRef as pe } from "react";
+function je() {
+  const e = Date.now().toString(36).toUpperCase().padStart(8, "0"), t = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((n) => (n % 36).toString(36).toUpperCase()).join("");
+  return e + t.slice(0, 18);
 }
-function I(t, e, a = 50) {
+function I(e, t, n = 50) {
   setTimeout(() => {
     try {
       const s = new BroadcastChannel("tasks");
-      s.postMessage({ type: t, ...e }), s.close();
+      s.postMessage({ type: e, ...t }), s.close();
     } catch (s) {
       console.error("[localStorageApi] Broadcast failed:", s);
     }
-  }, a);
+  }, n);
 }
-const Tt = (t, e, a) => `${t}-${e}-${a}-tasks`, wt = (t, e, a) => `${t}-${e}-${a}-stats`, _t = (t, e) => `${t}-${e}-boards`;
-function at(t = "public", e = "public", a = "main") {
-  const s = localStorage.getItem(Tt(t, e, a));
+const we = (e, t, n) => `${e}-${t}-${n}-tasks`, ye = (e, t, n) => `${e}-${t}-${n}-stats`, De = (e, t) => `${e}-${t}-boards`;
+function ne(e = "public", t = "public", n = "main") {
+  const s = localStorage.getItem(we(e, t, n));
   return s ? JSON.parse(s) : {
     version: 1,
     updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
     tasks: []
   };
 }
-function nt(t, e = "public", a = "public", s = "main") {
-  t.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(Tt(e, a, s), JSON.stringify(t));
+function se(e, t = "public", n = "public", s = "main") {
+  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(we(t, n, s), JSON.stringify(e));
 }
-function ht(t = "public", e = "public", a = "main") {
-  const s = localStorage.getItem(wt(t, e, a));
+function he(e = "public", t = "public", n = "main") {
+  const s = localStorage.getItem(ye(e, t, n));
   return s ? JSON.parse(s) : {
     version: 2,
     updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -42,166 +42,183 @@ function ht(t = "public", e = "public", a = "main") {
     tasks: {}
   };
 }
-function kt(t, e = "public", a = "public", s = "main") {
-  t.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(wt(e, a, s), JSON.stringify(t));
+function ke(e, t = "public", n = "public", s = "main") {
+  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(ye(t, n, s), JSON.stringify(e));
 }
-function lt(t, e, a = "public", s = "public", n = "main") {
-  const r = ht(a, s, n);
-  r.counters[t]++, r.timeline.push({
+function le(e, t, n = "public", s = "public", a = "main") {
+  const o = he(n, s, a);
+  o.counters[e]++, o.timeline.push({
     t: (/* @__PURE__ */ new Date()).toISOString(),
-    event: t,
-    id: e.id
-  }), r.tasks[e.id] = {
-    id: e.id,
-    title: e.title,
-    tag: e.tag,
-    state: e.state,
-    createdAt: e.createdAt,
-    updatedAt: e.updatedAt,
-    closedAt: e.closedAt
-  }, kt(r, a, s, n);
+    event: e,
+    id: t.id
+  }), o.tasks[t.id] = {
+    id: t.id,
+    title: t.title,
+    tag: t.tag,
+    state: t.state,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    closedAt: t.closedAt
+  }, ke(o, n, s, a);
 }
-function tt(t = "public", e = "public") {
-  const a = localStorage.getItem(_t(t, e));
-  return a ? JSON.parse(a) : { version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), boards: [] };
+function te(e = "public", t = "public") {
+  const n = localStorage.getItem(De(e, t));
+  return n ? JSON.parse(n) : { version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), boards: [] };
 }
-function et(t, e = "public", a = "public") {
-  t.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(_t(e, a), JSON.stringify(t));
+function ae(e, t = "public", n = "public") {
+  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(De(t, n), JSON.stringify(e));
 }
-function jt(t = "public", e = "public") {
+function Xe(e = "public", t = "public") {
   return {
     async getBoards() {
-      const a = tt(t, e);
-      if (!a.boards || a.boards.length === 0) {
-        const n = { id: "main", name: "main", tasks: [], stats: void 0, tags: [] };
-        a.boards = [n], et(a, t, e), nt({ version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), tasks: [] }, t, e, "main"), kt({ version: 2, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), counters: { created: 0, completed: 0, edited: 0, deleted: 0 }, timeline: [], tasks: {} }, t, e, "main");
+      const n = te(e, t);
+      if (!n.boards || n.boards.length === 0) {
+        const a = { id: "main", name: "main", tasks: [], stats: void 0, tags: [] };
+        n.boards = [a], ae(n, e, t), se({ version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), tasks: [] }, e, t, "main"), ke({ version: 2, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), counters: { created: 0, completed: 0, edited: 0, deleted: 0 }, timeline: [], tasks: {} }, e, t, "main");
       }
-      const s = { version: a.version, updatedAt: a.updatedAt, boards: [] };
-      for (const n of a.boards) {
-        const r = at(t, e, n.id), i = ht(t, e, n.id), c = { id: n.id, name: n.name, tasks: r.tasks, stats: i, tags: n.tags || [] };
-        s.boards.push(c);
+      const s = { version: n.version, updatedAt: n.updatedAt, boards: [] };
+      for (const a of n.boards) {
+        const o = ne(e, t, a.id), c = he(e, t, a.id), i = { id: a.id, name: a.name, tasks: o.tasks, stats: c, tags: a.tags || [] };
+        s.boards.push(i);
       }
       return s;
     },
-    async createBoard(a) {
-      const s = tt(t, e);
-      if (console.debug("[localStorageApi] createBoard", { userType: t, userId: e, boardId: a, existing: s.boards.map((r) => r.id) }), s.boards.find((r) => r.id === a))
+    async createBoard(n) {
+      const s = te(e, t);
+      if (console.debug("[localStorageApi] createBoard", { userType: e, userId: t, boardId: n, existing: s.boards.map((o) => o.id) }), s.boards.find((o) => o.id === n))
         throw new Error("Board already exists");
-      const n = { id: a, name: a, tasks: [], stats: void 0, tags: [] };
-      return s.boards.push(n), et(s, t, e), nt({ version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), tasks: [] }, t, e, a), kt({ version: 2, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), counters: { created: 0, completed: 0, edited: 0, deleted: 0 }, timeline: [], tasks: {} }, t, e, a), I("boards-updated", { sessionId: E, userType: t, userId: e }), n;
+      const a = { id: n, name: n, tasks: [], stats: void 0, tags: [] };
+      return s.boards.push(a), ae(s, e, t), se({ version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), tasks: [] }, e, t, n), ke({ version: 2, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), counters: { created: 0, completed: 0, edited: 0, deleted: 0 }, timeline: [], tasks: {} }, e, t, n), I("boards-updated", { sessionId: F, userType: e, userId: t }), a;
     },
-    async deleteBoard(a) {
-      const s = tt(t, e), n = s.boards.findIndex((r) => r.id === a);
-      if (n === -1) throw new Error("Board not found");
-      s.boards.splice(n, 1), et(s, t, e), localStorage.removeItem(Tt(t, e, a)), localStorage.removeItem(wt(t, e, a)), I("boards-updated", { sessionId: E, userType: t, userId: e });
+    async deleteBoard(n) {
+      const s = te(e, t), a = s.boards.findIndex((o) => o.id === n);
+      if (a === -1) throw new Error("Board not found");
+      s.boards.splice(a, 1), ae(s, e, t), localStorage.removeItem(we(e, t, n)), localStorage.removeItem(ye(e, t, n)), I("boards-updated", { sessionId: F, userType: e, userId: t });
     },
-    async getTasks(a = "main") {
-      return at(t, e, a);
+    async getTasks(n = "main") {
+      return ne(e, t, n);
     },
-    async getStats(a = "main") {
-      return ht(t, e, a);
+    async getStats(n = "main") {
+      return he(e, t, n);
     },
-    async createTask(a, s = "main", n = !1) {
-      const r = at(t, e, s), i = (/* @__PURE__ */ new Date()).toISOString(), c = {
-        id: Ut(),
-        title: a.title,
-        tag: a.tag || null,
+    async createTask(n, s = "main", a = !1) {
+      const o = ne(e, t, s), c = (/* @__PURE__ */ new Date()).toISOString(), i = {
+        id: je(),
+        title: n.title,
+        tag: n.tag || null,
         state: "Active",
-        createdAt: i,
-        updatedAt: i,
+        createdAt: c,
+        updatedAt: c,
         closedAt: null
       };
-      if (r.tasks.push(c), nt(r, t, e, s), a.tag) {
-        const T = tt(t, e), S = T.boards.find((p) => p.id === s);
+      if (o.tasks.push(i), se(o, e, t, s), n.tag) {
+        const T = te(e, t), S = T.boards.find((p) => p.id === s);
         if (S) {
-          const p = S.tags || [], b = a.tag.split(" ").filter(Boolean).filter(($) => !p.includes($));
-          b.length && (S.tags = [...p, ...b], et(T, t, e));
+          const p = S.tags || [], b = n.tag.split(" ").filter(Boolean).filter(($) => !p.includes($));
+          b.length && (S.tags = [...p, ...b], ae(T, e, t));
         }
       }
-      return lt("created", c, t, e, s), n ? console.log("[localStorageApi] createTask: broadcast suppressed") : (console.log("[localStorageApi] createTask: broadcasting update", { sessionId: E, boardId: s, taskId: c.id }), I("tasks-updated", { sessionId: E, userType: t, userId: e, boardId: s })), c;
+      return le("created", i, e, t, s), a ? console.log("[localStorageApi] createTask: broadcast suppressed") : (console.log("[localStorageApi] createTask: broadcasting update", { sessionId: F, boardId: s, taskId: i.id }), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s })), i;
     },
-    async patchTask(a, s, n = "main", r = !1) {
-      const i = at(t, e, n), c = i.tasks.find((T) => T.id === a);
-      if (!c)
-        throw new Error("Task not found");
-      if (s.title !== void 0 && (c.title = s.title), s.tag !== void 0 && (c.tag = s.tag), s.tag !== void 0) {
-        const T = tt(t, e), S = T.boards.find((p) => p.id === n);
-        if (S) {
-          const p = S.tags || [], b = (s.tag || "").split(" ").filter(Boolean).filter(($) => !p.includes($));
-          b.length && (S.tags = [...p, ...b], et(T, t, e));
-        }
-      }
-      return c.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), nt(i, t, e, n), lt("edited", c, t, e, n), r || I("tasks-updated", { sessionId: E, userType: t, userId: e, boardId: n }), c;
-    },
-    async completeTask(a, s = "main") {
-      const n = at(t, e, s), r = n.tasks.find((c) => c.id === a);
-      if (!r)
-        throw new Error("Task not found");
-      const i = (/* @__PURE__ */ new Date()).toISOString();
-      return r.state = "Completed", r.updatedAt = i, r.closedAt = i, nt(n, t, e, s), lt("completed", r, t, e, s), I("tasks-updated", { sessionId: E, userType: t, userId: e, boardId: s }), r;
-    },
-    async deleteTask(a, s = "main", n = !1) {
-      console.log("[localStorageApi] deleteTask START", { id: a, boardId: s, suppressBroadcast: n, sessionId: E });
-      const r = at(t, e, s), i = r.tasks.find((T) => T.id === a);
+    async patchTask(n, s, a = "main", o = !1) {
+      const c = ne(e, t, a), i = c.tasks.find((T) => T.id === n);
       if (!i)
         throw new Error("Task not found");
+      if (s.title !== void 0 && (i.title = s.title), s.tag !== void 0 && (i.tag = s.tag), s.tag !== void 0) {
+        const T = te(e, t), S = T.boards.find((p) => p.id === a);
+        if (S) {
+          const p = S.tags || [], b = (s.tag || "").split(" ").filter(Boolean).filter(($) => !p.includes($));
+          b.length && (S.tags = [...p, ...b], ae(T, e, t));
+        }
+      }
+      return i.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), se(c, e, t, a), le("edited", i, e, t, a), o || I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: a }), i;
+    },
+    async completeTask(n, s = "main") {
+      const a = ne(e, t, s), o = a.tasks.find((i) => i.id === n);
+      if (!o)
+        throw new Error("Task not found");
       const c = (/* @__PURE__ */ new Date()).toISOString();
-      return i.state = "Deleted", i.updatedAt = c, i.closedAt = c, nt(r, t, e, s), lt("deleted", i, t, e, s), n ? console.log("[localStorageApi] deleteTask: broadcast suppressed") : (console.log("[localStorageApi] deleteTask: broadcasting", { sessionId: E }), I("tasks-updated", { sessionId: E, userType: t, userId: e, boardId: s })), console.log("[localStorageApi] deleteTask END"), i;
+      return o.state = "Completed", o.updatedAt = c, o.closedAt = c, se(a, e, t, s), le("completed", o, e, t, s), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s }), o;
     },
-    async createTag(a, s = "main") {
-      const n = tt(t, e), r = n.boards.find((c) => c.id === s);
-      if (!r) throw new Error("Board not found");
-      const i = r.tags || [];
-      i.includes(a) || (r.tags = [...i, a], et(n, t, e), I("boards-updated", { sessionId: E, userType: t, userId: e, boardId: s }));
+    async deleteTask(n, s = "main", a = !1) {
+      console.log("[localStorageApi] deleteTask START", { id: n, boardId: s, suppressBroadcast: a, sessionId: F });
+      const o = ne(e, t, s), c = o.tasks.find((T) => T.id === n);
+      if (!c)
+        throw new Error("Task not found");
+      const i = (/* @__PURE__ */ new Date()).toISOString();
+      return c.state = "Deleted", c.updatedAt = i, c.closedAt = i, se(o, e, t, s), le("deleted", c, e, t, s), a ? console.log("[localStorageApi] deleteTask: broadcast suppressed") : (console.log("[localStorageApi] deleteTask: broadcasting", { sessionId: F }), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s })), console.log("[localStorageApi] deleteTask END"), c;
     },
-    async deleteTag(a, s = "main") {
-      const n = tt(t, e), r = n.boards.find((c) => c.id === s);
-      if (!r) throw new Error("Board not found");
-      const i = r.tags || [];
-      r.tags = i.filter((c) => c !== a), et(n, t, e), I("boards-updated", { sessionId: E, userType: t, userId: e, boardId: s });
+    async createTag(n, s = "main") {
+      const a = te(e, t), o = a.boards.find((i) => i.id === s);
+      if (!o) throw new Error("Board not found");
+      const c = o.tags || [];
+      c.includes(n) || (o.tags = [...c, n], ae(a, e, t), I("boards-updated", { sessionId: F, userType: e, userId: t, boardId: s }));
+    },
+    async deleteTag(n, s = "main") {
+      const a = te(e, t), o = a.boards.find((i) => i.id === s);
+      if (!o) throw new Error("Board not found");
+      const c = o.tags || [];
+      o.tags = c.filter((i) => i !== n), ae(a, e, t), I("boards-updated", { sessionId: F, userType: e, userId: t, boardId: s });
+    },
+    // User preferences
+    async getPreferences() {
+      const n = `${e}-${t}-preferences`, s = localStorage.getItem(n);
+      return s ? JSON.parse(s) : {
+        version: 1,
+        updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        theme: "light"
+      };
+    },
+    async savePreferences(n) {
+      const s = `${e}-${t}-preferences`, o = {
+        ...await this.getPreferences(),
+        ...n,
+        updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      localStorage.setItem(s, JSON.stringify(o));
     }
   };
 }
-async function Xt(t, e, a, s) {
-  for (const i of e.boards || []) {
-    const c = i.id;
-    if (i.tasks && i.tasks.length > 0) {
-      const T = `${a}-${s}-${c}-tasks`, S = {
+async function He(e, t, n, s) {
+  for (const c of t.boards || []) {
+    const i = c.id;
+    if (c.tasks && c.tasks.length > 0) {
+      const T = `${n}-${s}-${i}-tasks`, S = {
         version: 1,
-        updatedAt: e.updatedAt || (/* @__PURE__ */ new Date()).toISOString(),
-        tasks: i.tasks
+        updatedAt: t.updatedAt || (/* @__PURE__ */ new Date()).toISOString(),
+        tasks: c.tasks
       };
       window.localStorage.setItem(T, JSON.stringify(S));
     }
-    if (i.stats) {
-      const T = `${a}-${s}-${c}-stats`;
-      window.localStorage.setItem(T, JSON.stringify(i.stats));
+    if (c.stats) {
+      const T = `${n}-${s}-${i}-stats`;
+      window.localStorage.setItem(T, JSON.stringify(c.stats));
     }
   }
-  const n = `${a}-${s}-boards`, r = {
+  const a = `${n}-${s}-boards`, o = {
     version: 1,
-    updatedAt: e.updatedAt || (/* @__PURE__ */ new Date()).toISOString(),
-    boards: e.boards.map((i) => ({
-      id: i.id,
-      name: i.name,
-      tags: i.tags || []
+    updatedAt: t.updatedAt || (/* @__PURE__ */ new Date()).toISOString(),
+    boards: t.boards.map((c) => ({
+      id: c.id,
+      name: c.name,
+      tags: c.tags || []
     }))
   };
-  window.localStorage.setItem(n, JSON.stringify(r)), console.log("[api] Synced API data to localStorage:", {
-    boards: e.boards?.length || 0,
-    totalTasks: e.boards?.reduce((i, c) => i + (c.tasks?.length || 0), 0) || 0
+  window.localStorage.setItem(a, JSON.stringify(o)), console.log("[api] Synced API data to localStorage:", {
+    boards: t.boards?.length || 0,
+    totalTasks: t.boards?.reduce((c, i) => c + (i.tasks?.length || 0), 0) || 0
   });
 }
-function Z(t, e, a) {
+function W(e, t, n) {
   const s = {
     "Content-Type": "application/json",
-    "X-User-Type": t
+    "X-User-Type": e
   };
-  return e && (s["X-User-Id"] = e), a && (s["X-Session-Id"] = a), s;
+  return t && (s["X-User-Id"] = t), n && (s["X-Session-Id"] = n), s;
 }
-function Ht(t = "public", e = "public", a) {
-  const s = jt(t, e);
-  return t === "public" ? s : {
+function Te(e = "public", t = "public", n) {
+  const s = Xe(e, t);
+  return e === "public" ? s : {
     // Get boards - returns localStorage immediately (optimistic)
     async getBoards() {
       return await s.getBoards();
@@ -210,266 +227,277 @@ function Ht(t = "public", e = "public", a) {
     async syncFromApi() {
       try {
         console.log("[api] Syncing from API...");
-        const n = await fetch(`/task/api/boards?userType=${t}&userId=${encodeURIComponent(e)}`, {
-          headers: Z(t, e, a)
+        const a = await fetch(`/task/api/boards?userType=${e}&userId=${encodeURIComponent(t)}`, {
+          headers: W(e, t, n)
         });
-        if (!n.ok)
-          throw new Error(`API returned ${n.status}`);
-        const r = await n.json();
-        console.log("[api] Synced from API:", { boards: r.boards?.length || 0, totalTasks: r.boards?.reduce((i, c) => i + (c.tasks?.length || 0), 0) || 0 }), await Xt(s, r, t, e);
-      } catch (n) {
-        console.error("[api] Sync from API failed:", n);
+        if (!a.ok)
+          throw new Error(`API returned ${a.status}`);
+        const o = await a.json();
+        console.log("[api] Synced from API:", { boards: o.boards?.length || 0, totalTasks: o.boards?.reduce((c, i) => c + (i.tasks?.length || 0), 0) || 0 }), await He(s, o, e, t);
+      } catch (a) {
+        console.error("[api] Sync from API failed:", a);
       }
     },
-    async getStats(n = "main") {
-      return await s.getStats(n);
+    async getStats(a = "main") {
+      return await s.getStats(a);
     },
-    async createTask(n, r = "main", i = !1) {
-      const c = await s.createTask(n, r, i);
+    async createTask(a, o = "main", c = !1) {
+      const i = await s.createTask(a, o, c);
       return fetch("/task/api", {
         method: "POST",
-        headers: Z(t, e, a),
+        headers: W(e, t, n),
         body: JSON.stringify({
-          id: c.id,
+          id: i.id,
           // Send client ID to server
-          ...n,
-          boardId: r
+          ...a,
+          boardId: o
         })
       }).then((T) => T.json()).then((T) => {
-        T.ok && (T.id === c.id ? console.log("[api] Background sync: createTask completed (ID matched)") : console.warn("[api] Server returned different ID (unexpected):", { client: c.id, server: T.id }));
-      }).catch((T) => console.error("[api] Failed to sync createTask:", T)), c;
+        T.ok && (T.id === i.id ? console.log("[api] Background sync: createTask completed (ID matched)") : console.warn("[api] Server returned different ID (unexpected):", { client: i.id, server: T.id }));
+      }).catch((T) => console.error("[api] Failed to sync createTask:", T)), i;
     },
-    async createTag(n, r = "main") {
-      const i = await s.createTag(n, r);
+    async createTag(a, o = "main") {
+      const c = await s.createTag(a, o);
       return fetch("/task/api/tags", {
         method: "POST",
-        headers: Z(t, e, a),
-        body: JSON.stringify({ boardId: r, tag: n })
-      }).then(() => console.log("[api] Background sync: createTag completed")).catch((c) => console.error("[api] Failed to sync createTag:", c)), i;
+        headers: W(e, t, n),
+        body: JSON.stringify({ boardId: o, tag: a })
+      }).then(() => console.log("[api] Background sync: createTag completed")).catch((i) => console.error("[api] Failed to sync createTag:", i)), c;
     },
-    async deleteTag(n, r = "main") {
-      const i = await s.deleteTag(n, r);
+    async deleteTag(a, o = "main") {
+      const c = await s.deleteTag(a, o);
       return fetch("/task/api/tags", {
         method: "DELETE",
-        headers: Z(t, e, a),
-        body: JSON.stringify({ boardId: r, tag: n })
-      }).then(() => console.log("[api] Background sync: deleteTag completed")).catch((c) => console.error("[api] Failed to sync deleteTag:", c)), i;
+        headers: W(e, t, n),
+        body: JSON.stringify({ boardId: o, tag: a })
+      }).then(() => console.log("[api] Background sync: deleteTag completed")).catch((i) => console.error("[api] Failed to sync deleteTag:", i)), c;
     },
-    async patchTask(n, r, i = "main", c = !1) {
-      const T = await s.patchTask(n, r, i, c);
-      return fetch(`/task/api/${n}`, {
+    async patchTask(a, o, c = "main", i = !1) {
+      const T = await s.patchTask(a, o, c, i);
+      return fetch(`/task/api/${a}`, {
         method: "PATCH",
-        headers: Z(t, e, a),
-        body: JSON.stringify({ ...r, boardId: i })
+        headers: W(e, t, n),
+        body: JSON.stringify({ ...o, boardId: c })
       }).then(() => console.log("[api] Background sync: patchTask completed")).catch((S) => console.error("[api] Failed to sync patchTask:", S)), T;
     },
-    async completeTask(n, r = "main") {
-      const i = await s.completeTask(n, r);
-      return fetch(`/task/api/${n}/complete`, {
+    async completeTask(a, o = "main") {
+      const c = await s.completeTask(a, o);
+      return fetch(`/task/api/${a}/complete`, {
         method: "POST",
-        headers: Z(t, e, a),
-        body: JSON.stringify({ boardId: r })
-      }).then(() => console.log("[api] Background sync: completeTask completed")).catch((c) => console.error("[api] Failed to sync completeTask:", c)), i;
+        headers: W(e, t, n),
+        body: JSON.stringify({ boardId: o })
+      }).then(() => console.log("[api] Background sync: completeTask completed")).catch((i) => console.error("[api] Failed to sync completeTask:", i)), c;
     },
-    async deleteTask(n, r = "main", i = !1) {
-      await s.deleteTask(n, r, i), fetch(`/task/api/${n}`, {
+    async deleteTask(a, o = "main", c = !1) {
+      await s.deleteTask(a, o, c), fetch(`/task/api/${a}`, {
         method: "DELETE",
-        headers: Z(t, e, a),
-        body: JSON.stringify({ boardId: r })
-      }).then(() => console.log("[api] Background sync: deleteTask completed")).catch((c) => console.error("[api] Failed to sync deleteTask:", c));
+        headers: W(e, t, n),
+        body: JSON.stringify({ boardId: o })
+      }).then(() => console.log("[api] Background sync: deleteTask completed")).catch((i) => console.error("[api] Failed to sync deleteTask:", i));
     },
     // Board operations
-    async createBoard(n) {
-      const r = await s.createBoard(n);
+    async createBoard(a) {
+      const o = await s.createBoard(a);
       return fetch("/task/api/boards", {
         method: "POST",
-        headers: Z(t, e, a),
-        body: JSON.stringify({ boardId: n })
-      }).then(() => console.log("[api] Background sync: createBoard completed")).catch((i) => console.error("[api] Failed to sync createBoard:", i)), r;
+        headers: W(e, t, n),
+        body: JSON.stringify({ id: a, name: a })
+      }).then(() => console.log("[api] Background sync: createBoard completed")).catch((c) => console.error("[api] Failed to sync createBoard:", c)), o;
     },
-    async deleteBoard(n) {
-      const r = await s.deleteBoard(n);
-      return fetch(`/task/api/boards/${encodeURIComponent(n)}`, {
+    async deleteBoard(a) {
+      const o = await s.deleteBoard(a);
+      return fetch(`/task/api/boards/${encodeURIComponent(a)}`, {
         method: "DELETE",
-        headers: Z(t, e, a)
-      }).then(() => console.log("[api] Background sync: deleteBoard completed")).catch((i) => console.error("[api] Failed to sync deleteBoard:", i)), r;
+        headers: W(e, t, n)
+      }).then(() => console.log("[api] Background sync: deleteBoard completed")).catch((c) => console.error("[api] Failed to sync deleteBoard:", c)), o;
     },
-    async getTasks(n = "main") {
-      return await s.getTasks(n);
+    async getTasks(a = "main") {
+      return await s.getTasks(a);
+    },
+    // User preferences
+    async getPreferences() {
+      return await s.getPreferences();
+    },
+    async savePreferences(a) {
+      await s.savePreferences(a), fetch("/task/api/preferences", {
+        method: "PUT",
+        headers: W(e, t, n),
+        body: JSON.stringify(a)
+      }).then(() => console.log("[api] Background sync: savePreferences completed")).catch((o) => console.error("[api] Failed to sync savePreferences:", o));
     }
   };
 }
-function qt(t) {
-  t = t.trim();
-  const e = (n) => n.trim().replace(/\s+/g, "-"), a = t.match(/^["']([^"']+)["']\s*(.*)$/);
-  if (a) {
-    const n = a[1].trim(), i = a[2].match(/#[^\s#]+/g)?.map((c) => e(c.slice(1))).filter(Boolean) || [];
-    return { title: n, tag: i.length ? i.join(" ") : void 0 };
+function qe(e) {
+  e = e.trim();
+  const t = (a) => a.trim().replace(/\s+/g, "-"), n = e.match(/^["']([^"']+)["']\s*(.*)$/);
+  if (n) {
+    const a = n[1].trim(), c = n[2].match(/#[^\s#]+/g)?.map((i) => t(i.slice(1))).filter(Boolean) || [];
+    return { title: a, tag: c.length ? c.join(" ") : void 0 };
   }
-  const s = t.match(/^(.+?)\s+(#.+)$/);
+  const s = e.match(/^(.+?)\s+(#.+)$/);
   if (s) {
-    const n = s[1].trim(), i = s[2].match(/#[^\s#]+/g)?.map((c) => e(c.slice(1))).filter(Boolean) || [];
-    return { title: n, tag: i.length ? i.join(" ") : void 0 };
+    const a = s[1].trim(), c = s[2].match(/#[^\s#]+/g)?.map((i) => t(i.slice(1))).filter(Boolean) || [];
+    return { title: a, tag: c.length ? c.join(" ") : void 0 };
   }
-  return { title: t.trim() };
+  return { title: e.trim() };
 }
-function Yt(t, e = 6, a = []) {
-  const s = t.flatMap((r) => r.tag?.split(" ") || []).filter(Boolean), n = {};
-  return s.forEach((r) => n[r] = (n[r] || 0) + 1), a.filter(Boolean).forEach((r) => {
-    n[r] || (n[r] = 0);
-  }), Object.entries(n).sort((r, i) => i[1] - r[1]).slice(0, e).map(([r]) => r);
+function Ye(e, t = 6, n = []) {
+  const s = e.flatMap((o) => o.tag?.split(" ") || []).filter(Boolean), a = {};
+  return s.forEach((o) => a[o] = (a[o] || 0) + 1), n.filter(Boolean).forEach((o) => {
+    a[o] || (a[o] = 0);
+  }), Object.entries(a).sort((o, c) => c[1] - o[1]).slice(0, t).map(([o]) => o);
 }
-function vt(t, e) {
-  return t.filter((a) => a.tag?.split(" ").includes(e));
+function be(e, t) {
+  return e.filter((n) => n.tag?.split(" ").includes(t));
 }
-function Kt(t, e, a) {
-  const s = Array.isArray(a) && a.length > 0;
-  return t.filter((n) => {
-    const r = n.tag?.split(" ") || [];
-    return s ? a.some((c) => r.includes(c)) && !e.some((c) => r.includes(c)) : !e.some((i) => r.includes(i));
+function Ke(e, t, n) {
+  const s = Array.isArray(n) && n.length > 0;
+  return e.filter((a) => {
+    const o = a.tag?.split(" ") || [];
+    return s ? n.some((i) => o.includes(i)) && !t.some((i) => o.includes(i)) : !t.some((c) => o.includes(c));
   });
 }
-function dt(t) {
-  return Array.from(new Set(t.flatMap((e) => e.tag?.split(" ") || []).filter(Boolean)));
+function de(e) {
+  return Array.from(new Set(e.flatMap((t) => t.tag?.split(" ") || []).filter(Boolean)));
 }
-const E = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-function gt(t, e, a, s = 50) {
+const F = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+function ge(e, t, n, s = 50) {
   setTimeout(() => {
     try {
-      const n = new BroadcastChannel("tasks");
-      n.postMessage({ type: "tasks-updated", sessionId: t, userType: e, userId: a }), n.close();
-    } catch (n) {
-      console.error("[useTasks] Broadcast failed:", n);
+      const a = new BroadcastChannel("tasks");
+      a.postMessage({ type: "tasks-updated", sessionId: e, userType: t, userId: n }), a.close();
+    } catch (a) {
+      console.error("[useTasks] Broadcast failed:", a);
     }
   }, s);
 }
-function zt({ userType: t, userId: e, sessionId: a }) {
-  const [s, n] = N([]), [r, i] = N(/* @__PURE__ */ new Set()), c = Jt(
-    () => Ht(t, e || "public", a),
-    [t, e, a]
+function ze({ userType: e, userId: t, sessionId: n }) {
+  const [s, a] = N([]), [o, c] = N(/* @__PURE__ */ new Set()), i = Ue(
+    () => Te(e, t || "public", n),
+    [e, t, n]
   ), [T, S] = N(null), [p, b] = N("main");
   async function $() {
-    console.log("[useTasks] initialLoad called"), "syncFromApi" in c && await c.syncFromApi(), await _();
+    console.log("[useTasks] initialLoad called"), "syncFromApi" in i && await i.syncFromApi(), await _();
   }
   async function _() {
     console.log("[useTasks] reload called", { currentBoardId: p, stack: new Error().stack?.split(`
 `).slice(1, 4).join(`
 `) });
-    const o = await c.getBoards();
-    S(o);
-    const l = o.boards.find((d) => d.id === p);
-    l ? (console.log("[useTasks] reload: found current board", { boardId: l.id, taskCount: l.tasks?.length || 0 }), n((l.tasks || []).filter((d) => d.state === "Active"))) : (console.log("[useTasks] reload: board not found", { currentBoardId: p }), n([]));
+    const r = await i.getBoards();
+    S(r);
+    const l = r.boards.find((d) => d.id === p);
+    l ? (console.log("[useTasks] reload: found current board", { boardId: l.id, taskCount: l.tasks?.length || 0 }), a((l.tasks || []).filter((d) => d.state === "Active"))) : (console.log("[useTasks] reload: board not found", { currentBoardId: p }), a([]));
   }
-  st(() => {
-    console.log("[useTasks] User context changed, clearing state and reloading", { userType: t, userId: e }), n([]), i(/* @__PURE__ */ new Set()), S(null), b("main"), _();
-  }, [t, e]), st(() => {
-    console.log("[useTasks] Setting up BroadcastChannel listener", { currentBoardId: p, userType: t, userId: e });
+  ee(() => {
+    console.log("[useTasks] User context changed, clearing state and reloading", { userType: e, userId: t }), a([]), c(/* @__PURE__ */ new Set()), S(null), b("main"), _();
+  }, [e, t]), ee(() => {
+    console.log("[useTasks] Setting up BroadcastChannel listener", { currentBoardId: p, userType: e, userId: t });
     try {
-      const o = new BroadcastChannel("tasks");
-      return o.onmessage = (l) => {
+      const r = new BroadcastChannel("tasks");
+      return r.onmessage = (l) => {
         const d = l.data || {};
-        if (console.log("[useTasks] BroadcastChannel message received", { msg: d, sessionId: E, currentBoardId: p, currentContext: { userType: t, userId: e } }), d.sessionId === E) {
+        if (console.log("[useTasks] BroadcastChannel message received", { msg: d, sessionId: F, currentBoardId: p, currentContext: { userType: e, userId: t } }), d.sessionId === F) {
           console.log("[useTasks] Ignoring own broadcast message");
           return;
         }
-        if (d.userType !== t || d.userId !== e) {
+        if (d.userType !== e || d.userId !== t) {
           console.log("[useTasks] Ignoring message for different user context", {
             msgContext: { userType: d.userType, userId: d.userId },
-            currentContext: { userType: t, userId: e }
+            currentContext: { userType: e, userId: t }
           });
           return;
         }
         (d.type === "tasks-updated" || d.type === "boards-updated") && (console.log("[useTasks] BroadcastChannel: triggering reload for currentBoardId =", p), _());
       }, () => {
-        console.log("[useTasks] Cleaning up BroadcastChannel listener", { currentBoardId: p }), o.close();
+        console.log("[useTasks] Cleaning up BroadcastChannel listener", { currentBoardId: p }), r.close();
       };
-    } catch (o) {
-      console.error("[useTasks] Failed to setup BroadcastChannel", o);
+    } catch (r) {
+      console.error("[useTasks] Failed to setup BroadcastChannel", r);
     }
-  }, [p, t, e]);
-  async function W(o) {
-    if (o = o.trim(), !!o)
+  }, [p, e, t]);
+  async function G(r) {
+    if (r = r.trim(), !!r)
       try {
-        const l = qt(o);
-        return await c.createTask(l, p), await _(), !0;
+        const l = qe(r);
+        return await i.createTask(l, p), await _(), !0;
       } catch (l) {
         return alert(l.message || "Failed to create task"), !1;
       }
   }
-  async function H(o) {
-    const l = `complete-${o}`;
-    if (!r.has(l)) {
-      i((d) => /* @__PURE__ */ new Set([...d, l]));
+  async function H(r) {
+    const l = `complete-${r}`;
+    if (!o.has(l)) {
+      c((d) => /* @__PURE__ */ new Set([...d, l]));
       try {
-        await c.completeTask(o, p), await _();
+        await i.completeTask(r, p), await _();
       } catch (d) {
         d?.message?.includes("404") || alert(d.message || "Failed to complete task");
       } finally {
-        i((d) => {
+        c((d) => {
           const m = new Set(d);
           return m.delete(l), m;
         });
       }
     }
   }
-  async function K(o) {
-    console.log("[useTasks] deleteTask START", { taskId: o, currentBoardId: p });
-    const l = `delete-${o}`;
-    if (r.has(l)) {
+  async function K(r) {
+    console.log("[useTasks] deleteTask START", { taskId: r, currentBoardId: p });
+    const l = `delete-${r}`;
+    if (o.has(l)) {
       console.log("[useTasks] deleteTask: already pending, skipping", { operationKey: l });
       return;
     }
-    i((d) => /* @__PURE__ */ new Set([...d, l]));
+    c((d) => /* @__PURE__ */ new Set([...d, l]));
     try {
-      console.log("[useTasks] deleteTask: calling api.deleteTask", { taskId: o, currentBoardId: p }), await c.deleteTask(o, p), console.log("[useTasks] deleteTask: calling reload"), await _(), console.log("[useTasks] deleteTask END");
+      console.log("[useTasks] deleteTask: calling api.deleteTask", { taskId: r, currentBoardId: p }), await i.deleteTask(r, p), console.log("[useTasks] deleteTask: calling reload"), await _(), console.log("[useTasks] deleteTask END");
     } catch (d) {
       d?.message?.includes("404") || alert(d.message || "Failed to delete task");
     } finally {
-      i((d) => {
+      c((d) => {
         const m = new Set(d);
         return m.delete(l), m;
       });
     }
   }
-  async function F(o) {
+  async function M(r) {
     const l = prompt("Enter tag (without #):");
     if (!l) return;
-    const d = l.trim().replace(/^#+/, "").replace(/\s+/g, "-"), m = s.find((u) => u.id === o);
+    const d = l.trim().replace(/^#+/, "").replace(/\s+/g, "-"), m = s.find((u) => u.id === r);
     if (!m) return;
     const y = m.tag?.split(" ") || [];
     if (y.includes(d)) return;
     const f = [...y, d].join(" ");
     try {
-      await c.patchTask(o, { tag: f }, p), await _();
+      await i.patchTask(r, { tag: f }, p), await _();
     } catch (u) {
       alert(u.message || "Failed to add tag");
     }
   }
-  async function P(o, l, d = {}) {
+  async function L(r, l, d = {}) {
     const { suppressBroadcast: m = !1, skipReload: y = !1 } = d;
     try {
-      await c.patchTask(o, l, p, m), y || await _();
+      await i.patchTask(r, l, p, m), y || await _();
     } catch (f) {
       throw f;
     }
   }
-  async function x(o) {
-    console.log("[useTasks] bulkUpdateTaskTags START", { count: o.length });
+  async function x(r) {
+    console.log("[useTasks] bulkUpdateTaskTags START", { count: r.length });
     try {
-      for (const { taskId: l, tag: d } of o)
-        await c.patchTask(l, { tag: d }, p, !0);
-      console.log("[useTasks] bulkUpdateTaskTags: broadcasting bulk update with delay"), gt(E, t, e), console.log("[useTasks] bulkUpdateTaskTags: calling reload"), await _(), console.log("[useTasks] bulkUpdateTaskTags END");
+      for (const { taskId: l, tag: d } of r)
+        await i.patchTask(l, { tag: d }, p, !0);
+      console.log("[useTasks] bulkUpdateTaskTags: broadcasting bulk update with delay"), ge(F, e, t), console.log("[useTasks] bulkUpdateTaskTags: calling reload"), await _(), console.log("[useTasks] bulkUpdateTaskTags END");
     } catch (l) {
       throw console.error("[useTasks] bulkUpdateTaskTags ERROR", l), l;
     }
   }
-  async function M(o) {
-    console.log("[useTasks] clearTasksByTag START", { tag: o, currentBoardId: p, taskCount: s.length });
-    const l = s.filter((d) => d.tag?.split(" ").includes(o));
-    if (console.log("[useTasks] clearTasksByTag: found tasks with tag", { tag: o, count: l.length }), l.length === 0) {
+  async function E(r) {
+    console.log("[useTasks] clearTasksByTag START", { tag: r, currentBoardId: p, taskCount: s.length });
+    const l = s.filter((d) => d.tag?.split(" ").includes(r));
+    if (console.log("[useTasks] clearTasksByTag: found tasks with tag", { tag: r, count: l.length }), l.length === 0) {
       console.log("[useTasks] clearTasksByTag: no tasks found with this tag, just deleting tag");
       try {
-        await c.deleteTag(o, p), await _(), console.log("[useTasks] clearTasksByTag END (no tasks to clear)");
+        await i.deleteTag(r, p), await _(), console.log("[useTasks] clearTasksByTag END (no tasks to clear)");
       } catch (d) {
         console.error("[useTasks] clearTasksByTag ERROR", d), console.error("[useTasks] clearTasksByTag: Please fix this error:", d.message);
       }
@@ -479,107 +507,107 @@ function zt({ userType: t, userId: e, sessionId: a }) {
     try {
       console.log("[useTasks] clearTasksByTag: starting to patch tasks");
       for (const d of l) {
-        const m = d.tag?.split(" ") || [], y = m.filter((u) => u !== o), f = y.length > 0 ? y.join(" ") : null;
-        console.log("[useTasks] clearTasksByTag: patching task", { taskId: d.id, oldTags: m, newTags: y }), await c.patchTask(d.id, { tag: f }, p, !0);
+        const m = d.tag?.split(" ") || [], y = m.filter((u) => u !== r), f = y.length > 0 ? y.join(" ") : null;
+        console.log("[useTasks] clearTasksByTag: patching task", { taskId: d.id, oldTags: m, newTags: y }), await i.patchTask(d.id, { tag: f }, p, !0);
       }
-      console.log("[useTasks] clearTasksByTag: deleting tag from board", { tag: o, currentBoardId: p }), await c.deleteTag(o, p), console.log("[useTasks] clearTasksByTag: broadcasting bulk update with delay"), gt(E, t, e), console.log("[useTasks] clearTasksByTag: calling reload"), await _(), console.log("[useTasks] clearTasksByTag END");
+      console.log("[useTasks] clearTasksByTag: deleting tag from board", { tag: r, currentBoardId: p }), await i.deleteTag(r, p), console.log("[useTasks] clearTasksByTag: broadcasting bulk update with delay"), ge(F, e, t), console.log("[useTasks] clearTasksByTag: calling reload"), await _(), console.log("[useTasks] clearTasksByTag END");
     } catch (d) {
       console.error("[useTasks] clearTasksByTag ERROR", d), alert(d.message || "Failed to remove tag from tasks");
     }
   }
-  async function R(o) {
+  async function R(r) {
     if (confirm("Clear all remaining tasks?"))
       try {
-        for (const l of o)
-          await c.deleteTask(l.id, p);
+        for (const l of r)
+          await i.deleteTask(l.id, p);
         await _();
       } catch (l) {
         alert(l.message || "Failed to clear remaining tasks");
       }
   }
-  async function J(o) {
-    await c.createBoard(o), b(o);
-    const l = await c.getBoards();
+  async function J(r) {
+    await i.createBoard(r), b(r);
+    const l = await i.getBoards();
     S(l);
-    const d = l.boards.find((m) => m.id === o);
-    d ? (console.log("[useTasks] createBoard: switched to new board", { boardId: o, taskCount: d.tasks?.length || 0 }), n((d.tasks || []).filter((m) => m.state === "Active"))) : (console.log("[useTasks] createBoard: new board not found (should be empty)", { boardId: o }), n([]));
+    const d = l.boards.find((m) => m.id === r);
+    d ? (console.log("[useTasks] createBoard: switched to new board", { boardId: r, taskCount: d.tasks?.length || 0 }), a((d.tasks || []).filter((m) => m.state === "Active"))) : (console.log("[useTasks] createBoard: new board not found (should be empty)", { boardId: r }), a([]));
   }
-  async function U(o, l) {
-    if (console.log("[useTasks] moveTasksToBoard START", { targetBoardId: o, ids: l, currentBoardId: p }), !T) return;
+  async function U(r, l) {
+    if (console.log("[useTasks] moveTasksToBoard START", { targetBoardId: r, ids: l, currentBoardId: p }), !T) return;
     const d = [];
     for (const f of T.boards)
       for (const u of f.tasks || [])
         l.includes(u.id) && d.push({ id: u.id, title: u.title, tag: u.tag || void 0, boardId: f.id });
     console.log("[useTasks] moveTasksToBoard: found tasks to move", { count: d.length });
     for (const f of d)
-      await c.createTask({ title: f.title, tag: f.tag }, o, !0), await c.deleteTask(f.id, f.boardId, !0);
-    console.log("[useTasks] moveTasksToBoard: broadcasting bulk update with delay"), gt(E, t, e), console.log("[useTasks] moveTasksToBoard: switching to target board", { targetBoardId: o }), b(o);
-    const m = await c.getBoards();
+      await i.createTask({ title: f.title, tag: f.tag }, r, !0), await i.deleteTask(f.id, f.boardId, !0);
+    console.log("[useTasks] moveTasksToBoard: broadcasting bulk update with delay"), ge(F, e, t), console.log("[useTasks] moveTasksToBoard: switching to target board", { targetBoardId: r }), b(r);
+    const m = await i.getBoards();
     S(m);
-    const y = m.boards.find((f) => f.id === o);
-    y && (console.log("[useTasks] moveTasksToBoard: loaded target board tasks", { count: y.tasks?.length || 0 }), n((y.tasks || []).filter((f) => f.state === "Active"))), console.log("[useTasks] moveTasksToBoard END");
+    const y = m.boards.find((f) => f.id === r);
+    y && (console.log("[useTasks] moveTasksToBoard: loaded target board tasks", { count: y.tasks?.length || 0 }), a((y.tasks || []).filter((f) => f.state === "Active"))), console.log("[useTasks] moveTasksToBoard END");
   }
-  async function G(o) {
-    if (await c.deleteBoard(o), p === o) {
+  async function Q(r) {
+    if (await i.deleteBoard(r), p === r) {
       b("main");
-      const l = await c.getBoards();
+      const l = await i.getBoards();
       S(l);
       const d = l.boards.find((m) => m.id === "main");
-      d ? (console.log("[useTasks] deleteBoard: switched to main board", { taskCount: d.tasks?.length || 0 }), n((d.tasks || []).filter((m) => m.state === "Active"))) : (console.log("[useTasks] deleteBoard: main board not found"), n([]));
+      d ? (console.log("[useTasks] deleteBoard: switched to main board", { taskCount: d.tasks?.length || 0 }), a((d.tasks || []).filter((m) => m.state === "Active"))) : (console.log("[useTasks] deleteBoard: main board not found"), a([]));
     } else
       await _();
   }
-  async function L(o) {
-    await c.createTag(o, p), await _();
+  async function P(r) {
+    await i.createTag(r, p), await _();
   }
-  async function V(o) {
-    await c.deleteTag(o, p), await _();
+  async function V(r) {
+    await i.deleteTag(r, p), await _();
   }
-  function q(o) {
-    b(o);
-    const l = T?.boards.find((d) => d.id === o);
-    l ? n((l.tasks || []).filter((d) => d.state === "Active")) : _();
+  function q(r) {
+    b(r);
+    const l = T?.boards.find((d) => d.id === r);
+    l ? a((l.tasks || []).filter((d) => d.state === "Active")) : _();
   }
   return {
     // Task state
     tasks: s,
-    pendingOperations: r,
+    pendingOperations: o,
     // Task operations
-    addTask: W,
+    addTask: G,
     completeTask: H,
     deleteTask: K,
-    addTagToTask: F,
-    updateTaskTags: P,
+    addTagToTask: M,
+    updateTaskTags: L,
     bulkUpdateTaskTags: x,
-    clearTasksByTag: M,
+    clearTasksByTag: E,
     clearRemainingTasks: R,
     // Board state
     boards: T,
     currentBoardId: p,
     // Board operations
     createBoard: J,
-    deleteBoard: G,
+    deleteBoard: Q,
     switchBoard: q,
     moveTasksToBoard: U,
-    createTagOnBoard: L,
+    createTagOnBoard: P,
     deleteTagOnBoard: V,
     // Lifecycle
     initialLoad: $,
     reload: _
   };
 }
-function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
-  const [s, n] = N(null), [r, i] = N(null), [c, T] = N(/* @__PURE__ */ new Set()), [S, p] = N(!1), [b, $] = N(null), [_, W] = N(null), H = pt(null);
-  function K(o, l) {
-    const d = c.has(l) && c.size > 0 ? Array.from(c) : [l];
-    console.log("[useDragAndDrop] onDragStart", { taskId: l, idsToDrag: d, selectedCount: c.size }), o.dataTransfer.setData("text/plain", d[0]);
+function Ve({ tasks: e, onTaskUpdate: t, onBulkUpdate: n }) {
+  const [s, a] = N(null), [o, c] = N(null), [i, T] = N(/* @__PURE__ */ new Set()), [S, p] = N(!1), [b, $] = N(null), [_, G] = N(null), H = pe(null);
+  function K(r, l) {
+    const d = i.has(l) && i.size > 0 ? Array.from(i) : [l];
+    console.log("[useDragAndDrop] onDragStart", { taskId: l, idsToDrag: d, selectedCount: i.size }), r.dataTransfer.setData("text/plain", d[0]);
     try {
-      o.dataTransfer.setData("application/x-hadoku-task-ids", JSON.stringify(d));
+      r.dataTransfer.setData("application/x-hadoku-task-ids", JSON.stringify(d));
     } catch {
     }
-    o.dataTransfer.effectAllowed = "copyMove";
+    r.dataTransfer.effectAllowed = "copyMove";
     try {
-      const m = o.currentTarget, y = m.closest && m.closest(".task-app__item") ? m.closest(".task-app__item") : m;
+      const m = r.currentTarget, y = m.closest && m.closest(".task-app__item") ? m.closest(".task-app__item") : m;
       y.classList.add("dragging");
       const f = y.cloneNode(!0);
       f.style.boxSizing = "border-box", f.style.width = `${y.offsetWidth}px`, f.style.height = `${y.offsetHeight}px`, f.style.opacity = "0.95", f.style.transform = "none", f.style.filter = "drop-shadow(0 6px 18px rgba(0,0,0,0.12))", f.classList.add("drag-image"), f.style.position = "absolute", f.style.top = "-9999px", f.style.left = "-9999px", document.body.appendChild(f), y.__dragImage = f, T((u) => {
@@ -593,7 +621,7 @@ function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
           const B = u.querySelector(".task-app__tag-header") || u.querySelector("h3"), O = (B && B.textContent || "").trim().replace(/^#/, "");
           if (O)
             try {
-              o.dataTransfer.setData("application/x-hadoku-task-source", O);
+              r.dataTransfer.setData("application/x-hadoku-task-source", O);
             } catch {
             }
         }
@@ -601,17 +629,17 @@ function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
       }
       try {
         const u = y.getBoundingClientRect();
-        let B = Math.round(o.clientX - u.left), D = Math.round(o.clientY - u.top);
-        B = Math.max(0, Math.min(Math.round(f.offsetWidth - 1), B)), D = Math.max(0, Math.min(Math.round(f.offsetHeight - 1), D)), o.dataTransfer.setDragImage(f, B, D);
+        let B = Math.round(r.clientX - u.left), D = Math.round(r.clientY - u.top);
+        B = Math.max(0, Math.min(Math.round(f.offsetWidth - 1), B)), D = Math.max(0, Math.min(Math.round(f.offsetHeight - 1), D)), r.dataTransfer.setDragImage(f, B, D);
       } catch {
-        o.dataTransfer.setDragImage(f, 0, 0);
+        r.dataTransfer.setDragImage(f, 0, 0);
       }
     } catch {
     }
   }
-  function F(o) {
+  function M(r) {
     try {
-      const l = o.currentTarget;
+      const l = r.currentTarget;
       l.classList.remove("dragging");
       const d = l.__dragImage;
       d && d.parentNode && d.parentNode.removeChild(d), d && delete l.__dragImage;
@@ -622,56 +650,56 @@ function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     } catch {
     }
   }
-  function P(o) {
-    if (o.button === 0) {
+  function L(r) {
+    if (r.button === 0) {
       try {
-        const l = o.target;
+        const l = r.target;
         if (!l || l.closest && l.closest(".task-app__item, .task-app__controls, button, input, textarea, .task-app__item-actions"))
           return;
       } catch {
       }
-      p(!0), H.current = { x: o.clientX, y: o.clientY }, $({ x: o.clientX, y: o.clientY, w: 0, h: 0 }), T(/* @__PURE__ */ new Set());
+      p(!0), H.current = { x: r.clientX, y: r.clientY }, $({ x: r.clientX, y: r.clientY, w: 0, h: 0 }), T(/* @__PURE__ */ new Set());
       try {
         document.body.classList.add("marquee-selecting");
       } catch {
       }
     }
   }
-  function x(o) {
+  function x(r) {
     if (!S || !H.current) return;
-    const l = H.current.x, d = H.current.y, m = o.clientX, y = o.clientY, f = Math.min(l, m), u = Math.min(d, y), B = Math.abs(m - l), D = Math.abs(y - d);
+    const l = H.current.x, d = H.current.y, m = r.clientX, y = r.clientY, f = Math.min(l, m), u = Math.min(d, y), B = Math.abs(m - l), D = Math.abs(y - d);
     $({ x: f, y: u, w: B, h: D });
     const O = Array.from(document.querySelectorAll(".task-app__item")), z = /* @__PURE__ */ new Set();
     for (const Y of O) {
       const j = Y.getBoundingClientRect();
       if (!(j.right < f || j.left > f + B || j.bottom < u || j.top > u + D)) {
-        const ct = Y.getAttribute("data-task-id");
-        ct && z.add(ct), Y.classList.add("selected");
+        const ce = Y.getAttribute("data-task-id");
+        ce && z.add(ce), Y.classList.add("selected");
       } else
         Y.classList.remove("selected");
     }
     T(z);
   }
-  function M(o) {
+  function E(r) {
     p(!1), $(null), H.current = null;
     try {
       document.body.classList.remove("marquee-selecting");
     } catch {
     }
     try {
-      W(Date.now());
+      G(Date.now());
     } catch {
     }
   }
   function R() {
     T(/* @__PURE__ */ new Set()), Array.from(document.querySelectorAll(".task-app__item.selected")).forEach((l) => l.classList.remove("selected"));
   }
-  st(() => {
-    function o(m) {
+  ee(() => {
+    function r(m) {
       if (m.button !== 0) return;
       const y = { target: m.target, clientX: m.clientX, clientY: m.clientY, button: m.button };
       try {
-        P(y);
+        L(y);
       } catch {
       }
     }
@@ -685,43 +713,43 @@ function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     function d(m) {
       const y = { clientX: m.clientX, clientY: m.clientY };
       try {
-        M(y);
+        E(y);
       } catch {
       }
     }
-    return document.addEventListener("mousedown", o), document.addEventListener("mousemove", l), document.addEventListener("mouseup", d), () => {
-      document.removeEventListener("mousedown", o), document.removeEventListener("mousemove", l), document.removeEventListener("mouseup", d);
+    return document.addEventListener("mousedown", r), document.addEventListener("mousemove", l), document.addEventListener("mouseup", d), () => {
+      document.removeEventListener("mousedown", r), document.removeEventListener("mousemove", l), document.removeEventListener("mouseup", d);
     };
   }, []);
-  function J(o, l) {
-    o.preventDefault(), o.dataTransfer.dropEffect = "copy", n(l);
+  function J(r, l) {
+    r.preventDefault(), r.dataTransfer.dropEffect = "copy", a(l);
   }
-  function U(o) {
-    o.currentTarget.contains(o.relatedTarget) || n(null);
+  function U(r) {
+    r.currentTarget.contains(r.relatedTarget) || a(null);
   }
-  async function G(o, l) {
-    o.preventDefault(), n(null), console.log("[useDragAndDrop] onDrop START", { targetTag: l });
+  async function Q(r, l) {
+    r.preventDefault(), a(null), console.log("[useDragAndDrop] onDrop START", { targetTag: l });
     let d = [];
     try {
-      const f = o.dataTransfer.getData("application/x-hadoku-task-ids");
+      const f = r.dataTransfer.getData("application/x-hadoku-task-ids");
       f && (d = JSON.parse(f));
     } catch {
     }
     if (d.length === 0) {
-      const f = o.dataTransfer.getData("text/plain");
+      const f = r.dataTransfer.getData("text/plain");
       f && (d = [f]);
     }
     if (d.length === 0) return;
     let m = null;
     try {
-      const f = o.dataTransfer.getData("application/x-hadoku-task-source");
+      const f = r.dataTransfer.getData("application/x-hadoku-task-source");
       f && (m = f);
     } catch {
     }
     console.log("[useDragAndDrop] onDrop: processing", { targetTag: l, ids: d, srcTag: m, taskCount: d.length });
     const y = [];
     for (const f of d) {
-      const u = t.find((Y) => Y.id === f);
+      const u = e.find((Y) => Y.id === f);
       if (!u) continue;
       const B = u.tag?.split(" ").filter(Boolean) || [];
       if (l === "other") {
@@ -737,7 +765,7 @@ function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     }
     console.log("[useDragAndDrop] onDrop: updating tasks", { updateCount: y.length });
     try {
-      await a(y), console.log("[useDragAndDrop] onDrop: updates complete, clearing selection");
+      await n(y), console.log("[useDragAndDrop] onDrop: updates complete, clearing selection");
       try {
         R();
       } catch {
@@ -747,15 +775,15 @@ function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     }
     console.log("[useDragAndDrop] onDrop END");
   }
-  function L(o, l) {
-    o.preventDefault(), o.dataTransfer.dropEffect = "copy", i(l);
+  function P(r, l) {
+    r.preventDefault(), r.dataTransfer.dropEffect = "copy", c(l);
   }
-  function V(o) {
-    o.currentTarget.contains(o.relatedTarget) || i(null);
+  function V(r) {
+    r.currentTarget.contains(r.relatedTarget) || c(null);
   }
-  async function q(o, l) {
-    o.preventDefault(), i(null);
-    const d = o.dataTransfer.getData("text/plain"), m = t.find((u) => u.id === d);
+  async function q(r, l) {
+    r.preventDefault(), c(null);
+    const d = r.dataTransfer.getData("text/plain"), m = e.find((u) => u.id === d);
     if (!m) return;
     const y = m.tag?.split(" ") || [];
     if (y.includes(l)) {
@@ -765,7 +793,7 @@ function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     const f = [...y, l].join(" ");
     console.log(`Adding tag "${l}" to task "${m.title}" via filter drop. New tags: "${f}"`);
     try {
-      await e(d, { tag: f });
+      await t(d, { tag: f });
       try {
         R();
       } catch {
@@ -776,91 +804,91 @@ function Vt({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
   }
   return {
     dragOverTag: s,
-    dragOverFilter: r,
-    setDragOverFilter: i,
-    selectedIds: c,
+    dragOverFilter: o,
+    setDragOverFilter: c,
+    selectedIds: i,
     isSelecting: S,
     marqueeRect: b,
     selectionJustEndedAt: _,
     // selection handlers
-    selectionStartHandler: P,
+    selectionStartHandler: L,
     selectionMoveHandler: x,
-    selectionEndHandler: M,
+    selectionEndHandler: E,
     clearSelection: R,
     onDragStart: K,
-    onDragEnd: F,
+    onDragEnd: M,
     onDragOver: J,
     onDragLeave: U,
-    onDrop: G,
-    onFilterDragOver: L,
+    onDrop: Q,
+    onFilterDragOver: P,
     onFilterDragLeave: V,
     onFilterDrop: q
   };
 }
-function Wt() {
-  const [t, e] = N({});
-  function a(i) {
-    e((c) => {
-      const S = (c[i] || "desc") === "desc" ? "asc" : "desc";
-      return { ...c, [i]: S };
+function We() {
+  const [e, t] = N({});
+  function n(c) {
+    t((i) => {
+      const S = (i[c] || "desc") === "desc" ? "asc" : "desc";
+      return { ...i, [c]: S };
     });
   }
-  function s(i, c) {
-    return [...i].sort((T, S) => {
+  function s(c, i) {
+    return [...c].sort((T, S) => {
       const p = new Date(T.createdAt).getTime(), b = new Date(S.createdAt).getTime();
-      return c === "asc" ? p - b : b - p;
+      return i === "asc" ? p - b : b - p;
     });
   }
-  function n(i) {
-    return i === "asc" ? "↑" : "↓";
+  function a(c) {
+    return c === "asc" ? "↑" : "↓";
   }
-  function r(i) {
-    return i === "asc" ? "Sorted by age (oldest first) - click to sort newest first" : "Sorted by age (newest first) - click to sort oldest first";
+  function o(c) {
+    return c === "asc" ? "Sorted by age (oldest first) - click to sort newest first" : "Sorted by age (newest first) - click to sort oldest first";
   }
   return {
-    sortDirections: t,
-    toggleSort: a,
+    sortDirections: e,
+    toggleSort: n,
     sortTasksByAge: s,
-    getSortIcon: n,
-    getSortTitle: r
+    getSortIcon: a,
+    getSortTitle: o
   };
 }
-function Gt(t) {
-  const e = /* @__PURE__ */ new Date(), a = new Date(t), s = e.getTime() - a.getTime(), n = Math.floor(s / 1e3), r = Math.floor(n / 60), i = Math.floor(r / 60), c = Math.floor(i / 24);
-  return n < 60 ? `${n}s ago` : r < 60 ? `${r}m ago` : i < 24 ? `${i}h ago` : `${c}d ago`;
+function Ge(e) {
+  const t = /* @__PURE__ */ new Date(), n = new Date(e), s = t.getTime() - n.getTime(), a = Math.floor(s / 1e3), o = Math.floor(a / 60), c = Math.floor(o / 60), i = Math.floor(c / 24);
+  return a < 60 ? `${a}s ago` : o < 60 ? `${o}m ago` : c < 24 ? `${c}h ago` : `${i}d ago`;
 }
-function ut({
-  task: t,
-  isDraggable: e = !0,
-  pendingOperations: a,
+function ue({
+  task: e,
+  isDraggable: t = !0,
+  pendingOperations: n,
   onComplete: s,
-  onDelete: n,
-  onAddTag: r,
-  onDragStart: i,
-  onDragEnd: c,
+  onDelete: a,
+  onAddTag: o,
+  onDragStart: c,
+  onDragEnd: i,
   selected: T = !1
 }) {
-  const S = a.has(`complete-${t.id}`), p = a.has(`delete-${t.id}`);
+  const S = n.has(`complete-${e.id}`), p = n.has(`delete-${e.id}`);
   return /* @__PURE__ */ A(
     "li",
     {
       className: `task-app__item ${T ? "selected" : ""}`,
-      "data-task-id": t.id,
-      draggable: e,
-      onDragStart: i ? (b) => i(b, t.id) : void 0,
+      "data-task-id": e.id,
+      draggable: t,
+      onDragStart: c ? (b) => c(b, e.id) : void 0,
       onDragEnd: (b) => {
-        if (b.currentTarget.classList.remove("dragging"), c)
+        if (b.currentTarget.classList.remove("dragging"), i)
           try {
-            c(b);
+            i(b);
           } catch {
           }
       },
       children: [
         /* @__PURE__ */ A("div", { className: "task-app__item-content", children: [
-          /* @__PURE__ */ k("div", { className: "task-app__item-title", title: t.title, children: t.title }),
+          /* @__PURE__ */ k("div", { className: "task-app__item-title", title: e.title, children: e.title }),
           /* @__PURE__ */ A("div", { className: "task-app__item-meta-row", children: [
-            t.tag ? /* @__PURE__ */ k("div", { className: "task-app__item-tag", children: t.tag.split(" ").map((b) => `#${b}`).join(" ") }) : /* @__PURE__ */ k("div", {}),
-            /* @__PURE__ */ k("div", { className: "task-app__item-age", children: Gt(t.createdAt) })
+            e.tag ? /* @__PURE__ */ k("div", { className: "task-app__item-tag", children: e.tag.split(" ").map((b) => `#${b}`).join(" ") }) : /* @__PURE__ */ k("div", {}),
+            /* @__PURE__ */ k("div", { className: "task-app__item-age", children: Ge(e.createdAt) })
           ] })
         ] }),
         /* @__PURE__ */ A("div", { className: "task-app__item-actions", children: [
@@ -868,7 +896,7 @@ function ut({
             "button",
             {
               className: "task-app__action-btn task-app__complete-btn",
-              onClick: () => s(t.id),
+              onClick: () => s(e.id),
               title: "Complete task",
               disabled: S || p,
               children: S ? "⏳" : "✓"
@@ -878,7 +906,7 @@ function ut({
             "button",
             {
               className: "task-app__action-btn task-app__delete-btn",
-              onClick: () => n(t.id),
+              onClick: () => a(e.id),
               title: "Delete task",
               disabled: S || p,
               children: p ? "⏳" : "×"
@@ -889,27 +917,27 @@ function ut({
     }
   );
 }
-function bt(t) {
-  return t === 0 ? { useTags: 0, maxPerColumn: 1 / 0, rows: [] } : t === 1 ? {
+function Se(e) {
+  return e === 0 ? { useTags: 0, maxPerColumn: 1 / 0, rows: [] } : e === 1 ? {
     useTags: 1,
     maxPerColumn: 1 / 0,
     rows: [{ columns: 1, tagIndices: [0] }]
-  } : t === 2 ? {
+  } : e === 2 ? {
     useTags: 2,
     maxPerColumn: 1 / 0,
     rows: [{ columns: 2, tagIndices: [0, 1] }]
-  } : t === 3 ? {
+  } : e === 3 ? {
     useTags: 3,
     maxPerColumn: 1 / 0,
     rows: [{ columns: 3, tagIndices: [0, 1, 2] }]
-  } : t === 4 ? {
+  } : e === 4 ? {
     useTags: 4,
     maxPerColumn: 10,
     rows: [
       { columns: 3, tagIndices: [0, 1, 2] },
       { columns: 1, tagIndices: [3] }
     ]
-  } : t === 5 ? {
+  } : e === 5 ? {
     useTags: 5,
     maxPerColumn: 10,
     rows: [
@@ -925,40 +953,40 @@ function bt(t) {
     ]
   };
 }
-function Qt({
-  tasks: t,
-  topTags: e,
-  filters: a,
+function Qe({
+  tasks: e,
+  topTags: t,
+  filters: n,
   sortDirections: s,
-  dragOverTag: n,
-  pendingOperations: r,
-  onComplete: i,
-  onDelete: c,
+  dragOverTag: a,
+  pendingOperations: o,
+  onComplete: c,
+  onDelete: i,
   onAddTag: T,
   onDragStart: S,
   onDragEnd: p,
   selectedIds: b,
   onSelectionStart: $,
   onSelectionMove: _,
-  onSelectionEnd: W,
+  onSelectionEnd: G,
   onDragOver: H,
   onDragLeave: K,
-  onDrop: F,
-  toggleSort: P,
+  onDrop: M,
+  toggleSort: L,
   sortTasksByAge: x,
-  getSortIcon: M,
+  getSortIcon: E,
   getSortTitle: R,
   clearTasksByTag: J,
   clearRemainingTasks: U,
-  onDeletePersistedTag: G
+  onDeletePersistedTag: Q
 }) {
-  const L = (u, B) => /* @__PURE__ */ A(
+  const P = (u, B) => /* @__PURE__ */ A(
     "div",
     {
-      className: `task-app__tag-column ${n === u ? "task-app__tag-column--drag-over" : ""}`,
+      className: `task-app__tag-column ${a === u ? "task-app__tag-column--drag-over" : ""}`,
       onDragOver: (D) => H(D, u),
       onDragLeave: K,
-      onDrop: (D) => F(D, u),
+      onDrop: (D) => M(D, u),
       children: [
         /* @__PURE__ */ A("div", { className: "task-app__tag-header-row", children: [
           /* @__PURE__ */ A("h3", { className: "task-app__tag-header", children: [
@@ -969,20 +997,20 @@ function Qt({
             "button",
             {
               className: "task-app__sort-btn task-app__sort-btn--active",
-              onClick: () => P(u),
+              onClick: () => L(u),
               title: R(s[u] || "desc"),
-              children: M(s[u] || "desc")
+              children: E(s[u] || "desc")
             }
           )
         ] }),
         /* @__PURE__ */ k("ul", { className: "task-app__list task-app__list--column", children: x(B, s[u] || "desc").map((D) => /* @__PURE__ */ k(
-          ut,
+          ue,
           {
             task: D,
             isDraggable: !0,
-            pendingOperations: r,
-            onComplete: i,
-            onDelete: c,
+            pendingOperations: o,
+            onComplete: c,
+            onDelete: i,
             onAddTag: T,
             onDragStart: S,
             onDragEnd: p,
@@ -994,27 +1022,27 @@ function Qt({
     },
     u
   ), V = (u, B) => {
-    let D = vt(t, u);
-    return o && (D = D.filter((O) => {
+    let D = be(e, u);
+    return r && (D = D.filter((O) => {
       const z = O.tag?.split(" ") || [];
-      return a.some((Y) => z.includes(Y));
+      return n.some((Y) => z.includes(Y));
     })), D.slice(0, B);
-  }, q = e.length, o = Array.isArray(a) && a.length > 0, l = t.filter((u) => {
-    if (!o) return !0;
+  }, q = t.length, r = Array.isArray(n) && n.length > 0, l = e.filter((u) => {
+    if (!r) return !0;
     const B = u.tag?.split(" ") || [];
-    return a.some((D) => B.includes(D));
-  }), d = bt(q), m = o ? e.filter((u) => vt(t, u).some((D) => {
+    return n.some((D) => B.includes(D));
+  }), d = Se(q), m = r ? t.filter((u) => be(e, u).some((D) => {
     const O = D.tag?.split(" ") || [];
-    return a.some((z) => O.includes(z));
-  })) : e.slice(0, d.useTags);
+    return n.some((z) => O.includes(z));
+  })) : t.slice(0, d.useTags);
   if (m.length === 0)
     return /* @__PURE__ */ k("ul", { className: "task-app__list", children: l.map((u) => /* @__PURE__ */ k(
-      ut,
+      ue,
       {
         task: u,
-        pendingOperations: r,
-        onComplete: i,
-        onDelete: c,
+        pendingOperations: o,
+        onComplete: c,
+        onDelete: i,
         onAddTag: T,
         onDragStart: S,
         onDragEnd: p,
@@ -1022,25 +1050,25 @@ function Qt({
       },
       u.id
     )) });
-  const y = Kt(t, e, a).filter((u) => {
-    if (!o) return !0;
+  const y = Ke(e, t, n).filter((u) => {
+    if (!r) return !0;
     const B = u.tag?.split(" ") || [];
-    return a.some((D) => B.includes(D));
-  }), f = bt(m.length);
+    return n.some((D) => B.includes(D));
+  }), f = Se(m.length);
   return /* @__PURE__ */ A("div", { className: "task-app__dynamic-layout", children: [
-    f.rows.length > 0 && /* @__PURE__ */ k(Pt, { children: f.rows.map((u, B) => /* @__PURE__ */ k("div", { className: `task-app__tag-grid task-app__tag-grid--${u.columns}col`, children: u.tagIndices.map((D) => {
+    f.rows.length > 0 && /* @__PURE__ */ k(Re, { children: f.rows.map((u, B) => /* @__PURE__ */ k("div", { className: `task-app__tag-grid task-app__tag-grid--${u.columns}col`, children: u.tagIndices.map((D) => {
       const O = m[D];
-      return O ? L(O, V(O, f.maxPerColumn)) : null;
+      return O ? P(O, V(O, f.maxPerColumn)) : null;
     }) }, B)) }),
     y.length > 0 && /* @__PURE__ */ A(
       "div",
       {
-        className: `task-app__remaining ${n === "other" ? "task-app__tag-column--drag-over" : ""}`,
+        className: `task-app__remaining ${a === "other" ? "task-app__tag-column--drag-over" : ""}`,
         onDragOver: (u) => {
           u.preventDefault(), u.dataTransfer.dropEffect = "move", H(u, "other");
         },
         onDragLeave: (u) => K(u),
-        onDrop: (u) => F(u, "other"),
+        onDrop: (u) => M(u, "other"),
         children: [
           /* @__PURE__ */ A("div", { className: "task-app__tag-header-row", children: [
             /* @__PURE__ */ k("h3", { className: "task-app__remaining-header", children: "Other Tasks" }),
@@ -1048,19 +1076,19 @@ function Qt({
               "button",
               {
                 className: "task-app__sort-btn task-app__sort-btn--active",
-                onClick: () => P("other"),
+                onClick: () => L("other"),
                 title: R(s.other || "desc"),
-                children: M(s.other || "desc")
+                children: E(s.other || "desc")
               }
             )
           ] }),
           /* @__PURE__ */ k("ul", { className: "task-app__list", children: x(y, s.other || "desc").map((u) => /* @__PURE__ */ k(
-            ut,
+            ue,
             {
               task: u,
-              pendingOperations: r,
-              onComplete: i,
-              onDelete: c,
+              pendingOperations: o,
+              onComplete: c,
+              onDelete: i,
               onAddTag: T,
               onDragStart: S,
               onDragEnd: p,
@@ -1073,44 +1101,44 @@ function Qt({
     )
   ] });
 }
-function ft({
-  isOpen: t,
-  title: e,
-  onClose: a,
+function fe({
+  isOpen: e,
+  title: t,
+  onClose: n,
   onConfirm: s,
-  children: n,
-  inputValue: r,
-  onInputChange: i,
-  inputPlaceholder: c,
+  children: a,
+  inputValue: o,
+  onInputChange: c,
+  inputPlaceholder: i,
   confirmLabel: T = "Confirm",
   cancelLabel: S = "Cancel",
   confirmDisabled: p = !1,
   confirmDanger: b = !1
 }) {
-  return t ? /* @__PURE__ */ k(
+  return e ? /* @__PURE__ */ k(
     "div",
     {
       className: "modal-overlay",
-      onClick: a,
+      onClick: n,
       children: /* @__PURE__ */ A(
         "div",
         {
           className: "modal-card",
           onClick: (_) => _.stopPropagation(),
           children: [
-            /* @__PURE__ */ k("h3", { children: e }),
-            n,
-            i && /* @__PURE__ */ k(
+            /* @__PURE__ */ k("h3", { children: t }),
+            a,
+            c && /* @__PURE__ */ k(
               "input",
               {
                 type: "text",
                 className: "modal-input",
-                value: r || "",
-                onChange: (_) => i(_.target.value),
-                placeholder: c,
+                value: o || "",
+                onChange: (_) => c(_.target.value),
+                placeholder: i,
                 autoFocus: !0,
                 onKeyDown: (_) => {
-                  _.key === "Enter" && !p && (_.preventDefault(), s()), _.key === "Escape" && (_.preventDefault(), a());
+                  _.key === "Enter" && !p && (_.preventDefault(), s()), _.key === "Escape" && (_.preventDefault(), n());
                 }
               }
             ),
@@ -1119,7 +1147,7 @@ function ft({
                 "button",
                 {
                   className: "modal-button",
-                  onClick: a,
+                  onClick: n,
                   children: S
                 }
               ),
@@ -1139,42 +1167,42 @@ function ft({
     }
   ) : null;
 }
-function St({ isOpen: t, x: e, y: a, items: s }) {
-  return t ? /* @__PURE__ */ k(
+function _e({ isOpen: e, x: t, y: n, items: s }) {
+  return e ? /* @__PURE__ */ k(
     "div",
     {
       className: "board-context-menu",
       style: {
-        left: `${e}px`,
-        top: `${a}px`
+        left: `${t}px`,
+        top: `${n}px`
       },
-      children: s.map((n, r) => /* @__PURE__ */ k(
+      children: s.map((a, o) => /* @__PURE__ */ k(
         "button",
         {
-          className: `context-menu-item ${n.isDanger ? "context-menu-item--danger" : ""}`,
-          onClick: n.onClick,
-          children: n.label
+          className: `context-menu-item ${a.isDanger ? "context-menu-item--danger" : ""}`,
+          onClick: a.onClick,
+          children: a.label
         },
-        r
+        o
       ))
     }
   ) : null;
 }
-function mt(t) {
-  let e = [];
+function me(e) {
+  let t = [];
   try {
-    const a = t.getData("application/x-hadoku-task-ids");
-    a && (e = JSON.parse(a));
+    const n = e.getData("application/x-hadoku-task-ids");
+    n && (t = JSON.parse(n));
   } catch {
   }
-  if (e.length === 0) {
-    const a = t.getData("text/plain");
-    a && (e = [a]);
+  if (t.length === 0) {
+    const n = e.getData("text/plain");
+    n && (t = [n]);
   }
-  return e;
+  return t;
 }
-function Zt(t = {}) {
-  const { basename: e = "/task", apiUrl: a, environment: s, userType: n = "public", userId: r = "public", sessionId: i } = t, [c, T] = N(/* @__PURE__ */ new Set()), [S, p] = N([]), [b, $] = N(null), [_, W] = N(!1), [H, K] = N(!1), [F, P] = N(""), [x, M] = N("light"), [R, J] = N(!1), [U, G] = N(null), [L, V] = N(null), q = pt(null), o = pt(null), {
+function Ze(e = {}) {
+  const { basename: t = "/task", apiUrl: n, environment: s, userType: a = "public", userId: o = "public", sessionId: c } = e, [i, T] = N(/* @__PURE__ */ new Set()), [S, p] = N([]), [b, $] = N(null), [_, G] = N(!1), [H, K] = N(!1), [M, L] = N(""), [x, E] = N("light"), [R, J] = N(!1), [U, Q] = N(null), [P, V] = N(null), q = pe(null), r = pe(null), {
     tasks: l,
     pendingOperations: d,
     initialLoad: m,
@@ -1188,67 +1216,73 @@ function Zt(t = {}) {
     clearRemainingTasks: Y,
     // board API
     boards: j,
-    currentBoardId: rt,
-    createBoard: ct,
-    deleteBoard: Dt,
-    switchBoard: Bt,
-    moveTasksToBoard: yt,
-    createTagOnBoard: At,
-    deleteTagOnBoard: xt
-  } = zt({ userType: n, userId: r, sessionId: i }), v = Vt({
+    currentBoardId: re,
+    createBoard: ce,
+    deleteBoard: Be,
+    switchBoard: Ae,
+    moveTasksToBoard: ve,
+    createTagOnBoard: xe,
+    deleteTagOnBoard: Ce
+  } = ze({ userType: a, userId: o, sessionId: c }), v = Ve({
     tasks: l,
     onTaskUpdate: D,
     onBulkUpdate: O
-  }), ot = Wt();
-  st(() => {
-    console.log("[App] User context changed, initializing...", { userType: n, userId: r }), m(), q.current?.focus();
-  }, [n, r]), st(() => {
-    o.current && o.current.setAttribute("data-theme", x);
-  }, [x]), st(() => {
-    if (!R && !U && !L) return;
+  }), oe = We();
+  ee(() => {
+    Te(a, o, c).getPreferences().then((h) => {
+      E(h.theme);
+    });
+  }, [a, o, c]), ee(() => {
+    Te(a, o, c).savePreferences({ theme: x });
+  }, [x, a, o, c]), ee(() => {
+    console.log("[App] User context changed, initializing...", { userType: a, userId: o }), m(), q.current?.focus();
+  }, [a, o]), ee(() => {
+    r.current && r.current.setAttribute("data-theme", x);
+  }, [x]), ee(() => {
+    if (!R && !U && !P) return;
     const g = (h) => {
       const w = h.target;
-      w.closest(".theme-picker") || J(!1), w.closest(".board-context-menu") || G(null), w.closest(".tag-context-menu") || V(null);
+      w.closest(".theme-picker") || J(!1), w.closest(".board-context-menu") || Q(null), w.closest(".tag-context-menu") || V(null);
     };
     return document.addEventListener("mousedown", g), () => document.removeEventListener("mousedown", g);
-  }, [R, U, L]);
-  async function Ct(g) {
+  }, [R, U, P]);
+  async function Ne(g) {
     await y(g) && q.current && (q.current.value = "", q.current.focus());
   }
-  function Nt(g) {
+  function Oe(g) {
     const h = l.filter((w) => w.tag?.split(" ").includes(g));
     $({ tag: g, count: h.length });
   }
-  async function Ot(g) {
+  async function $e(g) {
     const h = g.trim().replace(/\s+/g, "-");
     try {
-      await At(h);
+      await xe(h);
       const w = window.__pendingTagTaskIds;
       if (w && w.length > 0) {
-        const Q = w.map((C) => {
-          const it = l.find((Lt) => Lt.id === C)?.tag?.split(" ").filter(Boolean) || [], Mt = [.../* @__PURE__ */ new Set([...it, h])];
-          return { taskId: C, tag: Mt.join(" ") };
+        const Z = w.map((C) => {
+          const ie = l.find((Le) => Le.id === C)?.tag?.split(" ").filter(Boolean) || [], Pe = [.../* @__PURE__ */ new Set([...ie, h])];
+          return { taskId: C, tag: Pe.join(" ") };
         });
-        await O(Q), v.clearSelection(), delete window.__pendingTagTaskIds;
+        await O(Z), v.clearSelection(), delete window.__pendingTagTaskIds;
       }
     } catch (w) {
       throw console.error("[App] Failed to create tag:", w), w;
     }
   }
-  async function $t(g) {
+  async function Ee(g) {
     const h = g.trim();
     try {
       const w = window.__pendingBoardTaskIds;
-      await ct(h), w && w.length > 0 && (await yt(h, w), v.clearSelection(), delete window.__pendingBoardTaskIds);
+      await ce(h), w && w.length > 0 && (await ve(h, w), v.clearSelection(), delete window.__pendingBoardTaskIds);
     } catch (w) {
       throw console.error("[App] Failed to create board:", w), w;
     }
   }
-  const Et = j?.boards?.find((g) => g.id === rt)?.tags || [], Ft = Yt(l, 6);
+  const Fe = j?.boards?.find((g) => g.id === re)?.tags || [], Me = Ye(l, 6);
   return /* @__PURE__ */ k(
     "div",
     {
-      ref: o,
+      ref: r,
       className: "task-app-container",
       onMouseDown: v.selectionStartHandler,
       onMouseMove: v.selectionMoveHandler,
@@ -1289,7 +1323,7 @@ function Zt(t = {}) {
                 {
                   className: `theme-picker__option ${x === "light" ? "active" : ""}`,
                   onClick: () => {
-                    M("light"), J(!1);
+                    E("light"), J(!1);
                   },
                   title: "Light theme",
                   children: "☀️"
@@ -1300,7 +1334,7 @@ function Zt(t = {}) {
                 {
                   className: `theme-picker__option ${x === "dark" ? "active" : ""}`,
                   onClick: () => {
-                    M("dark"), J(!1);
+                    E("dark"), J(!1);
                   },
                   title: "Dark theme",
                   children: "🌙"
@@ -1311,7 +1345,7 @@ function Zt(t = {}) {
                 {
                   className: `theme-picker__option ${x === "strawberry" ? "active" : ""}`,
                   onClick: () => {
-                    M("strawberry"), J(!1);
+                    E("strawberry"), J(!1);
                   },
                   title: "Strawberry theme",
                   children: "🍓"
@@ -1322,7 +1356,7 @@ function Zt(t = {}) {
                 {
                   className: `theme-picker__option ${x === "ocean" ? "active" : ""}`,
                   onClick: () => {
-                    M("ocean"), J(!1);
+                    E("ocean"), J(!1);
                   },
                   title: "Ocean theme",
                   children: "🌊"
@@ -1333,7 +1367,7 @@ function Zt(t = {}) {
                 {
                   className: `theme-picker__option ${x === "cyberpunk" ? "active" : ""}`,
                   onClick: () => {
-                    M("cyberpunk"), J(!1);
+                    E("cyberpunk"), J(!1);
                   },
                   title: "Cyberpunk theme",
                   children: "🤖"
@@ -1344,7 +1378,7 @@ function Zt(t = {}) {
                 {
                   className: `theme-picker__option ${x === "coffee" ? "active" : ""}`,
                   onClick: () => {
-                    M("coffee"), J(!1);
+                    E("coffee"), J(!1);
                   },
                   title: "Coffee theme",
                   children: "☕"
@@ -1355,7 +1389,7 @@ function Zt(t = {}) {
                 {
                   className: `theme-picker__option ${x === "lavender" ? "active" : ""}`,
                   onClick: () => {
-                    M("lavender"), J(!1);
+                    E("lavender"), J(!1);
                   },
                   title: "Lavender theme",
                   children: "🪻"
@@ -1368,16 +1402,16 @@ function Zt(t = {}) {
           /* @__PURE__ */ k("div", { className: "task-app__board-list", children: (j && j.boards ? j.boards.slice(0, 5) : [{ id: "main", name: "main" }]).map((g) => /* @__PURE__ */ k(
             "button",
             {
-              className: `board-btn ${rt === g.id ? "board-btn--active" : ""} ${v.dragOverFilter === `board:${g.id}` ? "board-btn--drag-over" : ""}`,
-              onClick: () => Bt(g.id),
+              className: `board-btn ${re === g.id ? "board-btn--active" : ""} ${v.dragOverFilter === `board:${g.id}` ? "board-btn--drag-over" : ""}`,
+              onClick: () => Ae(g.id),
               onContextMenu: (h) => {
-                h.preventDefault(), g.id !== "main" && G({ boardId: g.id, x: h.clientX, y: h.clientY });
+                h.preventDefault(), g.id !== "main" && Q({ boardId: g.id, x: h.clientX, y: h.clientY });
               },
               onTouchStart: (h) => {
                 if (g.id === "main") return;
                 const w = setTimeout(() => {
-                  const Q = h.touches[0];
-                  G({ boardId: g.id, x: Q.clientX, y: Q.clientY });
+                  const Z = h.touches[0];
+                  Q({ boardId: g.id, x: Z.clientX, y: Z.clientY });
                 }, 500);
                 h.currentTarget.__longPressTimer = w;
               },
@@ -1389,7 +1423,7 @@ function Zt(t = {}) {
                 const w = h.currentTarget.__longPressTimer;
                 w && (clearTimeout(w), h.currentTarget.__longPressTimer = null);
               },
-              "aria-pressed": rt === g.id ? "true" : "false",
+              "aria-pressed": re === g.id ? "true" : "false",
               onDragOver: (h) => {
                 h.preventDefault(), h.dataTransfer.dropEffect = "move";
                 try {
@@ -1409,16 +1443,16 @@ function Zt(t = {}) {
                   v.setDragOverFilter?.(null);
                 } catch {
                 }
-                const w = mt(h.dataTransfer);
+                const w = me(h.dataTransfer);
                 if (w.length !== 0)
                   try {
-                    await yt(g.id, w);
+                    await ve(g.id, w);
                     try {
                       v.clearSelection();
                     } catch {
                     }
-                  } catch (Q) {
-                    console.error("Failed moving tasks to board", Q), alert(Q.message || "Failed to move tasks");
+                  } catch (Z) {
+                    console.error("Failed moving tasks to board", Z), alert(Z.message || "Failed to move tasks");
                   }
               },
               children: g.name
@@ -1430,7 +1464,7 @@ function Zt(t = {}) {
             {
               className: `board-add-btn ${v.dragOverFilter === "add-board" ? "board-btn--drag-over" : ""}`,
               onClick: () => {
-                P(""), W(!0);
+                L(""), G(!0);
               },
               onDragOver: (g) => {
                 g.preventDefault(), g.dataTransfer.dropEffect = "move";
@@ -1451,8 +1485,8 @@ function Zt(t = {}) {
                   v.setDragOverFilter?.(null);
                 } catch {
                 }
-                const h = mt(g.dataTransfer);
-                h.length > 0 && (P(""), window.__pendingBoardTaskIds = h, W(!0));
+                const h = me(g.dataTransfer);
+                h.length > 0 && (L(""), window.__pendingBoardTaskIds = h, G(!0));
               },
               "aria-label": "Create board",
               children: "＋"
@@ -1466,15 +1500,15 @@ function Zt(t = {}) {
             className: "task-app__input",
             placeholder: "Type a task and press Enter…",
             onKeyDown: (g) => {
-              g.key === "Enter" && !g.shiftKey && (g.preventDefault(), Ct(g.target.value)), g.key === "k" && (g.ctrlKey || g.metaKey) && (g.preventDefault(), q.current?.focus());
+              g.key === "Enter" && !g.shiftKey && (g.preventDefault(), Ne(g.target.value)), g.key === "k" && (g.ctrlKey || g.metaKey) && (g.preventDefault(), q.current?.focus());
             }
           }
         ) }),
         /* @__PURE__ */ A("div", { className: "task-app__filters", children: [
           (() => {
-            const g = dt(l);
-            return Array.from(/* @__PURE__ */ new Set([...Et, ...g, ...S])).map((w) => {
-              const Q = c.has(w);
+            const g = de(l);
+            return Array.from(/* @__PURE__ */ new Set([...Fe, ...g, ...S])).map((w) => {
+              const Z = i.has(w);
               return /* @__PURE__ */ A(
                 "button",
                 {
@@ -1489,8 +1523,8 @@ function Zt(t = {}) {
                   },
                   onTouchStart: (C) => {
                     const X = setTimeout(() => {
-                      const it = C.touches[0];
-                      V({ tag: w, x: it.clientX, y: it.clientY });
+                      const ie = C.touches[0];
+                      V({ tag: w, x: ie.clientX, y: ie.clientY });
                     }, 500);
                     C.currentTarget.__longPressTimer = X;
                   },
@@ -1502,7 +1536,7 @@ function Zt(t = {}) {
                     const X = C.currentTarget.__longPressTimer;
                     X && (clearTimeout(X), C.currentTarget.__longPressTimer = null);
                   },
-                  className: `${Q ? "on" : ""} ${v.dragOverFilter === w ? "task-app__filter-drag-over" : ""}`,
+                  className: `${Z ? "on" : ""} ${v.dragOverFilter === w ? "task-app__filter-drag-over" : ""}`,
                   onDragOver: (C) => v.onFilterDragOver(C, w),
                   onDragLeave: v.onFilterDragLeave,
                   onDrop: (C) => v.onFilterDrop(C, w),
@@ -1520,7 +1554,7 @@ function Zt(t = {}) {
             {
               className: `task-app__filter-add ${v.dragOverFilter === "add-tag" ? "task-app__filter-drag-over" : ""}`,
               onClick: () => {
-                P(""), K(!0);
+                L(""), K(!0);
               },
               onDragOver: (g) => {
                 g.preventDefault(), g.dataTransfer.dropEffect = "copy", v.onFilterDragOver(g, "add-tag");
@@ -1528,8 +1562,8 @@ function Zt(t = {}) {
               onDragLeave: v.onFilterDragLeave,
               onDrop: async (g) => {
                 g.preventDefault(), v.onFilterDragLeave(g);
-                const h = mt(g.dataTransfer);
-                h.length > 0 && (P(""), window.__pendingTagTaskIds = h, K(!0));
+                const h = me(g.dataTransfer);
+                h.length > 0 && (L(""), window.__pendingTagTaskIds = h, K(!0));
               },
               "aria-label": "Add tag",
               children: "＋"
@@ -1537,16 +1571,16 @@ function Zt(t = {}) {
           )
         ] }),
         /* @__PURE__ */ k(
-          Qt,
+          Qe,
           {
             tasks: l,
-            topTags: Ft,
-            filters: Array.from(c),
+            topTags: Me,
+            filters: Array.from(i),
             selectedIds: v.selectedIds,
             onSelectionStart: v.selectionStartHandler,
             onSelectionMove: v.selectionMoveHandler,
             onSelectionEnd: v.selectionEndHandler,
-            sortDirections: ot.sortDirections,
+            sortDirections: oe.sortDirections,
             dragOverTag: v.dragOverTag,
             pendingOperations: d,
             onComplete: f,
@@ -1557,13 +1591,13 @@ function Zt(t = {}) {
             onDragOver: v.onDragOver,
             onDragLeave: v.onDragLeave,
             onDrop: v.onDrop,
-            toggleSort: ot.toggleSort,
-            sortTasksByAge: ot.sortTasksByAge,
-            getSortIcon: ot.getSortIcon,
-            getSortTitle: ot.getSortTitle,
-            clearTasksByTag: Nt,
+            toggleSort: oe.toggleSort,
+            sortTasksByAge: oe.sortTasksByAge,
+            getSortIcon: oe.getSortIcon,
+            getSortTitle: oe.getSortTitle,
+            clearTasksByTag: Oe,
             clearRemainingTasks: Y,
-            onDeletePersistedTag: xt
+            onDeletePersistedTag: Ce
           }
         ),
         v.isSelecting && v.marqueeRect && /* @__PURE__ */ k(
@@ -1579,7 +1613,7 @@ function Zt(t = {}) {
           }
         ),
         /* @__PURE__ */ k(
-          ft,
+          fe,
           {
             isOpen: !!b,
             title: `Clear Tag #${b?.tag}?`,
@@ -1608,28 +1642,28 @@ function Zt(t = {}) {
           }
         ),
         /* @__PURE__ */ k(
-          ft,
+          fe,
           {
             isOpen: _,
             title: "Create New Board",
             onClose: () => {
-              W(!1), delete window.__pendingBoardTaskIds;
+              G(!1), delete window.__pendingBoardTaskIds;
             },
             onConfirm: async () => {
-              if (F.trim()) {
-                W(!1);
+              if (M.trim()) {
+                G(!1);
                 try {
-                  await $t(F);
+                  await Ee(M);
                 } catch (g) {
                   console.error("[App] Failed to create board:", g);
                 }
               }
             },
-            inputValue: F,
-            onInputChange: P,
+            inputValue: M,
+            onInputChange: L,
             inputPlaceholder: "Board name",
             confirmLabel: "Create",
-            confirmDisabled: !F.trim(),
+            confirmDisabled: !M.trim(),
             children: (() => {
               const g = window.__pendingBoardTaskIds;
               return g && g.length > 0 ? /* @__PURE__ */ A("p", { className: "modal-hint", children: [
@@ -1642,7 +1676,7 @@ function Zt(t = {}) {
           }
         ),
         /* @__PURE__ */ A(
-          ft,
+          fe,
           {
             isOpen: H,
             title: "Create New Tag",
@@ -1650,20 +1684,20 @@ function Zt(t = {}) {
               K(!1), delete window.__pendingTagTaskIds;
             },
             onConfirm: async () => {
-              if (F.trim()) {
+              if (M.trim()) {
                 K(!1);
                 try {
-                  await Ot(F);
+                  await $e(M);
                 } catch (g) {
                   console.error("[App] Failed to create tag:", g);
                 }
               }
             },
-            inputValue: F,
-            onInputChange: P,
+            inputValue: M,
+            onInputChange: L,
             inputPlaceholder: "Enter new tag name",
             confirmLabel: "Create",
-            confirmDisabled: !F.trim(),
+            confirmDisabled: !M.trim(),
             children: [
               (() => {
                 const g = window.__pendingTagTaskIds;
@@ -1674,9 +1708,9 @@ function Zt(t = {}) {
                   g.length > 1 ? "s" : ""
                 ] }) : null;
               })(),
-              dt(l).length > 0 && /* @__PURE__ */ A("div", { className: "modal-section", children: [
+              de(l).length > 0 && /* @__PURE__ */ A("div", { className: "modal-section", children: [
                 /* @__PURE__ */ k("label", { className: "modal-label", children: "Existing tags:" }),
-                /* @__PURE__ */ k("div", { className: "modal-tags-list", children: dt(l).map((g) => /* @__PURE__ */ A("span", { className: "modal-tag-chip", children: [
+                /* @__PURE__ */ k("div", { className: "modal-tags-list", children: de(l).map((g) => /* @__PURE__ */ A("span", { className: "modal-tag-chip", children: [
                   "#",
                   g
                 ] }, g)) })
@@ -1685,7 +1719,7 @@ function Zt(t = {}) {
           }
         ),
         /* @__PURE__ */ k(
-          St,
+          _e,
           {
             isOpen: !!U,
             x: U?.x || 0,
@@ -1699,7 +1733,7 @@ function Zt(t = {}) {
                   const g = j?.boards?.find((h) => h.id === U.boardId)?.name || U.boardId;
                   if (confirm(`Delete board "${g}"? All tasks on this board will be permanently deleted.`))
                     try {
-                      await Dt(U.boardId), G(null);
+                      await Be(U.boardId), Q(null);
                     } catch (h) {
                       console.error("[App] Failed to delete board:", h), alert(h.message || "Failed to delete board");
                     }
@@ -1709,21 +1743,21 @@ function Zt(t = {}) {
           }
         ),
         /* @__PURE__ */ k(
-          St,
+          _e,
           {
-            isOpen: !!L,
-            x: L?.x || 0,
-            y: L?.y || 0,
+            isOpen: !!P,
+            x: P?.x || 0,
+            y: P?.y || 0,
             items: [
               {
                 label: "🗑️ Delete Tag",
                 isDanger: !0,
                 onClick: async () => {
-                  if (!L) return;
-                  const g = l.filter((h) => h.tag?.split(" ").includes(L.tag));
-                  if (confirm(`Delete tag "${L.tag}" and remove it from ${g.length} task(s)?`))
+                  if (!P) return;
+                  const g = l.filter((h) => h.tag?.split(" ").includes(P.tag));
+                  if (confirm(`Delete tag "${P.tag}" and remove it from ${g.length} task(s)?`))
                     try {
-                      await z(L.tag), V(null);
+                      await z(P.tag), V(null);
                     } catch (h) {
                       console.error("[App] Failed to delete tag:", h), alert(h.message || "Failed to delete tag");
                     }
@@ -1736,14 +1770,14 @@ function Zt(t = {}) {
     }
   );
 }
-function ne(t, e = {}) {
-  const a = new URLSearchParams(window.location.search), s = e.userType || a.get("userType") || "public", n = e.userId || a.get("userId") || "public", r = e.sessionId, i = { ...e, userType: s, userId: n, sessionId: r }, c = Rt(t);
-  c.render(/* @__PURE__ */ k(Zt, { ...i })), t.__root = c, console.log("[task-app] Mounted successfully", i);
+function nt(e, t = {}) {
+  const n = new URLSearchParams(window.location.search), s = t.userType || n.get("userType") || "public", a = t.userId || n.get("userId") || "public", o = t.sessionId, c = { ...t, userType: s, userId: a, sessionId: o }, i = Je(e);
+  i.render(/* @__PURE__ */ k(Ze, { ...c })), e.__root = i, console.log("[task-app] Mounted successfully", c);
 }
-function se(t) {
-  t.__root?.unmount();
+function st(e) {
+  e.__root?.unmount();
 }
 export {
-  ne as mount,
-  se as unmount
+  nt as mount,
+  st as unmount
 };
