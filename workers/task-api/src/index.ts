@@ -74,11 +74,11 @@ function createKVStorage(env: Env): TaskStorage {
 			// Default with a single 'main' board
 			return {
 				version: 1,
-				boards: [ { id: 'main', name: 'main', tags: [] } ],
+				boards: [ { id: 'main', name: 'main', tags: [], tasks: [] } ],
 				updatedAt: new Date().toISOString(),
 			};
 		},
-		async saveBoards(userType: UserType, userId: string | undefined, boards: BoardsFile) {
+		async saveBoards(userType: UserType, boards: BoardsFile, userId?: string) {
 			const key = boardKey(userType, userId);
 			await env.TASKS_KV.put(key, JSON.stringify(boards));
 		},
@@ -371,7 +371,7 @@ app.get('/task/api', async (c) => {
 	
 	logRequest('GET', '/task/api', { userType: auth.userType, userId, boardId: 'main' });
 	
-	const result = await TaskHandlers.getTasks(storage, { ...auth, userId }, 'main');
+	const result = await TaskHandlers.getBoardTasks(storage, { ...auth, userId }, 'main');
 	return ok(c, result);
 });
 
