@@ -91,8 +91,16 @@ function createKVStorage(env: Env): TaskStorage {
 			};
 		},
 		async saveBoards(userType: UserType, userId: string | undefined, boards: BoardsFile) {
+			console.log(`[KV] saveBoards CALLED - userType:`, userType, `userId:`, userId, `boards:`, boards);
+			console.log(`[KV] saveBoards - param types:`, { 
+				userType: typeof userType, 
+				userId: typeof userId, 
+				boards: typeof boards,
+				userTypeValue: userType,
+				userIdValue: userId
+			});
 			const key = boardKey(userType, userId);
-			console.log(`[KV] saveBoards - key: ${key}, boards:`, boards);
+			console.log(`[KV] saveBoards - key: ${key}`);
 			await env.TASKS_KV.put(key, JSON.stringify(boards));
 		},
 
@@ -359,6 +367,49 @@ app.delete('/task/api/tags', async (c) => {
 	
 	const result = await TaskHandlers.deleteTag(storage, { ...auth, userId }, body);
 	return c.json(result);
+});
+
+// Get user preferences
+app.get('/task/api/preferences', async (c) => {
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const { auth } = getContext(c);
+	const userType = auth.userType;
+	
+	// Use a consistent key format for preferences
+	const prefsKey = `prefs:${userType}:${userId || 'public'}`;
+	
+	try {
+		const prefs = await c.env.TASKS_KV.get(prefsKey, 'json');
+		if (prefs) {
+			return c.json(prefs);
+		}
+		// Return default preferences
+		return c.json({ theme: 'light' });
+	} catch (error: any) {
+		console.error('[GET /task/api/preferences] ERROR:', error);
+		return c.json({ theme: 'light' });
+	}
+});
+
+// Save user preferences
+app.put('/task/api/preferences', async (c) => {
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const { auth } = getContext(c);
+	const userType = auth.userType;
+	const body = await c.req.json();
+	
+	// Use a consistent key format for preferences
+	const prefsKey = `prefs:${userType}:${userId || 'public'}`;
+	
+	console.log('[PUT /task/api/preferences]', { userType, userId, prefs: body });
+	
+	try {
+		await c.env.TASKS_KV.put(prefsKey, JSON.stringify(body));
+		return c.json({ ok: true, message: 'Preferences saved' });
+	} catch (error: any) {
+		console.error('[PUT /task/api/preferences] ERROR:', error);
+		return c.json({ error: 'Failed to save preferences' }, 500);
+	}
 });
 
 // Backwards compatibility: old v1 list endpoint (maps to main board)
