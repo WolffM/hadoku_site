@@ -7,8 +7,12 @@ workers_dev = true
 [build]
 command = ""
 
-# Tell esbuild to treat node_modules as resolvable
-node_compat = true
+# Specify tsconfig to avoid scanning parent directories
+[build.upload]
+format = "modules"
+
+# Use node compat flag (compatibility_flags replaces node_compat)
+compatibility_flags = ["nodejs_compat"]
 
 # Routes removed - edge-router will proxy to workers.dev URL
 # routes = [
