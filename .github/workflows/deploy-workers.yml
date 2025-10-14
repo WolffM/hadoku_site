@@ -60,6 +60,11 @@ jobs:
           echo "@wolffm:registry=https://npm.pkg.github.com" > workers/task-api/.npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> workers/task-api/.npmrc
       
+      - name: Install shared worker dependencies
+        run: |
+          cd workers
+          npm install
+      
       - name: Install dependencies
         run: |
           cd workers/task-api
