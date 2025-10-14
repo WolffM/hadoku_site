@@ -87,6 +87,9 @@ async function handleApiRoute(
     console.warn(`Session ${sessionId} not found or expired`);
   }
   
+  // Read body once so we can reuse it in fallback attempts
+  const bodyBuffer = request.body ? await request.arrayBuffer() : null;
+  
   let lastErr: Error | null = null;
   
   for (const base of bases) {
@@ -108,7 +111,7 @@ async function handleApiRoute(
         fetch(targetUrl, {
           method: request.method,
           headers,
-          body: request.body,
+          body: bodyBuffer,
           redirect: 'manual'
         }),
         new Promise<Response>((_, reject) => 

@@ -150,23 +150,14 @@ app.get('/task/api/boards', async (c) => {
 	return c.json(result);
 });
 
-// Create a new board
+// Create a new board (TODO: Not yet implemented in @wolffm/task package)
 app.post('/task/api/boards', async (c) => {
-	const { storage, auth } = getContext(c);
-	const { boardId } = await c.req.json();
-	if (!boardId) return c.json({ error: 'boardId required' }, 400);
-	const userId = c.req.header('X-User-Id') || c.req.query('userId');
-	const result = await TaskHandlers.createBoard(storage, { ...auth, userId }, boardId);
-	return c.json(result, 201);
+	return c.json({ error: 'Board creation not yet implemented in task package' }, 501);
 });
 
-// Delete a board
+// Delete a board (TODO: Not yet implemented in @wolffm/task package)
 app.delete('/task/api/boards/:boardId', async (c) => {
-	const { storage, auth } = getContext(c);
-	const boardId = c.req.param('boardId');
-	const userId = c.req.header('X-User-Id') || c.req.query('userId');
-	await TaskHandlers.deleteBoard(storage, { ...auth, userId }, boardId);
-	return c.json({ success: true });
+	return c.json({ error: 'Board deletion not yet implemented in task package' }, 501);
 });
 
 // Get tasks for a board
@@ -174,7 +165,8 @@ app.get('/task/api/tasks', async (c) => {
 	const { storage, auth } = getContext(c);
 	const userId = c.req.query('userId');
 	const boardId = c.req.query('boardId') || 'main';
-	const result = await TaskHandlers.getTasks(storage, { ...auth, userId }, boardId);
+	// Note: getTasks exists in package but isn't exported, so we call storage directly
+	const result = await storage.getTasks(auth.userType, userId, boardId);
 	return c.json(result);
 });
 
@@ -226,28 +218,19 @@ app.get('/task/api/stats', async (c) => {
 	const { storage, auth } = getContext(c);
 	const userId = c.req.query('userId');
 	const boardId = c.req.query('boardId') || 'main';
-	const result = await TaskHandlers.getStats(storage, { ...auth, userId }, boardId);
+	// Note: getStats exists in package but isn't exported, so we call storage directly
+	const result = await storage.getStats(auth.userType, userId, boardId);
 	return c.json(result);
 });
 
-// Create tag on board
+// Create tag on board (TODO: Not yet implemented in @wolffm/task package)
 app.post('/task/api/tags', async (c) => {
-	const { storage, auth } = getContext(c);
-	const { boardId = 'main', tag } = await c.req.json();
-	if (!tag) return c.json({ error: 'tag required' }, 400);
-	const userId = c.req.header('X-User-Id') || c.req.query('userId');
-	const result = await TaskHandlers.createTag(storage, { ...auth, userId }, boardId, tag);
-	return c.json(result);
+	return c.json({ error: 'Tag management not yet implemented in task package' }, 501);
 });
 
-// Delete tag from board
+// Delete tag from board (TODO: Not yet implemented in @wolffm/task package)
 app.delete('/task/api/tags', async (c) => {
-	const { storage, auth } = getContext(c);
-	const { boardId = 'main', tag } = await c.req.json();
-	if (!tag) return c.json({ error: 'tag required' }, 400);
-	const userId = c.req.header('X-User-Id') || c.req.query('userId');
-	const result = await TaskHandlers.deleteTag(storage, { ...auth, userId }, boardId, tag);
-	return c.json(result);
+	return c.json({ error: 'Tag management not yet implemented in task package' }, 501);
 });
 
 // Backwards compatibility: old v1 list endpoint (maps to main board)
