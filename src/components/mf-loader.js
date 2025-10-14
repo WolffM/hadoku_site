@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           
           let userType = 'public';
           let userId = 'public';
+          let sessionId = null;
           
           if (key) {
             if (key === adminKey) {
@@ -74,13 +75,33 @@ document.addEventListener('DOMContentLoaded', async () => {
               userType = 'admin';
               userId = key;
             }
+            
+            // Create a session for this key (key stays server-side)
+            try {
+              const sessionResponse = await fetch('/session/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key })
+              });
+              
+              if (sessionResponse.ok) {
+                const sessionData = await sessionResponse.json();
+                sessionId = sessionData.sessionId;
+                console.log(`Session created: ${sessionId}`);
+              } else {
+                console.error('Failed to create session:', await sessionResponse.text());
+              }
+            } catch (err) {
+              console.error('Error creating session:', err);
+            }
           }
           
           // Merge registry props with runtime overrides
           const runtimeProps = {
             ...appConfig.props,
             userType,
-            userId
+            userId,
+            sessionId  // Pass sessionId to child app (not the key!)
           };
           
           console.log(`Mounting ${appName} with props:`, runtimeProps);

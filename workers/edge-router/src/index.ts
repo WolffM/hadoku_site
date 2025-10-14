@@ -19,6 +19,7 @@ interface Env {
   STATIC_ORIGIN: string;
   TASK_API?: any; // Optional service binding
   ANALYTICS_ENGINE?: any; // Analytics Engine binding
+  SESSIONS_KV?: KVNamespace; // Session storage
 }
 
 interface RouteConfig {
@@ -36,8 +37,13 @@ export default {
     let response: Response;
     let backend: LogEntry['backend'];
 
-    // API routes: apply fallback logic
-    if (path.startsWith('/task/api') || path.startsWith('/watchparty/api')) {
+    // Session management endpoint
+    if (path === '/session/create' && request.method === 'POST') {
+      response = await handleCreateSession(request, env);
+      backend = 'session';
+    }
+    // API routes: apply fallback logic with key injection
+    else if (path.startsWith('/task/api') || path.startsWith('/watchparty/api')) {
       const result = await handleApiRoute(request, path, env);
       response = result.response;
       backend = result.backend;
@@ -64,7 +70,7 @@ export default {
 };
 
 /**
- * Handle API routes with fallback logic
+ * Handle API routes with fallback logic and key injection
  */
 async function handleApiRoute(
   request: Request, 
@@ -72,6 +78,14 @@ async function handleApiRoute(
   env: Env
 ): Promise<{ response: Response; backend: LogEntry['backend'] }> {
   const bases = basesFor(path, env);
+  
+  // Look up session and inject key if present
+  const sessionId = request.headers.get('X-Session-Id');
+  const key = sessionId ? await getKeyForSession(sessionId, env) : null;
+  
+  if (sessionId && !key) {
+    console.warn(`Session ${sessionId} not found or expired`);
+  }
   
   let lastErr: Error | null = null;
   
@@ -82,6 +96,12 @@ async function handleApiRoute(
       // Clone headers and add loop prevention
       const headers = new Headers(request.headers);
       headers.set('X-No-Fallback', '1');
+      
+      // Inject the key if we have one from the session
+      if (key) {
+        headers.set('X-User-Key', key);
+        console.log(`Injected key from session ${sessionId} -> ${key.substring(0, 8)}...`);
+      }
       
       // Create request with timeout
       const res = await Promise.race([
@@ -196,4 +216,84 @@ function basesFor(path: string, env: Env): string[] {
     .split('')
     .map(digit => table[digit])
     .filter(Boolean); // Remove undefined values
+}
+
+/**
+ * Generate a secure random session ID
+ */
+function generateSessionId(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Handle session creation: POST /session/create with { key: "..." }
+ * Returns { sessionId: "..." }
+ */
+async function handleCreateSession(request: Request, env: Env): Promise<Response> {
+  if (!env.SESSIONS_KV) {
+    return new Response(
+      JSON.stringify({ error: 'Session storage not configured' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  try {
+    const body = await request.json() as { key?: string };
+    const key = body.key;
+
+    if (!key || typeof key !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid key' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Generate session ID
+    const sessionId = generateSessionId();
+
+    // Store mapping: sessionId -> key (expires in 24 hours)
+    await env.SESSIONS_KV.put(`session:${sessionId}`, key, {
+      expirationTtl: 86400 // 24 hours
+    });
+
+    console.log(`Created session ${sessionId} for key ${key.substring(0, 8)}...`);
+
+    return new Response(
+      JSON.stringify({ sessionId }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*', // Allow from static pages
+          'Access-Control-Allow-Methods': 'POST',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        }
+      }
+    );
+  } catch (e) {
+    console.error('Error creating session:', e);
+    return new Response(
+      JSON.stringify({ error: 'Failed to create session' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * Look up the key for a given sessionId
+ */
+async function getKeyForSession(sessionId: string | null, env: Env): Promise<string | null> {
+  if (!sessionId || !env.SESSIONS_KV) {
+    return null;
+  }
+
+  try {
+    const key = await env.SESSIONS_KV.get(`session:${sessionId}`);
+    return key;
+  } catch (e) {
+    console.error('Error fetching session:', e);
+    return null;
+  }
 }

@@ -2,8 +2,9 @@ name = "edge-router"
 main = "src/index.ts"
 compatibility_date = "2025-10-11"
 
-# Routes - only intercept API paths, let static content pass through
+# Routes - intercept API paths and session management
 routes = [
+  { pattern = "hadoku.me/session/*", zone_name = "hadoku.me" },
   { pattern = "hadoku.me/task/api*", zone_name = "hadoku.me" },
   { pattern = "hadoku.me/watchparty/api*", zone_name = "hadoku.me" }
 ]
@@ -19,6 +20,12 @@ STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"
 # Analytics Engine binding (automatic logging, zero setup)
 [[analytics_engine_datasets]]
 binding = "ANALYTICS_ENGINE"
+
+# KV Namespace for session management
+[[kv_namespaces]]
+binding = "SESSIONS_KV"
+id = "d2b6af9765194ceeaee92b639505ac1f"
+preview_id = "c9ca6763e1804b448a2f6597b8970c16"
 
 # Optional: Service binding to task-api Worker (faster than HTTP)
 # [[services]]

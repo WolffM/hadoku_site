@@ -43,7 +43,11 @@ app.use(
 
 // 2. Authentication Middleware
 app.use('*', async (c, next) => {
-	const providedKey = c.req.header('X-Admin-Key') || c.req.query('key');
+	// Check for key from edge-router injection or direct query param (for testing/legacy)
+	const providedKey = 
+		c.req.header('X-User-Key') ||      // Injected by edge-router from session
+		c.req.query('key');                // Direct query param (bypass edge-router for testing)
+
 	let userType: UserType = 'public';
 
 	if (providedKey === c.env.ADMIN_KEY) {
