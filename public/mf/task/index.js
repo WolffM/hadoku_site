@@ -2,10 +2,11 @@ import { jsxs as A, jsx as k, Fragment as Re } from "react/jsx-runtime";
 import { createRoot as Je } from "react-dom/client";
 import { useState as N, useMemo as Ue, useEffect as ee, useRef as pe } from "react";
 function je() {
-  const e = Date.now().toString(36).toUpperCase().padStart(8, "0"), t = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((n) => (n % 36).toString(36).toUpperCase()).join("");
+  const e = Date.now().toString(36).toUpperCase().padStart(8, "0"), t = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((a) => (a % 36).toString(36).toUpperCase()).join("");
   return e + t.slice(0, 18);
 }
-function I(e, t, n = 50) {
+const F = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+function I(e, t, a = 50) {
   setTimeout(() => {
     try {
       const s = new BroadcastChannel("tasks");
@@ -13,22 +14,22 @@ function I(e, t, n = 50) {
     } catch (s) {
       console.error("[localStorageApi] Broadcast failed:", s);
     }
-  }, n);
+  }, a);
 }
-const we = (e, t, n) => `${e}-${t}-${n}-tasks`, ye = (e, t, n) => `${e}-${t}-${n}-stats`, De = (e, t) => `${e}-${t}-boards`;
-function ne(e = "public", t = "public", n = "main") {
-  const s = localStorage.getItem(we(e, t, n));
+const we = (e, t, a) => `${e}-${t}-${a}-tasks`, ye = (e, t, a) => `${e}-${t}-${a}-stats`, De = (e, t) => `${e}-${t}-boards`;
+function ne(e = "public", t = "public", a = "main") {
+  const s = localStorage.getItem(we(e, t, a));
   return s ? JSON.parse(s) : {
     version: 1,
     updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
     tasks: []
   };
 }
-function se(e, t = "public", n = "public", s = "main") {
-  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(we(t, n, s), JSON.stringify(e));
+function se(e, t = "public", a = "public", s = "main") {
+  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(we(t, a, s), JSON.stringify(e));
 }
-function he(e = "public", t = "public", n = "main") {
-  const s = localStorage.getItem(ye(e, t, n));
+function he(e = "public", t = "public", a = "main") {
+  const s = localStorage.getItem(ye(e, t, a));
   return s ? JSON.parse(s) : {
     version: 2,
     updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -42,11 +43,11 @@ function he(e = "public", t = "public", n = "main") {
     tasks: {}
   };
 }
-function ke(e, t = "public", n = "public", s = "main") {
-  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(ye(t, n, s), JSON.stringify(e));
+function ke(e, t = "public", a = "public", s = "main") {
+  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(ye(t, a, s), JSON.stringify(e));
 }
-function le(e, t, n = "public", s = "public", a = "main") {
-  const o = he(n, s, a);
+function le(e, t, a = "public", s = "public", n = "main") {
+  const o = he(a, s, n);
   o.counters[e]++, o.timeline.push({
     t: (/* @__PURE__ */ new Date()).toISOString(),
     event: e,
@@ -59,131 +60,131 @@ function le(e, t, n = "public", s = "public", a = "main") {
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     closedAt: t.closedAt
-  }, ke(o, n, s, a);
+  }, ke(o, a, s, n);
 }
 function te(e = "public", t = "public") {
-  const n = localStorage.getItem(De(e, t));
-  return n ? JSON.parse(n) : { version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), boards: [] };
+  const a = localStorage.getItem(De(e, t));
+  return a ? JSON.parse(a) : { version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), boards: [] };
 }
-function ae(e, t = "public", n = "public") {
-  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(De(t, n), JSON.stringify(e));
+function ae(e, t = "public", a = "public") {
+  e.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), localStorage.setItem(De(t, a), JSON.stringify(e));
 }
 function Xe(e = "public", t = "public") {
   return {
     async getBoards() {
-      const n = te(e, t);
-      if (!n.boards || n.boards.length === 0) {
-        const a = { id: "main", name: "main", tasks: [], stats: void 0, tags: [] };
-        n.boards = [a], ae(n, e, t), se({ version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), tasks: [] }, e, t, "main"), ke({ version: 2, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), counters: { created: 0, completed: 0, edited: 0, deleted: 0 }, timeline: [], tasks: {} }, e, t, "main");
+      const a = te(e, t);
+      if (!a.boards || a.boards.length === 0) {
+        const n = { id: "main", name: "main", tasks: [], stats: void 0, tags: [] };
+        a.boards = [n], ae(a, e, t), se({ version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), tasks: [] }, e, t, "main"), ke({ version: 2, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), counters: { created: 0, completed: 0, edited: 0, deleted: 0 }, timeline: [], tasks: {} }, e, t, "main");
       }
-      const s = { version: n.version, updatedAt: n.updatedAt, boards: [] };
-      for (const a of n.boards) {
-        const o = ne(e, t, a.id), c = he(e, t, a.id), i = { id: a.id, name: a.name, tasks: o.tasks, stats: c, tags: a.tags || [] };
+      const s = { version: a.version, updatedAt: a.updatedAt, boards: [] };
+      for (const n of a.boards) {
+        const o = ne(e, t, n.id), c = he(e, t, n.id), i = { id: n.id, name: n.name, tasks: o.tasks, stats: c, tags: n.tags || [] };
         s.boards.push(i);
       }
       return s;
     },
-    async createBoard(n) {
+    async createBoard(a) {
       const s = te(e, t);
-      if (console.debug("[localStorageApi] createBoard", { userType: e, userId: t, boardId: n, existing: s.boards.map((o) => o.id) }), s.boards.find((o) => o.id === n))
+      if (console.debug("[localStorageApi] createBoard", { userType: e, userId: t, boardId: a, existing: s.boards.map((o) => o.id) }), s.boards.find((o) => o.id === a))
         throw new Error("Board already exists");
-      const a = { id: n, name: n, tasks: [], stats: void 0, tags: [] };
-      return s.boards.push(a), ae(s, e, t), se({ version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), tasks: [] }, e, t, n), ke({ version: 2, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), counters: { created: 0, completed: 0, edited: 0, deleted: 0 }, timeline: [], tasks: {} }, e, t, n), I("boards-updated", { sessionId: F, userType: e, userId: t }), a;
+      const n = { id: a, name: a, tasks: [], stats: void 0, tags: [] };
+      return s.boards.push(n), ae(s, e, t), se({ version: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), tasks: [] }, e, t, a), ke({ version: 2, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), counters: { created: 0, completed: 0, edited: 0, deleted: 0 }, timeline: [], tasks: {} }, e, t, a), I("boards-updated", { sessionId: F, userType: e, userId: t }), n;
     },
-    async deleteBoard(n) {
-      const s = te(e, t), a = s.boards.findIndex((o) => o.id === n);
-      if (a === -1) throw new Error("Board not found");
-      s.boards.splice(a, 1), ae(s, e, t), localStorage.removeItem(we(e, t, n)), localStorage.removeItem(ye(e, t, n)), I("boards-updated", { sessionId: F, userType: e, userId: t });
+    async deleteBoard(a) {
+      const s = te(e, t), n = s.boards.findIndex((o) => o.id === a);
+      if (n === -1) throw new Error("Board not found");
+      s.boards.splice(n, 1), ae(s, e, t), localStorage.removeItem(we(e, t, a)), localStorage.removeItem(ye(e, t, a)), I("boards-updated", { sessionId: F, userType: e, userId: t });
     },
-    async getTasks(n = "main") {
-      return ne(e, t, n);
+    async getTasks(a = "main") {
+      return ne(e, t, a);
     },
-    async getStats(n = "main") {
-      return he(e, t, n);
+    async getStats(a = "main") {
+      return he(e, t, a);
     },
-    async createTask(n, s = "main", a = !1) {
+    async createTask(a, s = "main", n = !1) {
       const o = ne(e, t, s), c = (/* @__PURE__ */ new Date()).toISOString(), i = {
         id: je(),
-        title: n.title,
-        tag: n.tag || null,
+        title: a.title,
+        tag: a.tag || null,
         state: "Active",
         createdAt: c,
         updatedAt: c,
         closedAt: null
       };
-      if (o.tasks.push(i), se(o, e, t, s), n.tag) {
+      if (o.tasks.push(i), se(o, e, t, s), a.tag) {
         const T = te(e, t), S = T.boards.find((p) => p.id === s);
         if (S) {
-          const p = S.tags || [], b = n.tag.split(" ").filter(Boolean).filter(($) => !p.includes($));
+          const p = S.tags || [], b = a.tag.split(" ").filter(Boolean).filter(($) => !p.includes($));
           b.length && (S.tags = [...p, ...b], ae(T, e, t));
         }
       }
-      return le("created", i, e, t, s), a ? console.log("[localStorageApi] createTask: broadcast suppressed") : (console.log("[localStorageApi] createTask: broadcasting update", { sessionId: F, boardId: s, taskId: i.id }), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s })), i;
+      return le("created", i, e, t, s), n ? console.log("[localStorageApi] createTask: broadcast suppressed") : (console.log("[localStorageApi] createTask: broadcasting update", { sessionId: F, boardId: s, taskId: i.id }), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s })), i;
     },
-    async patchTask(n, s, a = "main", o = !1) {
-      const c = ne(e, t, a), i = c.tasks.find((T) => T.id === n);
+    async patchTask(a, s, n = "main", o = !1) {
+      const c = ne(e, t, n), i = c.tasks.find((T) => T.id === a);
       if (!i)
         throw new Error("Task not found");
       if (s.title !== void 0 && (i.title = s.title), s.tag !== void 0 && (i.tag = s.tag), s.tag !== void 0) {
-        const T = te(e, t), S = T.boards.find((p) => p.id === a);
+        const T = te(e, t), S = T.boards.find((p) => p.id === n);
         if (S) {
           const p = S.tags || [], b = (s.tag || "").split(" ").filter(Boolean).filter(($) => !p.includes($));
           b.length && (S.tags = [...p, ...b], ae(T, e, t));
         }
       }
-      return i.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), se(c, e, t, a), le("edited", i, e, t, a), o || I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: a }), i;
+      return i.updatedAt = (/* @__PURE__ */ new Date()).toISOString(), se(c, e, t, n), le("edited", i, e, t, n), o || I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: n }), i;
     },
-    async completeTask(n, s = "main") {
-      const a = ne(e, t, s), o = a.tasks.find((i) => i.id === n);
+    async completeTask(a, s = "main") {
+      const n = ne(e, t, s), o = n.tasks.find((i) => i.id === a);
       if (!o)
         throw new Error("Task not found");
       const c = (/* @__PURE__ */ new Date()).toISOString();
-      return o.state = "Completed", o.updatedAt = c, o.closedAt = c, se(a, e, t, s), le("completed", o, e, t, s), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s }), o;
+      return o.state = "Completed", o.updatedAt = c, o.closedAt = c, se(n, e, t, s), le("completed", o, e, t, s), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s }), o;
     },
-    async deleteTask(n, s = "main", a = !1) {
-      console.log("[localStorageApi] deleteTask START", { id: n, boardId: s, suppressBroadcast: a, sessionId: F });
-      const o = ne(e, t, s), c = o.tasks.find((T) => T.id === n);
+    async deleteTask(a, s = "main", n = !1) {
+      console.log("[localStorageApi] deleteTask START", { id: a, boardId: s, suppressBroadcast: n, sessionId: F });
+      const o = ne(e, t, s), c = o.tasks.find((T) => T.id === a);
       if (!c)
         throw new Error("Task not found");
       const i = (/* @__PURE__ */ new Date()).toISOString();
-      return c.state = "Deleted", c.updatedAt = i, c.closedAt = i, se(o, e, t, s), le("deleted", c, e, t, s), a ? console.log("[localStorageApi] deleteTask: broadcast suppressed") : (console.log("[localStorageApi] deleteTask: broadcasting", { sessionId: F }), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s })), console.log("[localStorageApi] deleteTask END"), c;
+      return c.state = "Deleted", c.updatedAt = i, c.closedAt = i, se(o, e, t, s), le("deleted", c, e, t, s), n ? console.log("[localStorageApi] deleteTask: broadcast suppressed") : (console.log("[localStorageApi] deleteTask: broadcasting", { sessionId: F }), I("tasks-updated", { sessionId: F, userType: e, userId: t, boardId: s })), console.log("[localStorageApi] deleteTask END"), c;
     },
-    async createTag(n, s = "main") {
-      const a = te(e, t), o = a.boards.find((i) => i.id === s);
+    async createTag(a, s = "main") {
+      const n = te(e, t), o = n.boards.find((i) => i.id === s);
       if (!o) throw new Error("Board not found");
       const c = o.tags || [];
-      c.includes(n) || (o.tags = [...c, n], ae(a, e, t), I("boards-updated", { sessionId: F, userType: e, userId: t, boardId: s }));
+      c.includes(a) || (o.tags = [...c, a], ae(n, e, t), I("boards-updated", { sessionId: F, userType: e, userId: t, boardId: s }));
     },
-    async deleteTag(n, s = "main") {
-      const a = te(e, t), o = a.boards.find((i) => i.id === s);
+    async deleteTag(a, s = "main") {
+      const n = te(e, t), o = n.boards.find((i) => i.id === s);
       if (!o) throw new Error("Board not found");
       const c = o.tags || [];
-      o.tags = c.filter((i) => i !== n), ae(a, e, t), I("boards-updated", { sessionId: F, userType: e, userId: t, boardId: s });
+      o.tags = c.filter((i) => i !== a), ae(n, e, t), I("boards-updated", { sessionId: F, userType: e, userId: t, boardId: s });
     },
     // User preferences
     async getPreferences() {
-      const n = `${e}-${t}-preferences`, s = localStorage.getItem(n);
+      const a = `${e}-${t}-preferences`, s = localStorage.getItem(a);
       return s ? JSON.parse(s) : {
         version: 1,
         updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
         theme: "light"
       };
     },
-    async savePreferences(n) {
+    async savePreferences(a) {
       const s = `${e}-${t}-preferences`, o = {
         ...await this.getPreferences(),
-        ...n,
+        ...a,
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
       localStorage.setItem(s, JSON.stringify(o));
     }
   };
 }
-async function He(e, t, n, s) {
+async function He(e, t, a, s) {
   for (const c of t.boards || []) {
     const i = c.id;
     if (c.tasks && c.tasks.length > 0) {
-      const T = `${n}-${s}-${i}-tasks`, S = {
+      const T = `${a}-${s}-${i}-tasks`, S = {
         version: 1,
         updatedAt: t.updatedAt || (/* @__PURE__ */ new Date()).toISOString(),
         tasks: c.tasks
@@ -191,11 +192,11 @@ async function He(e, t, n, s) {
       window.localStorage.setItem(T, JSON.stringify(S));
     }
     if (c.stats) {
-      const T = `${n}-${s}-${i}-stats`;
+      const T = `${a}-${s}-${i}-stats`;
       window.localStorage.setItem(T, JSON.stringify(c.stats));
     }
   }
-  const a = `${n}-${s}-boards`, o = {
+  const n = `${a}-${s}-boards`, o = {
     version: 1,
     updatedAt: t.updatedAt || (/* @__PURE__ */ new Date()).toISOString(),
     boards: t.boards.map((c) => ({
@@ -204,19 +205,19 @@ async function He(e, t, n, s) {
       tags: c.tags || []
     }))
   };
-  window.localStorage.setItem(a, JSON.stringify(o)), console.log("[api] Synced API data to localStorage:", {
+  window.localStorage.setItem(n, JSON.stringify(o)), console.log("[api] Synced API data to localStorage:", {
     boards: t.boards?.length || 0,
     totalTasks: t.boards?.reduce((c, i) => c + (i.tasks?.length || 0), 0) || 0
   });
 }
-function W(e, t, n) {
+function W(e, t, a) {
   const s = {
     "Content-Type": "application/json",
     "X-User-Type": e
   };
-  return t && (s["X-User-Id"] = t), n && (s["X-Session-Id"] = n), s;
+  return t && (s["X-User-Id"] = t), a && (s["X-Session-Id"] = a), s;
 }
-function Te(e = "public", t = "public", n) {
+function Te(e = "public", t = "public", a) {
   const s = Xe(e, t);
   return e === "public" ? s : {
     // Get boards - returns localStorage immediately (optimistic)
@@ -227,154 +228,147 @@ function Te(e = "public", t = "public", n) {
     async syncFromApi() {
       try {
         console.log("[api] Syncing from API...");
-        const a = await fetch(`/task/api/boards?userType=${e}&userId=${encodeURIComponent(t)}`, {
-          headers: W(e, t, n)
+        const n = await fetch(`/task/api/boards?userType=${e}&userId=${encodeURIComponent(t)}`, {
+          headers: W(e, t, a)
         });
-        if (!a.ok)
-          throw new Error(`API returned ${a.status}`);
-        const o = await a.json();
+        if (!n.ok)
+          throw new Error(`API returned ${n.status}`);
+        const o = await n.json();
         console.log("[api] Synced from API:", { boards: o.boards?.length || 0, totalTasks: o.boards?.reduce((c, i) => c + (i.tasks?.length || 0), 0) || 0 }), await He(s, o, e, t);
-      } catch (a) {
-        console.error("[api] Sync from API failed:", a);
+      } catch (n) {
+        console.error("[api] Sync from API failed:", n);
       }
     },
-    async getStats(a = "main") {
-      return await s.getStats(a);
-    },
-    async createTask(a, o = "main", c = !1) {
-      const i = await s.createTask(a, o, c);
+    async createTask(n, o = "main", c = !1) {
+      const i = await s.createTask(n, o, c);
       return fetch("/task/api", {
         method: "POST",
-        headers: W(e, t, n),
+        headers: W(e, t, a),
         body: JSON.stringify({
           id: i.id,
           // Send client ID to server
-          ...a,
+          ...n,
           boardId: o
         })
       }).then((T) => T.json()).then((T) => {
         T.ok && (T.id === i.id ? console.log("[api] Background sync: createTask completed (ID matched)") : console.warn("[api] Server returned different ID (unexpected):", { client: i.id, server: T.id }));
       }).catch((T) => console.error("[api] Failed to sync createTask:", T)), i;
     },
-    async createTag(a, o = "main") {
-      const c = await s.createTag(a, o);
+    async createTag(n, o = "main") {
+      const c = await s.createTag(n, o);
       return fetch("/task/api/tags", {
         method: "POST",
-        headers: W(e, t, n),
-        body: JSON.stringify({ boardId: o, tag: a })
+        headers: W(e, t, a),
+        body: JSON.stringify({ boardId: o, tag: n })
       }).then(() => console.log("[api] Background sync: createTag completed")).catch((i) => console.error("[api] Failed to sync createTag:", i)), c;
     },
-    async deleteTag(a, o = "main") {
-      const c = await s.deleteTag(a, o);
+    async deleteTag(n, o = "main") {
+      const c = await s.deleteTag(n, o);
       return fetch("/task/api/tags", {
         method: "DELETE",
-        headers: W(e, t, n),
-        body: JSON.stringify({ boardId: o, tag: a })
+        headers: W(e, t, a),
+        body: JSON.stringify({ boardId: o, tag: n })
       }).then(() => console.log("[api] Background sync: deleteTag completed")).catch((i) => console.error("[api] Failed to sync deleteTag:", i)), c;
     },
-    async patchTask(a, o, c = "main", i = !1) {
-      const T = await s.patchTask(a, o, c, i);
-      return fetch(`/task/api/${a}`, {
+    async patchTask(n, o, c = "main", i = !1) {
+      const T = await s.patchTask(n, o, c, i);
+      return fetch(`/task/api/${n}`, {
         method: "PATCH",
-        headers: W(e, t, n),
+        headers: W(e, t, a),
         body: JSON.stringify({ ...o, boardId: c })
       }).then(() => console.log("[api] Background sync: patchTask completed")).catch((S) => console.error("[api] Failed to sync patchTask:", S)), T;
     },
-    async completeTask(a, o = "main") {
-      const c = await s.completeTask(a, o);
-      return fetch(`/task/api/${a}/complete`, {
+    async completeTask(n, o = "main") {
+      const c = await s.completeTask(n, o);
+      return fetch(`/task/api/${n}/complete`, {
         method: "POST",
-        headers: W(e, t, n),
+        headers: W(e, t, a),
         body: JSON.stringify({ boardId: o })
       }).then(() => console.log("[api] Background sync: completeTask completed")).catch((i) => console.error("[api] Failed to sync completeTask:", i)), c;
     },
-    async deleteTask(a, o = "main", c = !1) {
-      await s.deleteTask(a, o, c), fetch(`/task/api/${a}`, {
+    async deleteTask(n, o = "main", c = !1) {
+      await s.deleteTask(n, o, c), fetch(`/task/api/${n}`, {
         method: "DELETE",
-        headers: W(e, t, n),
+        headers: W(e, t, a),
         body: JSON.stringify({ boardId: o })
       }).then(() => console.log("[api] Background sync: deleteTask completed")).catch((i) => console.error("[api] Failed to sync deleteTask:", i));
     },
     // Board operations
-    async createBoard(a) {
-      const o = await s.createBoard(a);
+    async createBoard(n) {
+      const o = await s.createBoard(n);
       return fetch("/task/api/boards", {
         method: "POST",
-        headers: W(e, t, n),
-        body: JSON.stringify({ id: a, name: a })
+        headers: W(e, t, a),
+        body: JSON.stringify({ id: n, name: n })
       }).then(() => console.log("[api] Background sync: createBoard completed")).catch((c) => console.error("[api] Failed to sync createBoard:", c)), o;
     },
-    async deleteBoard(a) {
-      const o = await s.deleteBoard(a);
-      return fetch(`/task/api/boards/${encodeURIComponent(a)}`, {
+    async deleteBoard(n) {
+      const o = await s.deleteBoard(n);
+      return fetch(`/task/api/boards/${encodeURIComponent(n)}`, {
         method: "DELETE",
-        headers: W(e, t, n)
+        headers: W(e, t, a)
       }).then(() => console.log("[api] Background sync: deleteBoard completed")).catch((c) => console.error("[api] Failed to sync deleteBoard:", c)), o;
-    },
-    async getTasks(a = "main") {
-      return await s.getTasks(a);
     },
     // User preferences
     async getPreferences() {
       return await s.getPreferences();
     },
-    async savePreferences(a) {
-      await s.savePreferences(a), fetch("/task/api/preferences", {
+    async savePreferences(n) {
+      await s.savePreferences(n), fetch("/task/api/preferences", {
         method: "PUT",
-        headers: W(e, t, n),
-        body: JSON.stringify(a)
+        headers: W(e, t, a),
+        body: JSON.stringify(n)
       }).then(() => console.log("[api] Background sync: savePreferences completed")).catch((o) => console.error("[api] Failed to sync savePreferences:", o));
     }
   };
 }
 function qe(e) {
   e = e.trim();
-  const t = (a) => a.trim().replace(/\s+/g, "-"), n = e.match(/^["']([^"']+)["']\s*(.*)$/);
-  if (n) {
-    const a = n[1].trim(), c = n[2].match(/#[^\s#]+/g)?.map((i) => t(i.slice(1))).filter(Boolean) || [];
-    return { title: a, tag: c.length ? c.join(" ") : void 0 };
+  const t = (n) => n.trim().replace(/\s+/g, "-"), a = e.match(/^["']([^"']+)["']\s*(.*)$/);
+  if (a) {
+    const n = a[1].trim(), c = a[2].match(/#[^\s#]+/g)?.map((i) => t(i.slice(1))).filter(Boolean) || [];
+    return { title: n, tag: c.length ? c.join(" ") : void 0 };
   }
   const s = e.match(/^(.+?)\s+(#.+)$/);
   if (s) {
-    const a = s[1].trim(), c = s[2].match(/#[^\s#]+/g)?.map((i) => t(i.slice(1))).filter(Boolean) || [];
-    return { title: a, tag: c.length ? c.join(" ") : void 0 };
+    const n = s[1].trim(), c = s[2].match(/#[^\s#]+/g)?.map((i) => t(i.slice(1))).filter(Boolean) || [];
+    return { title: n, tag: c.length ? c.join(" ") : void 0 };
   }
   return { title: e.trim() };
 }
-function Ye(e, t = 6, n = []) {
-  const s = e.flatMap((o) => o.tag?.split(" ") || []).filter(Boolean), a = {};
-  return s.forEach((o) => a[o] = (a[o] || 0) + 1), n.filter(Boolean).forEach((o) => {
-    a[o] || (a[o] = 0);
-  }), Object.entries(a).sort((o, c) => c[1] - o[1]).slice(0, t).map(([o]) => o);
+function Ye(e, t = 6, a = []) {
+  const s = e.flatMap((o) => o.tag?.split(" ") || []).filter(Boolean), n = {};
+  return s.forEach((o) => n[o] = (n[o] || 0) + 1), a.filter(Boolean).forEach((o) => {
+    n[o] || (n[o] = 0);
+  }), Object.entries(n).sort((o, c) => c[1] - o[1]).slice(0, t).map(([o]) => o);
 }
 function be(e, t) {
-  return e.filter((n) => n.tag?.split(" ").includes(t));
+  return e.filter((a) => a.tag?.split(" ").includes(t));
 }
-function Ke(e, t, n) {
-  const s = Array.isArray(n) && n.length > 0;
-  return e.filter((a) => {
-    const o = a.tag?.split(" ") || [];
-    return s ? n.some((i) => o.includes(i)) && !t.some((i) => o.includes(i)) : !t.some((c) => o.includes(c));
+function Ke(e, t, a) {
+  const s = Array.isArray(a) && a.length > 0;
+  return e.filter((n) => {
+    const o = n.tag?.split(" ") || [];
+    return s ? a.some((i) => o.includes(i)) && !t.some((i) => o.includes(i)) : !t.some((c) => o.includes(c));
   });
 }
 function de(e) {
   return Array.from(new Set(e.flatMap((t) => t.tag?.split(" ") || []).filter(Boolean)));
 }
-const F = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-function ge(e, t, n, s = 50) {
+function ge(e, t, a, s = 50) {
   setTimeout(() => {
     try {
-      const a = new BroadcastChannel("tasks");
-      a.postMessage({ type: "tasks-updated", sessionId: e, userType: t, userId: n }), a.close();
-    } catch (a) {
-      console.error("[useTasks] Broadcast failed:", a);
+      const n = new BroadcastChannel("tasks");
+      n.postMessage({ type: "tasks-updated", sessionId: e, userType: t, userId: a }), n.close();
+    } catch (n) {
+      console.error("[useTasks] Broadcast failed:", n);
     }
   }, s);
 }
-function ze({ userType: e, userId: t, sessionId: n }) {
-  const [s, a] = N([]), [o, c] = N(/* @__PURE__ */ new Set()), i = Ue(
-    () => Te(e, t || "public", n),
-    [e, t, n]
+function ze({ userType: e, userId: t, sessionId: a }) {
+  const [s, n] = N([]), [o, c] = N(/* @__PURE__ */ new Set()), i = Ue(
+    () => Te(e, t || "public", a),
+    [e, t, a]
   ), [T, S] = N(null), [p, b] = N("main");
   async function $() {
     console.log("[useTasks] initialLoad called"), "syncFromApi" in i && await i.syncFromApi(), await _();
@@ -386,10 +380,10 @@ function ze({ userType: e, userId: t, sessionId: n }) {
     const r = await i.getBoards();
     S(r);
     const l = r.boards.find((d) => d.id === p);
-    l ? (console.log("[useTasks] reload: found current board", { boardId: l.id, taskCount: l.tasks?.length || 0 }), a((l.tasks || []).filter((d) => d.state === "Active"))) : (console.log("[useTasks] reload: board not found", { currentBoardId: p }), a([]));
+    l ? (console.log("[useTasks] reload: found current board", { boardId: l.id, taskCount: l.tasks?.length || 0 }), n((l.tasks || []).filter((d) => d.state === "Active"))) : (console.log("[useTasks] reload: board not found", { currentBoardId: p }), n([]));
   }
   ee(() => {
-    console.log("[useTasks] User context changed, clearing state and reloading", { userType: e, userId: t }), a([]), c(/* @__PURE__ */ new Set()), S(null), b("main"), _();
+    console.log("[useTasks] User context changed, clearing state and reloading", { userType: e, userId: t }), n([]), c(/* @__PURE__ */ new Set()), S(null), b("main"), _();
   }, [e, t]), ee(() => {
     console.log("[useTasks] Setting up BroadcastChannel listener", { currentBoardId: p, userType: e, userId: t });
     try {
@@ -530,7 +524,7 @@ function ze({ userType: e, userId: t, sessionId: n }) {
     const l = await i.getBoards();
     S(l);
     const d = l.boards.find((m) => m.id === r);
-    d ? (console.log("[useTasks] createBoard: switched to new board", { boardId: r, taskCount: d.tasks?.length || 0 }), a((d.tasks || []).filter((m) => m.state === "Active"))) : (console.log("[useTasks] createBoard: new board not found (should be empty)", { boardId: r }), a([]));
+    d ? (console.log("[useTasks] createBoard: switched to new board", { boardId: r, taskCount: d.tasks?.length || 0 }), n((d.tasks || []).filter((m) => m.state === "Active"))) : (console.log("[useTasks] createBoard: new board not found (should be empty)", { boardId: r }), n([]));
   }
   async function U(r, l) {
     if (console.log("[useTasks] moveTasksToBoard START", { targetBoardId: r, ids: l, currentBoardId: p }), !T) return;
@@ -545,7 +539,7 @@ function ze({ userType: e, userId: t, sessionId: n }) {
     const m = await i.getBoards();
     S(m);
     const y = m.boards.find((f) => f.id === r);
-    y && (console.log("[useTasks] moveTasksToBoard: loaded target board tasks", { count: y.tasks?.length || 0 }), a((y.tasks || []).filter((f) => f.state === "Active"))), console.log("[useTasks] moveTasksToBoard END");
+    y && (console.log("[useTasks] moveTasksToBoard: loaded target board tasks", { count: y.tasks?.length || 0 }), n((y.tasks || []).filter((f) => f.state === "Active"))), console.log("[useTasks] moveTasksToBoard END");
   }
   async function Q(r) {
     if (await i.deleteBoard(r), p === r) {
@@ -553,7 +547,7 @@ function ze({ userType: e, userId: t, sessionId: n }) {
       const l = await i.getBoards();
       S(l);
       const d = l.boards.find((m) => m.id === "main");
-      d ? (console.log("[useTasks] deleteBoard: switched to main board", { taskCount: d.tasks?.length || 0 }), a((d.tasks || []).filter((m) => m.state === "Active"))) : (console.log("[useTasks] deleteBoard: main board not found"), a([]));
+      d ? (console.log("[useTasks] deleteBoard: switched to main board", { taskCount: d.tasks?.length || 0 }), n((d.tasks || []).filter((m) => m.state === "Active"))) : (console.log("[useTasks] deleteBoard: main board not found"), n([]));
     } else
       await _();
   }
@@ -566,7 +560,7 @@ function ze({ userType: e, userId: t, sessionId: n }) {
   function q(r) {
     b(r);
     const l = T?.boards.find((d) => d.id === r);
-    l ? a((l.tasks || []).filter((d) => d.state === "Active")) : _();
+    l ? n((l.tasks || []).filter((d) => d.state === "Active")) : _();
   }
   return {
     // Task state
@@ -596,8 +590,8 @@ function ze({ userType: e, userId: t, sessionId: n }) {
     reload: _
   };
 }
-function Ve({ tasks: e, onTaskUpdate: t, onBulkUpdate: n }) {
-  const [s, a] = N(null), [o, c] = N(null), [i, T] = N(/* @__PURE__ */ new Set()), [S, p] = N(!1), [b, $] = N(null), [_, G] = N(null), H = pe(null);
+function Ve({ tasks: e, onTaskUpdate: t, onBulkUpdate: a }) {
+  const [s, n] = N(null), [o, c] = N(null), [i, T] = N(/* @__PURE__ */ new Set()), [S, p] = N(!1), [b, $] = N(null), [_, G] = N(null), H = pe(null);
   function K(r, l) {
     const d = i.has(l) && i.size > 0 ? Array.from(i) : [l];
     console.log("[useDragAndDrop] onDragStart", { taskId: l, idsToDrag: d, selectedCount: i.size }), r.dataTransfer.setData("text/plain", d[0]);
@@ -722,13 +716,13 @@ function Ve({ tasks: e, onTaskUpdate: t, onBulkUpdate: n }) {
     };
   }, []);
   function J(r, l) {
-    r.preventDefault(), r.dataTransfer.dropEffect = "copy", a(l);
+    r.preventDefault(), r.dataTransfer.dropEffect = "copy", n(l);
   }
   function U(r) {
-    r.currentTarget.contains(r.relatedTarget) || a(null);
+    r.currentTarget.contains(r.relatedTarget) || n(null);
   }
   async function Q(r, l) {
-    r.preventDefault(), a(null), console.log("[useDragAndDrop] onDrop START", { targetTag: l });
+    r.preventDefault(), n(null), console.log("[useDragAndDrop] onDrop START", { targetTag: l });
     let d = [];
     try {
       const f = r.dataTransfer.getData("application/x-hadoku-task-ids");
@@ -765,7 +759,7 @@ function Ve({ tasks: e, onTaskUpdate: t, onBulkUpdate: n }) {
     }
     console.log("[useDragAndDrop] onDrop: updating tasks", { updateCount: y.length });
     try {
-      await n(y), console.log("[useDragAndDrop] onDrop: updates complete, clearing selection");
+      await a(y), console.log("[useDragAndDrop] onDrop: updates complete, clearing selection");
       try {
         R();
       } catch {
@@ -827,7 +821,7 @@ function Ve({ tasks: e, onTaskUpdate: t, onBulkUpdate: n }) {
 }
 function We() {
   const [e, t] = N({});
-  function n(c) {
+  function a(c) {
     t((i) => {
       const S = (i[c] || "desc") === "desc" ? "asc" : "desc";
       return { ...i, [c]: S };
@@ -839,7 +833,7 @@ function We() {
       return i === "asc" ? p - b : b - p;
     });
   }
-  function a(c) {
+  function n(c) {
     return c === "asc" ? "↑" : "↓";
   }
   function o(c) {
@@ -847,28 +841,28 @@ function We() {
   }
   return {
     sortDirections: e,
-    toggleSort: n,
+    toggleSort: a,
     sortTasksByAge: s,
-    getSortIcon: a,
+    getSortIcon: n,
     getSortTitle: o
   };
 }
 function Ge(e) {
-  const t = /* @__PURE__ */ new Date(), n = new Date(e), s = t.getTime() - n.getTime(), a = Math.floor(s / 1e3), o = Math.floor(a / 60), c = Math.floor(o / 60), i = Math.floor(c / 24);
-  return a < 60 ? `${a}s ago` : o < 60 ? `${o}m ago` : c < 24 ? `${c}h ago` : `${i}d ago`;
+  const t = /* @__PURE__ */ new Date(), a = new Date(e), s = t.getTime() - a.getTime(), n = Math.floor(s / 1e3), o = Math.floor(n / 60), c = Math.floor(o / 60), i = Math.floor(c / 24);
+  return n < 60 ? `${n}s ago` : o < 60 ? `${o}m ago` : c < 24 ? `${c}h ago` : `${i}d ago`;
 }
 function ue({
   task: e,
   isDraggable: t = !0,
-  pendingOperations: n,
+  pendingOperations: a,
   onComplete: s,
-  onDelete: a,
+  onDelete: n,
   onAddTag: o,
   onDragStart: c,
   onDragEnd: i,
   selected: T = !1
 }) {
-  const S = n.has(`complete-${e.id}`), p = n.has(`delete-${e.id}`);
+  const S = a.has(`complete-${e.id}`), p = a.has(`delete-${e.id}`);
   return /* @__PURE__ */ A(
     "li",
     {
@@ -906,7 +900,7 @@ function ue({
             "button",
             {
               className: "task-app__action-btn task-app__delete-btn",
-              onClick: () => a(e.id),
+              onClick: () => n(e.id),
               title: "Delete task",
               disabled: S || p,
               children: p ? "⏳" : "×"
@@ -956,9 +950,9 @@ function Se(e) {
 function Qe({
   tasks: e,
   topTags: t,
-  filters: n,
+  filters: a,
   sortDirections: s,
-  dragOverTag: a,
+  dragOverTag: n,
   pendingOperations: o,
   onComplete: c,
   onDelete: i,
@@ -983,7 +977,7 @@ function Qe({
   const P = (u, B) => /* @__PURE__ */ A(
     "div",
     {
-      className: `task-app__tag-column ${a === u ? "task-app__tag-column--drag-over" : ""}`,
+      className: `task-app__tag-column ${n === u ? "task-app__tag-column--drag-over" : ""}`,
       onDragOver: (D) => H(D, u),
       onDragLeave: K,
       onDrop: (D) => M(D, u),
@@ -1025,15 +1019,15 @@ function Qe({
     let D = be(e, u);
     return r && (D = D.filter((O) => {
       const z = O.tag?.split(" ") || [];
-      return n.some((Y) => z.includes(Y));
+      return a.some((Y) => z.includes(Y));
     })), D.slice(0, B);
-  }, q = t.length, r = Array.isArray(n) && n.length > 0, l = e.filter((u) => {
+  }, q = t.length, r = Array.isArray(a) && a.length > 0, l = e.filter((u) => {
     if (!r) return !0;
     const B = u.tag?.split(" ") || [];
-    return n.some((D) => B.includes(D));
+    return a.some((D) => B.includes(D));
   }), d = Se(q), m = r ? t.filter((u) => be(e, u).some((D) => {
     const O = D.tag?.split(" ") || [];
-    return n.some((z) => O.includes(z));
+    return a.some((z) => O.includes(z));
   })) : t.slice(0, d.useTags);
   if (m.length === 0)
     return /* @__PURE__ */ k("ul", { className: "task-app__list", children: l.map((u) => /* @__PURE__ */ k(
@@ -1050,10 +1044,10 @@ function Qe({
       },
       u.id
     )) });
-  const y = Ke(e, t, n).filter((u) => {
+  const y = Ke(e, t, a).filter((u) => {
     if (!r) return !0;
     const B = u.tag?.split(" ") || [];
-    return n.some((D) => B.includes(D));
+    return a.some((D) => B.includes(D));
   }), f = Se(m.length);
   return /* @__PURE__ */ A("div", { className: "task-app__dynamic-layout", children: [
     f.rows.length > 0 && /* @__PURE__ */ k(Re, { children: f.rows.map((u, B) => /* @__PURE__ */ k("div", { className: `task-app__tag-grid task-app__tag-grid--${u.columns}col`, children: u.tagIndices.map((D) => {
@@ -1063,7 +1057,7 @@ function Qe({
     y.length > 0 && /* @__PURE__ */ A(
       "div",
       {
-        className: `task-app__remaining ${a === "other" ? "task-app__tag-column--drag-over" : ""}`,
+        className: `task-app__remaining ${n === "other" ? "task-app__tag-column--drag-over" : ""}`,
         onDragOver: (u) => {
           u.preventDefault(), u.dataTransfer.dropEffect = "move", H(u, "other");
         },
@@ -1104,9 +1098,9 @@ function Qe({
 function fe({
   isOpen: e,
   title: t,
-  onClose: n,
+  onClose: a,
   onConfirm: s,
-  children: a,
+  children: n,
   inputValue: o,
   onInputChange: c,
   inputPlaceholder: i,
@@ -1119,7 +1113,7 @@ function fe({
     "div",
     {
       className: "modal-overlay",
-      onClick: n,
+      onClick: a,
       children: /* @__PURE__ */ A(
         "div",
         {
@@ -1127,7 +1121,7 @@ function fe({
           onClick: (_) => _.stopPropagation(),
           children: [
             /* @__PURE__ */ k("h3", { children: t }),
-            a,
+            n,
             c && /* @__PURE__ */ k(
               "input",
               {
@@ -1138,7 +1132,7 @@ function fe({
                 placeholder: i,
                 autoFocus: !0,
                 onKeyDown: (_) => {
-                  _.key === "Enter" && !p && (_.preventDefault(), s()), _.key === "Escape" && (_.preventDefault(), n());
+                  _.key === "Enter" && !p && (_.preventDefault(), s()), _.key === "Escape" && (_.preventDefault(), a());
                 }
               }
             ),
@@ -1147,7 +1141,7 @@ function fe({
                 "button",
                 {
                   className: "modal-button",
-                  onClick: n,
+                  onClick: a,
                   children: S
                 }
               ),
@@ -1167,21 +1161,21 @@ function fe({
     }
   ) : null;
 }
-function _e({ isOpen: e, x: t, y: n, items: s }) {
+function _e({ isOpen: e, x: t, y: a, items: s }) {
   return e ? /* @__PURE__ */ k(
     "div",
     {
       className: "board-context-menu",
       style: {
         left: `${t}px`,
-        top: `${n}px`
+        top: `${a}px`
       },
-      children: s.map((a, o) => /* @__PURE__ */ k(
+      children: s.map((n, o) => /* @__PURE__ */ k(
         "button",
         {
-          className: `context-menu-item ${a.isDanger ? "context-menu-item--danger" : ""}`,
-          onClick: a.onClick,
-          children: a.label
+          className: `context-menu-item ${n.isDanger ? "context-menu-item--danger" : ""}`,
+          onClick: n.onClick,
+          children: n.label
         },
         o
       ))
@@ -1191,18 +1185,18 @@ function _e({ isOpen: e, x: t, y: n, items: s }) {
 function me(e) {
   let t = [];
   try {
-    const n = e.getData("application/x-hadoku-task-ids");
-    n && (t = JSON.parse(n));
+    const a = e.getData("application/x-hadoku-task-ids");
+    a && (t = JSON.parse(a));
   } catch {
   }
   if (t.length === 0) {
-    const n = e.getData("text/plain");
-    n && (t = [n]);
+    const a = e.getData("text/plain");
+    a && (t = [a]);
   }
   return t;
 }
 function Ze(e = {}) {
-  const { basename: t = "/task", apiUrl: n, environment: s, userType: a = "public", userId: o = "public", sessionId: c } = e, [i, T] = N(/* @__PURE__ */ new Set()), [S, p] = N([]), [b, $] = N(null), [_, G] = N(!1), [H, K] = N(!1), [M, L] = N(""), [x, E] = N("light"), [R, J] = N(!1), [U, Q] = N(null), [P, V] = N(null), q = pe(null), r = pe(null), {
+  const { basename: t = "/task", apiUrl: a, environment: s, userType: n = "public", userId: o = "public", sessionId: c } = e, [i, T] = N(/* @__PURE__ */ new Set()), [S, p] = N([]), [b, $] = N(null), [_, G] = N(!1), [H, K] = N(!1), [M, L] = N(""), [x, E] = N("light"), [R, J] = N(!1), [U, Q] = N(null), [P, V] = N(null), q = pe(null), r = pe(null), {
     tasks: l,
     pendingOperations: d,
     initialLoad: m,
@@ -1223,20 +1217,20 @@ function Ze(e = {}) {
     moveTasksToBoard: ve,
     createTagOnBoard: xe,
     deleteTagOnBoard: Ce
-  } = ze({ userType: a, userId: o, sessionId: c }), v = Ve({
+  } = ze({ userType: n, userId: o, sessionId: c }), v = Ve({
     tasks: l,
     onTaskUpdate: D,
     onBulkUpdate: O
   }), oe = We();
   ee(() => {
-    Te(a, o, c).getPreferences().then((h) => {
+    Te(n, o, c).getPreferences().then((h) => {
       E(h.theme);
     });
-  }, [a, o, c]), ee(() => {
-    Te(a, o, c).savePreferences({ theme: x });
-  }, [x, a, o, c]), ee(() => {
-    console.log("[App] User context changed, initializing...", { userType: a, userId: o }), m(), q.current?.focus();
-  }, [a, o]), ee(() => {
+  }, [n, o, c]), ee(() => {
+    Te(n, o, c).savePreferences({ theme: x });
+  }, [x, n, o, c]), ee(() => {
+    console.log("[App] User context changed, initializing...", { userType: n, userId: o }), m(), q.current?.focus();
+  }, [n, o]), ee(() => {
     r.current && r.current.setAttribute("data-theme", x);
   }, [x]), ee(() => {
     if (!R && !U && !P) return;
@@ -1771,7 +1765,7 @@ function Ze(e = {}) {
   );
 }
 function nt(e, t = {}) {
-  const n = new URLSearchParams(window.location.search), s = t.userType || n.get("userType") || "public", a = t.userId || n.get("userId") || "public", o = t.sessionId, c = { ...t, userType: s, userId: a, sessionId: o }, i = Je(e);
+  const a = new URLSearchParams(window.location.search), s = t.userType || a.get("userType") || "public", n = t.userId || a.get("userId") || "public", o = t.sessionId, c = { ...t, userType: s, userId: n, sessionId: o }, i = Je(e);
   i.render(/* @__PURE__ */ k(Ze, { ...c })), e.__root = i, console.log("[task-app] Mounted successfully", c);
 }
 function st(e) {
