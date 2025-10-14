@@ -153,10 +153,9 @@ app.get('/task/api/boards', async (c) => {
 // Create a new board
 app.post('/task/api/boards', async (c) => {
 	const { storage, auth } = getContext(c);
-	const { boardId } = await c.req.json();
-	if (!boardId) return c.json({ error: 'boardId required' }, 400);
+	const body = await c.req.json();
 	const userId = c.req.header('X-User-Id') || c.req.query('userId');
-	const result = await TaskHandlers.createBoard(storage, { ...auth, userId }, boardId);
+	const result = await TaskHandlers.createBoard(storage, { ...auth, userId }, body);
 	return c.json(result, 201);
 });
 
@@ -169,19 +168,13 @@ app.delete('/task/api/boards/:boardId', async (c) => {
 	return c.json({ success: true });
 });
 
-// Get tasks for a board (implemented locally - not in package)
+// Get tasks for a board
 app.get('/task/api/tasks', async (c) => {
 	const { storage, auth } = getContext(c);
 	const userId = c.req.query('userId');
 	const boardId = c.req.query('boardId') || 'main';
-	
-	try {
-		const tasks = await storage.getTasks(auth.userType, userId, boardId);
-		return c.json(tasks || { tasks: [], updatedAt: new Date().toISOString() });
-	} catch (error) {
-		console.error('Error getting tasks:', error);
-		return c.json({ error: 'Failed to get tasks' }, 500);
-	}
+	const result = await TaskHandlers.getBoardTasks(storage, { ...auth, userId }, boardId);
+	return c.json(result);
 });
 
 // Create task (boardId required)
@@ -227,29 +220,31 @@ app.delete('/task/api/:id', async (c) => {
 	return c.json({ success: true });
 });
 
-// Get stats for a board (implemented locally - not in package)
+// Get stats for a board
 app.get('/task/api/stats', async (c) => {
 	const { storage, auth } = getContext(c);
 	const userId = c.req.query('userId');
 	const boardId = c.req.query('boardId') || 'main';
-	
-	try {
-		const stats = await storage.getStats(auth.userType, userId, boardId);
-		return c.json(stats || { completed: [], totalCompleted: 0 });
-	} catch (error) {
-		console.error('Error getting stats:', error);
-		return c.json({ error: 'Failed to get stats' }, 500);
-	}
+	const result = await TaskHandlers.getBoardStats(storage, { ...auth, userId }, boardId);
+	return c.json(result);
 });
 
-// Create tag on board (TODO: Not yet implemented in @wolffm/task package)
+// Create tag on board
 app.post('/task/api/tags', async (c) => {
-	return c.json({ error: 'Tag management not yet implemented in task package' }, 501);
+	const { storage, auth } = getContext(c);
+	const body = await c.req.json();
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.createTag(storage, { ...auth, userId }, body);
+	return c.json(result);
 });
 
-// Delete tag from board (TODO: Not yet implemented in @wolffm/task package)
+// Delete tag from board
 app.delete('/task/api/tags', async (c) => {
-	return c.json({ error: 'Tag management not yet implemented in task package' }, 501);
+	const { storage, auth } = getContext(c);
+	const body = await c.req.json();
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.deleteTag(storage, { ...auth, userId }, body);
+	return c.json(result);
 });
 
 // Backwards compatibility: old v1 list endpoint (maps to main board)
