@@ -150,24 +150,38 @@ app.get('/task/api/boards', async (c) => {
 	return c.json(result);
 });
 
-// Create a new board (TODO: Not yet implemented in @wolffm/task package)
+// Create a new board
 app.post('/task/api/boards', async (c) => {
-	return c.json({ error: 'Board creation not yet implemented in task package' }, 501);
+	const { storage, auth } = getContext(c);
+	const { boardId } = await c.req.json();
+	if (!boardId) return c.json({ error: 'boardId required' }, 400);
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	const result = await TaskHandlers.createBoard(storage, { ...auth, userId }, boardId);
+	return c.json(result, 201);
 });
 
-// Delete a board (TODO: Not yet implemented in @wolffm/task package)
+// Delete a board
 app.delete('/task/api/boards/:boardId', async (c) => {
-	return c.json({ error: 'Board deletion not yet implemented in task package' }, 501);
+	const { storage, auth } = getContext(c);
+	const boardId = c.req.param('boardId');
+	const userId = c.req.header('X-User-Id') || c.req.query('userId');
+	await TaskHandlers.deleteBoard(storage, { ...auth, userId }, boardId);
+	return c.json({ success: true });
 });
 
-// Get tasks for a board
+// Get tasks for a board (implemented locally - not in package)
 app.get('/task/api/tasks', async (c) => {
 	const { storage, auth } = getContext(c);
 	const userId = c.req.query('userId');
 	const boardId = c.req.query('boardId') || 'main';
-	// Note: getTasks exists in package but isn't exported, so we call storage directly
-	const result = await storage.getTasks(auth.userType, userId, boardId);
-	return c.json(result);
+	
+	try {
+		const tasks = await storage.getTasks(auth.userType, userId, boardId);
+		return c.json(tasks || { tasks: [], updatedAt: new Date().toISOString() });
+	} catch (error) {
+		console.error('Error getting tasks:', error);
+		return c.json({ error: 'Failed to get tasks' }, 500);
+	}
 });
 
 // Create task (boardId required)
@@ -213,14 +227,19 @@ app.delete('/task/api/:id', async (c) => {
 	return c.json({ success: true });
 });
 
-// Get stats for a board
+// Get stats for a board (implemented locally - not in package)
 app.get('/task/api/stats', async (c) => {
 	const { storage, auth } = getContext(c);
 	const userId = c.req.query('userId');
 	const boardId = c.req.query('boardId') || 'main';
-	// Note: getStats exists in package but isn't exported, so we call storage directly
-	const result = await storage.getStats(auth.userType, userId, boardId);
-	return c.json(result);
+	
+	try {
+		const stats = await storage.getStats(auth.userType, userId, boardId);
+		return c.json(stats || { completed: [], totalCompleted: 0 });
+	} catch (error) {
+		console.error('Error getting stats:', error);
+		return c.json({ error: 'Failed to get stats' }, 500);
+	}
 });
 
 // Create tag on board (TODO: Not yet implemented in @wolffm/task package)
