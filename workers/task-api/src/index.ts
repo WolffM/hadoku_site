@@ -204,8 +204,8 @@ app.delete('/task/api/boards/:boardId', async (c) => {
 		return c.json({ error: 'Missing required parameter: board ID' }, 400);
 	}
 	
-	await TaskHandlers.deleteBoard(storage, { ...auth, userId }, boardId);
-	return c.json({ success: true });
+	const result = await TaskHandlers.deleteBoard(storage, { ...auth, userId }, boardId);
+	return c.json(result);
 });
 
 // Get tasks for a board
@@ -308,8 +308,8 @@ app.delete('/task/api/:id', async (c) => {
 		'X-Session-Id': c.req.header('X-Session-Id')
 	});
 	console.log(`[DELETE /task/api/:id] id: ${id}, userType: ${auth.userType}, userId: ${userId}, boardId: ${boardId}`);
-	await TaskHandlers.deleteTask(storage, { ...auth, userId }, id, boardId);
-	return c.json({ success: true });
+	const result = await TaskHandlers.deleteTask(storage, { ...auth, userId }, id, boardId);
+	return c.json(result);
 });
 
 // Get stats for a board
