@@ -2,10 +2,15 @@
 // This defines the props passed to each micro-app
 
 // Common interface for all micro-apps
+// These props are automatically injected by mf-loader.js at runtime
 export interface BaseAppProps {
   basename?: string;
   environment?: string;
-  userType?: 'admin' | 'friend' | 'public';
+  
+  // Auth props (injected by mf-loader.js)
+  userType?: 'admin' | 'friend' | 'public';  // Permission level
+  userId?: string;                            // User identifier (key or 'admin'/'friend'/'public')
+  sessionId?: string;                         // Session ID for API requests (never expose key!)
 }
 
 export interface WatchpartyConfig extends BaseAppProps {

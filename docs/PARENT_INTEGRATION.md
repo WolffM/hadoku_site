@@ -31,20 +31,26 @@ export function unmount(el: HTMLElement): void
 **Props provided by parent:**
 ```typescript
 interface AppProps {
+  // App-specific config
   basename?: string      // URL base path (e.g., '/myapp')
   apiUrl?: string        // API endpoint (e.g., '/myapp/api')
   environment?: string   // 'development' | 'production'
-  userType?: 'admin' | 'friend' | 'public'
+  
+  // Auth props (automatically injected by mf-loader.js)
+  userType?: 'admin' | 'friend' | 'public'  // Permission level
+  userId?: string                            // User identifier
+  sessionId?: string                         // Session ID for API calls
 }
 ```
 
 **Mounting lifecycle:**
 1. Parent loads `index.js` as ES module
-2. Parent calls `mount(element, props)`
-3. Child renders into provided element
-4. Child stores cleanup references on element
-5. Parent calls `unmount(element)` when navigating away
-6. Child cleans up listeners, timers, roots
+2. Parent extracts `?key=` from URL, creates session, gets sessionId
+3. Parent calls `mount(element, props)` with auth props (userType, userId, sessionId)
+4. Child renders into provided element
+5. Child uses sessionId in API requests (via `X-Session-Id` header)
+6. Parent calls `unmount(element)` when navigating away
+7. Child cleans up listeners, timers, roots
 
 ### Parent Page Structure
 
@@ -57,19 +63,19 @@ interface AppProps {
     <link rel="stylesheet" href="/mf/{app-name}/style.css">
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module">
-      import { mount } from '/mf/{app-name}/index.js'
-      
-      mount(document.getElementById('app'), {
-        apiUrl: '/{app-name}/api',
-        environment: 'production',
-        userType: 'friend'
-      })
-    </script>
+    <div id="root" data-app-name="{app-name}"></div>
+    <script src="/components/mf-loader.js"></script>
   </body>
 </html>
 ```
+
+**Note:** `mf-loader.js` automatically:
+- Loads app from registry
+- Extracts `?key=` from URL
+- Creates session via `/session/create`
+- Passes `{ userType, userId, sessionId }` to child's `mount()` function
+
+**Child apps receive these props automatically - no manual mounting needed**
 
 ### Deployment Flow
 
@@ -178,9 +184,30 @@ workers/{app-name}-api/
 
 ### Child Responsibilities
 
-- Accept userType from parent
-- Implement access control based on userType
+- Accept `userType`, `userId`, `sessionId` from parent props
+- **Always include `X-Session-Id` header in API requests**
+- Implement UI access control based on userType
 - Return appropriate errors for unauthorized access
+
+**API Request Pattern:**
+```typescript
+// Inside child app
+export function mount(el, props) {
+  const { sessionId, userType, userId } = props
+  
+  // Make API request with sessionId
+  fetch('/myapp/api/items', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-Id': sessionId  // Required!
+    },
+    body: JSON.stringify({ title: 'New item' })
+  })
+}
+```
+
+**Security:** Never expose the key itself. Only use sessionId for API calls.
 
 ---
 

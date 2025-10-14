@@ -97,6 +97,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           
           // Merge registry props with runtime overrides
+          // All child apps receive these standard auth props:
+          // - userType: 'admin' | 'friend' | 'public' (permission level)
+          // - userId: string (user identifier, defaults to userType)
+          // - sessionId: string | null (for API requests via X-Session-Id header)
           const runtimeProps = {
             ...appConfig.props,
             userType,

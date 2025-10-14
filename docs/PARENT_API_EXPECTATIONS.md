@@ -1,19 +1,30 @@
 # Parent API Expectations
 
-**Concise requirements for child packages to integrate with parent API workers**
+## Summary
+
+This document defines the **Universal Adapter Pattern** used across all child packages. The parent application handles authentication, session management, and request routing, but contains **no business logic**. All business logic lives in child packages as pure handler functions. The parent acts as an adapter layer that:
+
+- Creates and manages sessions (sessionId → API key mapping)
+- Routes API requests through the edge router with authentication
+- Provides storage interfaces and CORS handling
+- Mounts/unmounts child frontends with standard props
+
+Child packages export pure functions that receive typed contexts and return typed results. The parent wraps these handlers in HTTP/storage infrastructure.
 
 ---
 
-## Package Export Structure
+**Requirements for child packages to integrate with parent API workers**
 
-### Required Exports
+---
+
+## Required Exports
+
+Child package must export from `@wolffm/{app-name}/api`:
 
 ```typescript
-// From @wolffm/{app-name}/api
-
-// 1. Handlers object with pure functions
+// 1. Handlers object (pure functions)
 export const AppHandlers = {
-  handlerName: (storage: AppStorage, auth: AuthContext, ...args) => Promise<ReturnType>
+  handlerName: (storage, auth, ...args) => Promise<ReturnType>
 }
 
 // 2. Storage interface
@@ -24,209 +35,149 @@ export interface AppStorage {
 
 // 3. Auth context
 export interface AuthContext {
-  userType: 'admin' | 'friend' | 'public'
+  userType: 'admin' | 'friend' | 'public'  // Permission level
+  userId?: string                            // Data scoping identifier
 }
 
-// 4. Data types
-export interface AppDataType { /* ... */ }
+// 4. Data types (app-specific)
+export interface DataType { /* ... */ }
 ```
 
 ---
 
-## Handler Signature Rules
+## Handler Signature
 
-### Standard Pattern
-
-```typescript
-type Handler<T> = (
-  storage: AppStorage,    // Always first parameter
-  auth: AuthContext,      // Always second parameter
-  ...args: any[]          // Request-specific parameters
-) => Promise<T>
-```
-
-### Examples
+**Always:**
+1. First parameter: `storage: AppStorage`
+2. Second parameter: `auth: AuthContext`
+3. Additional parameters: request-specific data
+4. Return type: `Promise<T>`
 
 ```typescript
-// List items
-getItems: (storage, auth) => Promise<Item[]>
-
-// Get single item
-getItem: (storage, auth, id: string) => Promise<Item>
-
-// Create item
-createItem: (storage, auth, data: Partial<Item>) => Promise<Item>
-
-// Update item
-updateItem: (storage, auth, id: string, data: Partial<Item>) => Promise<Item>
-
-// Delete item
-deleteItem: (storage, auth, id: string) => Promise<void>
-
-// Batch operation
-batchUpdate: (storage, auth, ids: string[], changes: Partial<Item>) => Promise<Item[]>
+handlerName: (storage: AppStorage, auth: AuthContext, ...args) => Promise<T>
 ```
 
 ---
 
-## Return Values
+## Return Values & HTTP Status
 
-### Success Cases
+### Success
 
-| Operation | Return Type | HTTP Status |
-|-----------|-------------|-------------|
-| List/Query | `T[]` | 200 |
-| Get single | `T` | 200 |
-| Create | `T` | 201 |
-| Update | `T` | 200 |
-| Delete | `void` | 204 |
-| Partial success | `{ success: T[], failed: Error[] }` | 207 |
+| Return | HTTP Status | Example |
+|--------|-------------|---------|
+| `T[]` or `T` | 200 | Get/list items |
+| `T` | 201 | Create item |
+| `void` | 204 | Delete item |
 
-### Not Found Cases
+### Not Found
 
-**Return `null` or `undefined`:**
+Return `null` or `undefined` - parent converts to 404:
 ```typescript
-getItem: async (storage, auth, id) => {
-  const items = await storage.getFile('items.json')
-  return items.find(i => i.id === id) ?? null  // Returns null if not found
-}
+const item = items.find(i => i.id === id) ?? null
 ```
 
-**Parent converts to 404:**
+### Errors
+
+Throw `Error` - parent maps to HTTP status:
 ```typescript
-app.get('/item/:id', async (c) => {
-  const item = await AppHandlers.getItem(storage, auth, id)
-  if (!item) return c.json({ error: 'Not found' }, 404)
-  return c.json(item)
-})
+if (!data.title) throw new Error('Title is required')  // → 400
+if (auth.userType === 'public') throw new Error('Unauthorized')  // → 401
 ```
 
-### Error Cases
-
-**Throw errors for exceptional conditions:**
-```typescript
-createItem: async (storage, auth, data) => {
-  if (auth.userType === 'public') {
-    throw new Error('Unauthorized')  // Parent converts to 401
-  }
-  
-  if (!data.title) {
-    throw new Error('Title required')  // Parent converts to 400
-  }
-  
-  // ... create item
-}
-```
-
-**Parent HTTP mapping:**
-```typescript
-try {
-  const result = await handler(storage, auth, ...args)
-  return c.json(result, successCode)
-} catch (error) {
-  const status = mapErrorToStatus(error)
-  return c.json({ error: error.message }, status)
-}
-
-function mapErrorToStatus(error: Error): number {
-  const msg = error.message.toLowerCase()
-  if (msg.includes('unauthorized') || msg.includes('forbidden')) return 401
-  if (msg.includes('not found')) return 404
-  if (msg.includes('required') || msg.includes('invalid')) return 400
-  if (msg.includes('conflict') || msg.includes('already exists')) return 409
-  return 500
-}
-```
+**Error mapping keywords:**
+- `'unauthorized'` or `'forbidden'` → 401
+- `'not found'` → 404
+- `'required'` or `'invalid'` → 400
+- `'conflict'` or `'already exists'` → 409
+- Everything else → 500
 
 ---
 
-## Storage Interface Implementation
+## Storage Contract
 
-### Parent Provides
-
+**Child defines interface:**
 ```typescript
-const storage: AppStorage = {
-  getFile: async <T>(path: string): Promise<T> => {
-    // 1. Fetch from GitHub repo
-    const { data } = await octokit.repos.getContent({
-      owner: 'WolffM',
-      repo: 'hadoku_site',
-      path
-    })
-    
-    // 2. Decode and parse
-    const content = Buffer.from(data.content, 'base64').toString()
-    return JSON.parse(content)
-  },
-  
-  saveFile: async (path: string, data: unknown): Promise<void> => {
-    // 1. Get current SHA
-    const { data: existing } = await octokit.repos.getContent({ path })
-    
-    // 2. Commit new content
-    await octokit.repos.createOrUpdateFileContents({
-      owner: 'WolffM',
-      repo: 'hadoku_site',
-      path,
-      message: `Update ${path}`,
-      content: Buffer.from(JSON.stringify(data, null, 2)).toString('base64'),
-      sha: existing.sha
-    })
-  }
+export interface AppStorage {
+  getFile<T>(path: string): Promise<T>
+  saveFile(path: string, data: unknown): Promise<void>
 }
 ```
 
-### Child Expectations
-
-- `getFile()` throws if file doesn't exist
-- `saveFile()` creates or updates file atomically
-- JSON serialization handled by parent
+**Parent implements:**
+- `getFile()` - Fetches and parses JSON
+- `saveFile()` - Commits JSON atomically
+- Throws if file doesn't exist
 - Paths relative to repo root
 
 ---
 
-## Auth Context Implementation
+## Auth Flow (Session-Based)
 
-### Parent Provides
+### 1. Page Load
+Parent creates session from URL key:
+```javascript
+const sessionId = await fetch('/session/create', {
+  method: 'POST',
+  body: JSON.stringify({ key })
+}).then(r => r.json())
 
-```typescript
-// Middleware extracts userType
-app.use('/api/*', async (c, next) => {
-  const key = c.req.header('X-Admin-Key')
-  
-  if (key === c.env.ADMIN_KEY) {
-    c.set('userType', 'admin')
-  } else if (key === c.env.FRIEND_KEY) {
-    c.set('userType', 'friend')
-  } else {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
-  
-  await next()
-})
+mount(element, { userType, userId, sessionId })
+```
 
-// Route handler creates context
-app.get('/items', async (c) => {
-  const auth: AuthContext = {
-    userType: c.get('userType')
-  }
-  
-  const items = await AppHandlers.getItems(storage, auth)
-  return c.json(items)
+### 2. Child Makes Request
+Child sends sessionId (not key):
+```javascript
+fetch('/app/api/endpoint', {
+  headers: { 'X-Session-Id': props.sessionId }
 })
 ```
 
-### Child Expectations
+### 3. Edge Router Injects Key
+Edge router resolves session → injects key:
+```typescript
+const key = await getKeyFromSession(sessionId)
+request.headers.set('X-User-Key', key)
+// Proxy to API worker
+```
 
-- `auth.userType` is always present
-- Already authenticated (no need to validate)
-- Implement permission checks based on userType
+### 4. API Worker Authenticates
+Parent validates key, creates AuthContext:
+```typescript
+// Middleware extracts userType from key
+app.use('/api/*', createKeyAuth((env) => ({
+  [env.ADMIN_KEY]: 'admin',
+  [env.FRIEND_KEY]: 'friend'
+})))
+
+// Route creates auth context, calls handler
+app.get('/endpoint', async (c) => {
+  const { userId } = extractUserContext(c)
+  const auth = { userType: c.get('userType'), userId }
+  const result = await AppHandlers.handlerName(storage, auth)
+  return c.json(result)
+})
+```
+
+### 5. Child Handler Uses Auth
+Handlers use auth for permissions and data scoping:
+```typescript
+handlerName: async (storage, auth) => {
+  // Permission check
+  if (auth.userType === 'public') throw new Error('Unauthorized')
+  
+  // Data scoping with userId
+  const path = `data/${auth.userType}/${auth.userId}/file.json`
+  return await storage.getFile(path)
+}
+```
+
+**Security:** Child never sees the key. Parent validates key → creates auth context → passes to handler.
 
 ---
 
 ## Parameter Extraction
 
-### Parent Extracts from Request
+Parent extracts from request, passes to handler:
 
 ```typescript
 // Path parameters
@@ -234,287 +185,145 @@ const id = c.req.param('id')
 
 // Query parameters
 const page = c.req.query('page')
-const limit = c.req.query('limit')
 
 // Body (JSON)
-const body = await c.req.json()
+const data = await c.req.json()
 
-// Headers
-const contentType = c.req.header('content-type')
-```
-
-### Child Receives as Arguments
-
-```typescript
-// Parent route
-app.get('/items/:id', async (c) => {
-  const id = c.req.param('id')
-  const item = await AppHandlers.getItem(storage, auth, id)
-  return c.json(item)
-})
-
-app.post('/items', async (c) => {
-  const data = await c.req.json()
-  const item = await AppHandlers.createItem(storage, auth, data)
-  return c.json(item, 201)
-})
-
-app.get('/items', async (c) => {
-  const page = parseInt(c.req.query('page') ?? '1')
-  const limit = parseInt(c.req.query('limit') ?? '10')
-  const items = await AppHandlers.listItems(storage, auth, { page, limit })
-  return c.json(items)
-})
+// Pass to handler
+const result = await AppHandlers.handlerName(storage, auth, id, data)
 ```
 
 ---
 
 ## Validation
 
-### Child Validates Input
-
+**Child validates input:**
 ```typescript
-createItem: async (storage, auth, data) => {
+handlerName: async (storage, auth, data) => {
   // Required fields
-  if (!data.title) throw new Error('Title is required')
-  if (!data.content) throw new Error('Content is required')
+  if (!data.field) throw new Error('Field is required')
   
   // Type validation
-  if (typeof data.title !== 'string') throw new Error('Title must be a string')
+  if (typeof data.field !== 'string') throw new Error('Field must be string')
   
-  // Length constraints
-  if (data.title.length > 100) throw new Error('Title must be ≤100 characters')
+  // Constraints
+  if (data.field.length > 100) throw new Error('Field must be ≤100 chars')
   
-  // Enum validation
-  if (data.status && !['draft', 'published'].includes(data.status)) {
-    throw new Error('Invalid status')
-  }
-  
-  // ... proceed with creation
+  // ... proceed
 }
 ```
 
-### Parent Catches Validation Errors
-
+**Parent catches errors:**
 ```typescript
-app.post('/items', async (c) => {
-  try {
-    const data = await c.req.json()
-    const item = await AppHandlers.createItem(storage, auth, data)
-    return c.json(item, 201)
-  } catch (error) {
-    // Validation errors become 400
-    if (error.message.includes('required') || error.message.includes('invalid')) {
-      return c.json({ error: error.message }, 400)
-    }
-    throw error
+try {
+  const result = await AppHandlers.handlerName(storage, auth, data)
+  return c.json(result, 201)
+} catch (error) {
+  if (error.message.includes('required')) {
+    return c.json({ error: error.message }, 400)
   }
-})
+  throw error
+}
 ```
 
 ---
 
 ## Common Patterns
 
-### List with Pagination
+### CRUD Operations
 
 ```typescript
-// Child handler
-listItems: async (storage, auth, options?: { page?: number; limit?: number }) => {
-  const { page = 1, limit = 10 } = options ?? {}
-  const items = await storage.getFile('items.json')
+export const AppHandlers = {
+  // List all
+  list: async (storage, auth) => {
+    const data = await storage.getFile('data.json')
+    return data.items
+  },
   
-  const start = (page - 1) * limit
-  const end = start + limit
+  // Get single (return null if not found)
+  get: async (storage, auth, id) => {
+    const data = await storage.getFile('data.json')
+    return data.items.find(i => i.id === id) ?? null
+  },
   
-  return {
-    items: items.slice(start, end),
-    total: items.length,
-    page,
-    limit
+  // Create (generate ID)
+  create: async (storage, auth, input) => {
+    const item = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...input }
+    const data = await storage.getFile('data.json')
+    data.items.push(item)
+    await storage.saveFile('data.json', data)
+    return item
+  },
+  
+  // Update (return null if not found)
+  update: async (storage, auth, id, changes) => {
+    const data = await storage.getFile('data.json')
+    const index = data.items.findIndex(i => i.id === id)
+    if (index === -1) return null
+    data.items[index] = { ...data.items[index], ...changes, updatedAt: new Date().toISOString() }
+    await storage.saveFile('data.json', data)
+    return data.items[index]
+  },
+  
+  // Delete (return null if not found)
+  delete: async (storage, auth, id) => {
+    const data = await storage.getFile('data.json')
+    const filtered = data.items.filter(i => i.id !== id)
+    if (filtered.length === data.items.length) return null
+    data.items = filtered
+    await storage.saveFile('data.json', data)
   }
 }
-
-// Parent route
-app.get('/items', async (c) => {
-  const page = parseInt(c.req.query('page') ?? '1')
-  const limit = parseInt(c.req.query('limit') ?? '10')
-  const result = await AppHandlers.listItems(storage, auth, { page, limit })
-  return c.json(result)
-})
-```
-
-### Create with ID Generation
-
-```typescript
-// Child handler
-createItem: async (storage, auth, data) => {
-  const newItem = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...data
-  }
-  
-  const items = await storage.getFile('items.json')
-  items.push(newItem)
-  await storage.saveFile('items.json', items)
-  
-  return newItem
-}
-
-// Parent route
-app.post('/items', async (c) => {
-  const data = await c.req.json()
-  const item = await AppHandlers.createItem(storage, auth, data)
-  return c.json(item, 201)
-})
-```
-
-### Update with Merge
-
-```typescript
-// Child handler
-updateItem: async (storage, auth, id, changes) => {
-  const items = await storage.getFile('items.json')
-  const index = items.findIndex(i => i.id === id)
-  
-  if (index === -1) return null
-  
-  items[index] = {
-    ...items[index],
-    ...changes,
-    updatedAt: new Date().toISOString()
-  }
-  
-  await storage.saveFile('items.json', items)
-  return items[index]
-}
-
-// Parent route
-app.patch('/items/:id', async (c) => {
-  const id = c.req.param('id')
-  const changes = await c.req.json()
-  const item = await AppHandlers.updateItem(storage, auth, id, changes)
-  
-  if (!item) return c.json({ error: 'Not found' }, 404)
-  return c.json(item)
-})
-```
-
-### Delete with Confirmation
-
-```typescript
-// Child handler
-deleteItem: async (storage, auth, id) => {
-  const items = await storage.getFile('items.json')
-  const filtered = items.filter(i => i.id !== id)
-  
-  if (filtered.length === items.length) {
-    return null  // Item not found
-  }
-  
-  await storage.saveFile('items.json', filtered)
-}
-
-// Parent route
-app.delete('/items/:id', async (c) => {
-  const id = c.req.param('id')
-  const result = await AppHandlers.deleteItem(storage, auth, id)
-  
-  if (result === null) return c.json({ error: 'Not found' }, 404)
-  return c.body(null, 204)
-})
 ```
 
 ---
 
-## HTTP Status Code Reference
+## Response Formats
 
-| Status | Use Case | Example |
-|--------|----------|---------|
-| 200 | Successful GET, PUT, PATCH | Return item/list |
-| 201 | Successful POST (created) | Created new item |
-| 204 | Successful DELETE | Deleted item |
-| 400 | Validation error | Missing required field |
-| 401 | Auth error | Invalid API key |
-| 403 | Permission denied | Wrong userType |
-| 404 | Resource not found | Item doesn't exist |
-| 409 | Conflict | Duplicate ID |
-| 500 | Server error | Unexpected exception |
-
----
-
-## Response Format Standards
-
-### Success Response
-
+### Success
 ```typescript
-// Single item
-{ id: '123', title: 'Item', ... }
+// Single resource
+{ id: '123', field: 'value' }
 
-// List
-[{ id: '1', ... }, { id: '2', ... }]
+// Collection
+[{ id: '1' }, { id: '2' }]
 
-// Paginated list
-{
-  items: [{ id: '1', ... }],
-  total: 100,
-  page: 1,
-  limit: 10
-}
+// Paginated
+{ items: [...], total: 100, page: 1, limit: 10 }
 
 // No content (204)
 null
 ```
 
-### Error Response
-
+### Error
 ```typescript
-{
-  error: 'Human-readable error message'
-}
+// Simple
+{ error: 'Human-readable message' }
 
-// With validation details
-{
-  error: 'Validation failed',
-  details: [
-    { field: 'title', message: 'Title is required' },
-    { field: 'status', message: 'Invalid status value' }
-  ]
-}
+// Detailed
+{ error: 'Validation failed', details: [{ field: 'name', message: 'Required' }] }
 ```
 
 ---
 
-## Summary Checklist
+## Checklist
 
-### Child Package Must Export
-
-- [ ] `AppHandlers` object with pure functions
-- [ ] `AppStorage` interface
-- [ ] `AuthContext` interface
-- [ ] Data type interfaces
-
-### Handler Requirements
-
-- [ ] First parameter: `storage: AppStorage`
-- [ ] Second parameter: `auth: AuthContext`
-- [ ] Additional parameters: request-specific data
-- [ ] Return type: `Promise<T>`
-- [ ] Return `null/undefined` for not found
+**Child package:**
+- [ ] Export `AppHandlers` with pure functions
+- [ ] Export `AppStorage` interface
+- [ ] Export `AuthContext` interface
+- [ ] Export data type interfaces
+- [ ] First param: `storage`, second param: `auth`
+- [ ] Return `null` for not found
 - [ ] Throw `Error` for exceptional cases
-- [ ] Validate input and throw descriptive errors
+- [ ] Validate input, throw descriptive errors
 
-### Parent Responsibilities
-
+**Parent worker:**
 - [ ] Implement `AppStorage` interface
 - [ ] Create `AuthContext` from request
-- [ ] Extract parameters from request
-- [ ] Call handlers with correct arguments
+- [ ] Extract params, pass to handlers
 - [ ] Map return values to HTTP responses
 - [ ] Map errors to HTTP status codes
-- [ ] Handle CORS, logging, and metrics
 
 ---
 
