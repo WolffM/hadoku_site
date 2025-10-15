@@ -246,10 +246,29 @@ app.patch('/task/api/:id', async (c) => {
 		return badRequest(c, 'Missing required parameter: task ID');
 	}
 	
-	logRequest('PATCH', `/task/api/${id}`, { userType: auth.userType, userId, boardId, taskId: id });
+	// Detailed logging for race condition debugging
+	logRequest('PATCH', `/task/api/${id}`, { 
+		userType: auth.userType, 
+		userId, 
+		boardId, 
+		taskId: id,
+		updates: input,
+		timestamp: Date.now()
+	});
 	
-	const result = await TaskHandlers.updateTask(storage, { ...auth, userId }, id, input, boardId);
-	return c.json(result);
+	try {
+		const result = await TaskHandlers.updateTask(storage, { ...auth, userId }, id, input, boardId);
+		logRequest('PATCH SUCCESS', `/task/api/${id}`, { 
+			taskId: id, 
+			success: true,
+			result: result,
+			timestamp: Date.now()
+		});
+		return c.json(result);
+	} catch (error: any) {
+		logError('PATCH FAILED', `/task/api/${id}`, error.message + ' | taskId: ' + id);
+		throw error;
+	}
 });
 
 // Complete task
