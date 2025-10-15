@@ -17,6 +17,9 @@ const { app } = Astro.params;
 
 // Generate page title
 const title = `Hadoku - ${app.charAt(0).toUpperCase() + app.slice(1)}`;
+
+// Task app doesn't need home button (has built-in navigation)
+const showHomeButton = app !== 'task';
 ---
 
 <Base title={title}>
@@ -24,6 +27,6 @@ const title = `Hadoku - ${app.charAt(0).toUpperCase() + app.slice(1)}`;
     appName={app}
     title={title}
     showHeader={false}
-    showHomeButton={true}
+    showHomeButton={showHomeButton}
   />
 </Base>
