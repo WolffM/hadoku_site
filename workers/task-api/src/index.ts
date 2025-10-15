@@ -156,7 +156,7 @@ app.get('/task/api/boards', async (c) => {
 	try {
 		const result = await TaskHandlers.getBoards(storage, { ...auth, userId });
 		logRequest('GET', '/task/api/boards', { success: true, boardCount: result.boards?.length || 0 });
-		return ok(c, result);
+		return c.json(result);
 	} catch (error: any) {
 		logError('GET', '/task/api/boards', error.message);
 		throw error;
@@ -179,7 +179,7 @@ app.post('/task/api/boards', async (c) => {
 	logRequest('POST', '/task/api/boards', { userType: auth.userType, userId, boardId: body.id });
 	
 	const result = await TaskHandlers.createBoard(storage, { ...auth, userId }, body);
-	return created(c, result);
+	return c.json(result);
 });
 
 // Delete a board
@@ -197,7 +197,7 @@ app.delete('/task/api/boards/:boardId', async (c) => {
 	logRequest('DELETE', `/task/api/boards/${boardId}`, { userType: auth.userType, userId, boardId });
 	
 	const result = await TaskHandlers.deleteBoard(storage, { ...auth, userId }, boardId);
-	return ok(c, result);
+	return c.json(result);
 });
 
 // Get tasks for a board
@@ -209,7 +209,7 @@ app.get('/task/api/tasks', async (c) => {
 	logRequest('GET', '/task/api/tasks', { userType: auth.userType, userId, boardId });
 	
 	const result = await TaskHandlers.getBoardTasks(storage, { ...auth, userId }, boardId);
-	return ok(c, result);
+	return c.json(result);
 });
 
 // Create task (boardId required)
@@ -229,7 +229,7 @@ app.post('/task/api', async (c) => {
 	logRequest('POST', '/task/api', { userType: auth.userType, userId, boardId, taskId: input.id });
 	
 	const result = await TaskHandlers.createTask(storage, { ...auth, userId }, input, boardId);
-	return created(c, result);
+	return c.json(result);
 });
 
 // Update task
@@ -249,7 +249,7 @@ app.patch('/task/api/:id', async (c) => {
 	logRequest('PATCH', `/task/api/${id}`, { userType: auth.userType, userId, boardId, taskId: id });
 	
 	const result = await TaskHandlers.updateTask(storage, { ...auth, userId }, id, input, boardId);
-	return ok(c, result);
+	return c.json(result);
 });
 
 // Complete task
@@ -266,10 +266,10 @@ app.post('/task/api/:id/complete', async (c) => {
 		return badRequest(c, 'Missing required parameter: task ID');
 	}
 	
-	logRequest('POST', `/task/api/${id}/complete`, { userType: auth.userType, userId, boardId, taskId: id });
+	logRequest('POST', '/task/api/:id/complete', { userType: auth.userType, userId, boardId, taskId: id });
 	
 	const result = await TaskHandlers.completeTask(storage, { ...auth, userId }, id, boardId);
-	return ok(c, result);
+	return c.json(result);
 });
 
 // Delete task
@@ -289,7 +289,7 @@ app.delete('/task/api/:id', async (c) => {
 	logRequest('DELETE', `/task/api/${id}`, { userType: auth.userType, userId, boardId, taskId: id });
 	
 	const result = await TaskHandlers.deleteTask(storage, { ...auth, userId }, id, boardId);
-	return ok(c, result);
+	return c.json(result);
 });
 
 // Get stats for a board
@@ -301,7 +301,7 @@ app.get('/task/api/stats', async (c) => {
 	logRequest('GET', '/task/api/stats', { userType: auth.userType, userId, boardId });
 	
 	const result = await TaskHandlers.getBoardStats(storage, { ...auth, userId }, boardId);
-	return ok(c, result);
+	return c.json(result);
 });
 
 // Create tag on board
@@ -320,7 +320,7 @@ app.post('/task/api/tags', async (c) => {
 	logRequest('POST', '/task/api/tags', { userType: auth.userType, userId, boardId: body.boardId, tag: body.tag });
 	
 	const result = await TaskHandlers.createTag(storage, { ...auth, userId }, body);
-	return ok(c, result);
+	return c.json(result);
 });
 
 // Delete tag from board
@@ -339,7 +339,7 @@ app.delete('/task/api/tags', async (c) => {
 	logRequest('DELETE', '/task/api/tags', { userType: auth.userType, userId, boardId: body.boardId, tag: body.tag });
 	
 	const result = await TaskHandlers.deleteTag(storage, { ...auth, userId }, body);
-	return ok(c, result);
+	return c.json(result);
 });
 
 // Get user preferences
@@ -393,7 +393,7 @@ app.get('/task/api', async (c) => {
 	logRequest('GET', '/task/api', { userType: auth.userType, userId, boardId: 'main' });
 	
 	const result = await TaskHandlers.getBoardTasks(storage, { ...auth, userId }, 'main');
-	return ok(c, result);
+	return c.json(result);
 });
 
 export default app;
