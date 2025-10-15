@@ -1,8 +1,8 @@
 import { jsx as h, jsxs as A, Fragment as Le } from "react/jsx-runtime";
 import { createRoot as Pe } from "react-dom/client";
-import { useState as C, useMemo as Re, useEffect as Q, useRef as oe } from "react";
+import { useState as C, useMemo as Ie, useEffect as Q, useRef as oe } from "react";
 const j = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-class Ie {
+class Re {
   constructor(e = "public", a = "public") {
     this.userType = e, this.userId = a;
   }
@@ -312,7 +312,7 @@ function G(t, e, a = 50) {
   }, a);
 }
 function et(t = "public", e = "public") {
-  const a = new Ie(t, e), o = { userType: "registered", userId: e };
+  const a = new Re(t, e), o = { userType: "registered", userId: e };
   return {
     async getBoards() {
       const s = await Xe(a, o), n = {
@@ -475,7 +475,7 @@ async function tt(t, e, a, o) {
   const s = `${a}-${o}-boards`, n = {
     version: 1,
     updatedAt: e.updatedAt || (/* @__PURE__ */ new Date()).toISOString(),
-    boards: e.boards.map((r) => ({
+    boards: (e.boards || []).map((r) => ({
       id: r.id,
       name: r.name,
       tags: r.tags || []
@@ -510,7 +510,11 @@ function ue(t = "public", e = "public", a) {
         if (!s.ok)
           throw new Error(`API returned ${s.status}`);
         const n = await s.json();
-        console.log("[api] Synced from API:", { boards: n.boards?.length || 0, totalTasks: n.boards?.reduce((r, c) => r + (c.tasks?.length || 0), 0) || 0 }), await tt(o, n, t, e);
+        if (!n || !n.boards || !Array.isArray(n.boards)) {
+          console.error("[api] Invalid response structure:", n);
+          return;
+        }
+        console.log("[api] Synced from API:", { boards: n.boards.length, totalTasks: n.boards.reduce((r, c) => r + (c.tasks?.length || 0), 0) }), await tt(o, n, t, e);
       } catch (s) {
         console.error("[api] Sync from API failed:", s);
       }
@@ -676,7 +680,7 @@ function ae(t, e) {
   });
 }
 function rt({ userType: t, userId: e, sessionId: a }) {
-  const [o, s] = C([]), [n, r] = C(/* @__PURE__ */ new Set()), c = Re(
+  const [o, s] = C([]), [n, r] = C(/* @__PURE__ */ new Set()), c = Ie(
     () => ue(t, e || "public", a),
     [t, e, a]
   ), [p, f] = C(null), [d, y] = C("main");
@@ -812,7 +816,7 @@ function rt({ userType: t, userId: e, sessionId: a }) {
       console.error("[useTasks] clearTasksByTag ERROR", m), alert(m.message || "Failed to remove tag from tasks");
     }
   }
-  async function I(i) {
+  async function R(i) {
     if (confirm("Clear all remaining tasks?"))
       try {
         for (const l of i)
@@ -844,7 +848,7 @@ function rt({ userType: t, userId: e, sessionId: a }) {
     const { tasks: v } = ae(T, i);
     s(v), console.log("[useTasks] moveTasksToBoard END");
   }
-  async function R(i) {
+  async function I(i) {
     if (await c.deleteBoard(i), d === i) {
       y("main");
       const l = await c.getBoards();
@@ -877,13 +881,13 @@ function rt({ userType: t, userId: e, sessionId: a }) {
     updateTaskTags: L,
     bulkUpdateTaskTags: H,
     clearTasksByTag: J,
-    clearRemainingTasks: I,
+    clearRemainingTasks: R,
     // Board state
     boards: p,
     currentBoardId: d,
     // Board operations
     createBoard: P,
-    deleteBoard: R,
+    deleteBoard: I,
     switchBoard: z,
     moveTasksToBoard: V,
     createTagOnBoard: Y,
@@ -943,7 +947,7 @@ function ct({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     } catch {
     }
     try {
-      I();
+      R();
     } catch {
     }
   }
@@ -988,7 +992,7 @@ function ct({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     } catch {
     }
   }
-  function I() {
+  function R() {
     p(/* @__PURE__ */ new Set()), Array.from(document.querySelectorAll(".task-app__item.selected")).forEach((l) => l.classList.remove("selected"));
   }
   Q(() => {
@@ -1024,7 +1028,7 @@ function ct({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
   function V(i) {
     i.currentTarget.contains(i.relatedTarget) || s(null);
   }
-  async function R(i, l) {
+  async function I(i, l) {
     i.preventDefault(), s(null), console.log("[useDragAndDrop] onDrop START", { targetTag: l });
     let m = [];
     try {
@@ -1064,7 +1068,7 @@ function ct({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     try {
       await a(v), console.log("[useDragAndDrop] onDrop: updates complete, clearing selection");
       try {
-        I();
+        R();
       } catch {
       }
     } catch (k) {
@@ -1092,7 +1096,7 @@ function ct({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     try {
       await e(m, { tag: k });
       try {
-        I();
+        R();
       } catch {
       }
     } catch (u) {
@@ -1111,12 +1115,12 @@ function ct({ tasks: t, onTaskUpdate: e, onBulkUpdate: a }) {
     selectionStartHandler: L,
     selectionMoveHandler: H,
     selectionEndHandler: J,
-    clearSelection: I,
+    clearSelection: R,
     onDragStart: q,
     onDragEnd: M,
     onDragOver: P,
     onDragLeave: V,
-    onDrop: R,
+    onDrop: I,
     onFilterDragOver: Y,
     onFilterDragLeave: U,
     onFilterDrop: z
@@ -1381,10 +1385,10 @@ function gt({
   toggleSort: L,
   sortTasksByAge: H,
   getSortIcon: J,
-  getSortTitle: I,
+  getSortTitle: R,
   clearTasksByTag: P,
   clearRemainingTasks: V,
-  onDeletePersistedTag: R
+  onDeletePersistedTag: I
 }) {
   const Y = (u, _) => /* @__PURE__ */ A(
     "div",
@@ -1404,7 +1408,7 @@ function gt({
             {
               className: "task-app__sort-btn task-app__sort-btn--active",
               onClick: () => L(u),
-              title: I(o[u] || "desc"),
+              title: R(o[u] || "desc"),
               children: J(o[u] || "desc")
             }
           )
@@ -1483,7 +1487,7 @@ function gt({
               {
                 className: "task-app__sort-btn task-app__sort-btn--active",
                 onClick: () => L("other"),
-                title: I(o.other || "desc"),
+                title: R(o.other || "desc"),
                 children: J(o.other || "desc")
               }
             )
@@ -1604,7 +1608,7 @@ const ve = 5, De = [
   { name: "lavender", emoji: "🪻", label: "Lavender theme" }
 ], pt = (t) => De.find((e) => e.name === t)?.emoji || "🌙";
 function mt(t = {}) {
-  const { userType: e = "public", userId: a = "public", sessionId: o } = t, [s, n] = C(/* @__PURE__ */ new Set()), [r, c] = C(null), [p, f] = C(!1), [d, y] = C(!1), [D, b] = C(null), [F, $] = C(""), [q, M] = C(null), [L, H] = C("light"), [J, I] = C(!1), [P, V] = C(null), [R, Y] = C(null), U = oe(null), z = oe(null), {
+  const { userType: e = "public", userId: a = "public", sessionId: o } = t, [s, n] = C(/* @__PURE__ */ new Set()), [r, c] = C(null), [p, f] = C(!1), [d, y] = C(!1), [D, b] = C(null), [F, $] = C(""), [q, M] = C(null), [L, H] = C("light"), [J, R] = C(!1), [P, V] = C(null), [I, Y] = C(null), U = oe(null), z = oe(null), {
     tasks: i,
     pendingOperations: l,
     initialLoad: m,
@@ -1641,13 +1645,13 @@ function mt(t = {}) {
   }, [e, a]), Q(() => {
     z.current && z.current.setAttribute("data-theme", L);
   }, [L]), Q(() => {
-    if (!J && !P && !R) return;
+    if (!J && !P && !I) return;
     const g = (w) => {
       const x = w.target;
-      x.closest(".theme-picker") || I(!1), x.closest(".board-context-menu") || V(null), x.closest(".tag-context-menu") || Y(null);
+      x.closest(".theme-picker") || R(!1), x.closest(".board-context-menu") || V(null), x.closest(".tag-context-menu") || Y(null);
     };
     return document.addEventListener("mousedown", g), () => document.removeEventListener("mousedown", g);
-  }, [J, P, R]);
+  }, [J, P, I]);
   async function xe(g) {
     await T(g) && U.current && (U.current.value = "", U.current.focus());
   }
@@ -1715,7 +1719,7 @@ function mt(t = {}) {
               "button",
               {
                 className: "theme-toggle-btn",
-                onClick: () => I(!J),
+                onClick: () => R(!J),
                 "aria-label": "Choose theme",
                 title: "Choose theme",
                 children: pt(L)
@@ -1726,7 +1730,7 @@ function mt(t = {}) {
               {
                 className: `theme-picker__option ${L === g ? "active" : ""}`,
                 onClick: () => {
-                  H(g), I(!1);
+                  H(g), R(!1);
                 },
                 title: x,
                 children: w
@@ -2001,19 +2005,19 @@ function mt(t = {}) {
         /* @__PURE__ */ h(
           we,
           {
-            isOpen: !!R,
-            x: R?.x || 0,
-            y: R?.y || 0,
+            isOpen: !!I,
+            x: I?.x || 0,
+            y: I?.y || 0,
             items: [
               {
                 label: "🗑️ Delete Tag",
                 isDanger: !0,
                 onClick: async () => {
-                  if (!R) return;
-                  const g = i.filter((w) => w.tag?.split(" ").includes(R.tag));
-                  if (confirm(`Delete tag "${R.tag}" and remove it from ${g.length} task(s)?`))
+                  if (!I) return;
+                  const g = i.filter((w) => w.tag?.split(" ").includes(I.tag));
+                  if (confirm(`Delete tag "${I.tag}" and remove it from ${g.length} task(s)?`))
                     try {
-                      await N(R.tag), Y(null);
+                      await N(I.tag), Y(null);
                     } catch (w) {
                       console.error("[App] Failed to delete tag:", w), alert(w.message || "Failed to delete tag");
                     }
