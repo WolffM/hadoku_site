@@ -34,7 +34,7 @@ const backupFile = path.join(BACKUP_DIR, `tasks-kv-backup-${timestamp}.json`);
 try {
   // Step 1: List all keys in the namespace
   console.log('📋 Listing all KV keys...');
-  const listCommand = `npx wrangler kv:key list --namespace-id=${KV_NAMESPACE} --env=production`;
+  const listCommand = `npx wrangler kv key list --binding=${KV_NAMESPACE}`;
   const keysJson = execSync(listCommand, { 
     cwd: 'workers/task-api',
     encoding: 'utf-8' 
@@ -55,7 +55,7 @@ try {
   
   for (const { name: key } of keys) {
     try {
-      const getCommand = `npx wrangler kv:key get "${key}" --namespace-id=${KV_NAMESPACE} --env=production`;
+      const getCommand = `npx wrangler kv key get "${key}" --binding=${KV_NAMESPACE}`;
       const value = execSync(getCommand, { 
         cwd: 'workers/task-api',
         encoding: 'utf-8' 

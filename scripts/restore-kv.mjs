@@ -67,7 +67,7 @@ try {
       // Escape quotes for shell command
       const escapedValue = valueStr.replace(/"/g, '\\"');
       
-      const putCommand = `npx wrangler kv:key put "${key}" "${escapedValue}" --namespace-id=${KV_NAMESPACE} --env=production`;
+      const putCommand = `npx wrangler kv key put "${key}" "${escapedValue}" --binding=${KV_NAMESPACE}`;
       execSync(putCommand, { 
         cwd: 'workers/task-api',
         stdio: 'pipe' // Suppress output

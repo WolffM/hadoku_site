@@ -55,7 +55,7 @@ async function main() {
   
   try {
     // List all keys
-    const listCommand = `npx wrangler kv:key list --namespace-id=${KV_NAMESPACE} --env=production`;
+    const listCommand = `npx wrangler kv key list --binding=${KV_NAMESPACE}`;
     const keysJson = execSync(listCommand, { 
       cwd: 'workers/task-api',
       encoding: 'utf-8' 
@@ -76,7 +76,7 @@ async function main() {
     
     for (const { name: key } of keys) {
       try {
-        const deleteCommand = `npx wrangler kv:key delete "${key}" --namespace-id=${KV_NAMESPACE} --env=production`;
+        const deleteCommand = `npx wrangler kv key delete "${key}" --binding=${KV_NAMESPACE}`;
         execSync(deleteCommand, { 
           cwd: 'workers/task-api',
           stdio: 'pipe' // Suppress output
