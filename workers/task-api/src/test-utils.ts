@@ -182,7 +182,8 @@ export async function createTestBoard(
 ) {
 	const id = boardId || `test-${uniqueId()}`;
 	const boardName = name || 'Test Board';
-	return createBoard(app, env, headers, id, boardName);
+	const response = await createBoard(app, env, headers, id, boardName);
+	return { boardId: id, response };
 }
 
 /**

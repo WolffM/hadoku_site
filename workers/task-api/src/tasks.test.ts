@@ -54,15 +54,19 @@ describe('Task CRUD Operations', () => {
 		const completed: any = await completeRes.json();
 		expect(completed.ok).toBe(true);
 
-		// Verify task is completed
+		// Verify task is removed from board (completed tasks are removed)
 		const boardsRes = await getBoards(app, env, adminHeaders);
 		const boardsData: any = await boardsRes.json();
 		const board = boardsData.boards.find((b: any) => b.id === boardId);
+		
+		// Task should be removed from tasks array when completed
 		const task = board.tasks.find((t: any) => t.id === taskId);
-		expect(task.completed).toBe(true);
+		expect(task).toBeUndefined();
+		
+		// Verify stats show the completion
+		expect(board.stats.counters.completed).toBe(1);
 
-		// Cleanup
-		await deleteTask(app, env, adminHeaders, taskId, boardId);
+		// No cleanup needed - task is already removed
 		await deleteBoard(app, env, adminHeaders, boardId);
 	});
 });

@@ -319,6 +319,9 @@ app.post('/task/api', async (c) => {
 		return badRequest(c, error);
 	}
 	
+	// Debug: log the raw body to see what we received
+	console.log('[DEBUG createTask] body:', body, 'boardId:', boardId);
+	
 	logRequest('POST', '/task/api', { 
 		userType: c.get('authContext').userType, 
 		boardId, 
