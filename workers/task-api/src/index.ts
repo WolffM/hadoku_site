@@ -9,7 +9,7 @@
  */
 import { Hono, type Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
-import type { TaskStorage, AuthContext as TaskAuthContext, UserType, TasksFile, StatsFile, BoardsFile } from '@wolffm/task/api';
+import type { TaskStorage, AuthContext as TaskAuthContext, UserType, TasksFile, StatsFile } from '@wolffm/task/api';
 import {
 	createKeyAuth,
 	createHadokuCors,
@@ -95,24 +95,22 @@ function createKVStorage(env: Env): TaskStorage {
 	const statsKey = (userType: string, userId: string | undefined, boardId: string) => `stats:${userType}:${uid(userId)}:${boardId}`;
 
 	return {
-		// --- Boards ---
-		async getBoards(userType: UserType, userId?: string) {
-			const key = boardKey(userType, userId);
-			const data = await env.TASKS_KV.get(key, 'json') as BoardsFile | null;
-			if (data) return data;
-			// Default with a single 'main' board
-			return {
-				version: 1,
-				boards: [ { id: 'main', name: 'main', tags: [], tasks: [] } ],
-				updatedAt: new Date().toISOString(),
-			};
-		},
-		async saveBoards(userType: UserType, boards: BoardsFile, userId?: string) {
-			const key = boardKey(userType, userId);
-			await env.TASKS_KV.put(key, JSON.stringify(boards));
-		},
-
-		// --- Tasks (board scoped) ---
+	// --- Boards ---
+	async getBoards(userType: UserType, userId?: string) {
+		const key = boardKey(userType, userId);
+		const data = await env.TASKS_KV.get(key, 'json') as any | null;
+		if (data) return data;
+		// Default with a single 'main' board
+		return {
+			version: 1,
+			boards: [ { id: 'main', name: 'main', tags: [], tasks: [] } ],
+			updatedAt: new Date().toISOString(),
+		};
+	},
+	async saveBoards(userType: UserType, boards: any, userId?: string) {
+		const key = boardKey(userType, userId);
+		await env.TASKS_KV.put(key, JSON.stringify(boards));
+	},		// --- Tasks (board scoped) ---
 		async getTasks(userType: UserType, userId: string | undefined, boardId: string) {
 			const key = tasksKey(userType, userId, boardId);
 			const data = await env.TASKS_KV.get(key, 'json') as TasksFile | null;
@@ -474,9 +472,9 @@ app.post('/task/api/boards/:boardId/tasks/batch/update-tags', async (c) => {
 	);
 });
 
-// Batch move tasks between boards
-app.post('/task/api/batch/move-tasks', async (c) => {
-	logRequest('POST', '/task/api/batch/move-tasks', { 
+// Batch move tasks between boards (with legacy alias)
+const batchMoveHandler = async (c: any) => {
+	logRequest('POST', '/task/api/batch-move', { 
 		userType: c.get('authContext').userType 
 	});
 	
@@ -489,7 +487,10 @@ app.post('/task/api/batch/move-tasks', async (c) => {
 			`${userType}:${userId}:${body.targetBoardId}`
 		]
 	);
-});
+};
+
+app.post('/task/api/batch/move-tasks', batchMoveHandler);
+app.post('/task/api/batch-move', batchMoveHandler); // Legacy alias for client compatibility
 
 // Batch clear tag from multiple tasks
 app.post('/task/api/boards/:boardId/tasks/batch/clear-tag', async (c) => {
