@@ -93,7 +93,7 @@ SECRET_CONFIGS = {
     },
     'cloudflare': {
         'description': 'Deployment secrets for hadoku_site (Cloudflare and Packages)',
-        'secrets': ['CLOUDFLARE_API_TOKEN', 'ROUTE_CONFIG', 'ADMIN_KEY', 'FRIEND_KEY', 'TASK_GITHUB_TOKEN', 'DEPLOY_PACKAGE_TOKEN'],
+        'secrets': ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_WORKER_FLUSH_TOKEN', 'ROUTE_CONFIG', 'ADMIN_KEY', 'FRIEND_KEY', 'TASK_GITHUB_TOKEN', 'DEPLOY_PACKAGE_TOKEN'],
         'repos': [
             "WolffM/hadoku_site",
         ],

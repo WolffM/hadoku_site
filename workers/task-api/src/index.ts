@@ -40,6 +40,35 @@ type AppContext = {
 
 const app = new Hono<AppContext>();
 
+// Simple in-memory lock to prevent concurrent writes to the same board
+// This prevents race conditions when multiple PATCH requests hit simultaneously
+const boardLocks = new Map<string, Promise<any>>();
+
+async function withBoardLock<T>(
+	boardKey: string,
+	operation: () => Promise<T>
+): Promise<T> {
+	// Wait for any existing operation on this board to complete
+	const existingLock = boardLocks.get(boardKey);
+	if (existingLock) {
+		await existingLock.catch(() => {}); // Ignore errors from previous operations
+	}
+	
+	// Create a new lock for this operation
+	const newLock = operation();
+	boardLocks.set(boardKey, newLock);
+	
+	try {
+		const result = await newLock;
+		return result;
+	} finally {
+		// Clean up the lock if it's still ours
+		if (boardLocks.get(boardKey) === newLock) {
+			boardLocks.delete(boardKey);
+		}
+	}
+}
+
 // 1. CORS Middleware
 app.use('*', createHadokuCors(['https://task-api.hadoku.me']));
 
@@ -228,7 +257,11 @@ app.post('/task/api', async (c) => {
 	
 	logRequest('POST', '/task/api', { userType: auth.userType, userId, boardId, taskId: input.id });
 	
-	const result = await TaskHandlers.createTask(storage, { ...auth, userId }, input, boardId);
+	// Use board lock to prevent race conditions
+	const boardKey = `${auth.userType}:${userId}:${boardId}`;
+	const result = await withBoardLock(boardKey, async () => {
+		return await TaskHandlers.createTask(storage, { ...auth, userId }, input, boardId);
+	});
 	return c.json(result);
 });
 
@@ -256,8 +289,14 @@ app.patch('/task/api/:id', async (c) => {
 		timestamp: Date.now()
 	});
 	
+	// Use board lock to prevent race conditions with concurrent updates
+	const boardKey = `${auth.userType}:${userId}:${boardId}`;
+	
 	try {
-		const result = await TaskHandlers.updateTask(storage, { ...auth, userId }, id, input, boardId);
+		const result = await withBoardLock(boardKey, async () => {
+			return await TaskHandlers.updateTask(storage, { ...auth, userId }, id, input, boardId);
+		});
+		
 		logRequest('PATCH SUCCESS', `/task/api/${id}`, { 
 			taskId: id, 
 			success: true,
@@ -287,7 +326,11 @@ app.post('/task/api/:id/complete', async (c) => {
 	
 	logRequest('POST', '/task/api/:id/complete', { userType: auth.userType, userId, boardId, taskId: id });
 	
-	const result = await TaskHandlers.completeTask(storage, { ...auth, userId }, id, boardId);
+	// Use board lock to prevent race conditions
+	const boardKey = `${auth.userType}:${userId}:${boardId}`;
+	const result = await withBoardLock(boardKey, async () => {
+		return await TaskHandlers.completeTask(storage, { ...auth, userId }, id, boardId);
+	});
 	return c.json(result);
 });
 
@@ -307,7 +350,11 @@ app.delete('/task/api/:id', async (c) => {
 	
 	logRequest('DELETE', `/task/api/${id}`, { userType: auth.userType, userId, boardId, taskId: id });
 	
-	const result = await TaskHandlers.deleteTask(storage, { ...auth, userId }, id, boardId);
+	// Use board lock to prevent race conditions
+	const boardKey = `${auth.userType}:${userId}:${boardId}`;
+	const result = await withBoardLock(boardKey, async () => {
+		return await TaskHandlers.deleteTask(storage, { ...auth, userId }, id, boardId);
+	});
 	return c.json(result);
 });
 

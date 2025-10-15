@@ -33,6 +33,9 @@ public/mf/registry.json
 # task app data (managed at runtime, not committed to parent)
 data/task/
 
+# KV backups (sensitive data, stored in GitHub Actions artifacts)
+backups/
+
 # Python virtual environments
 .venv/
 venv/

@@ -26,6 +26,56 @@ jobs:
           echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
       
+      - name: Backup KV namespace before package update
+        id: backup
+        if: github.event.client_payload.package == '@wolffm/task'
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          echo "📦 Creating KV backup before @wolffm/task package update..."
+          
+          # Install wrangler globally
+          npm install -g wrangler
+          
+          # Get current version before update
+          CURRENT_VERSION=$(node -p "try { require('./workers/task-api/package.json').dependencies['@wolffm/task'] } catch { 'none' }")
+          echo "Current version: $CURRENT_VERSION"
+          echo "current-version=$CURRENT_VERSION" >> $GITHUB_ENV
+          
+          # Run backup script
+          if node scripts/backup-kv.mjs; then
+            echo "backup-success=true" >> $GITHUB_OUTPUT
+            echo "✅ Backup completed successfully"
+          else
+            echo "backup-success=false" >> $GITHUB_OUTPUT
+            echo "❌ Backup failed! Flush step will be skipped."
+          fi
+      
+      - name: Upload KV backup as artifact
+        if: github.event.client_payload.package == '@wolffm/task' && steps.backup.outputs.backup-success == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: kv-backup-${{ github.sha }}
+          path: backups/*.json
+          retention-days: 90
+          if-no-files-found: error
+      
+      - name: Flush KV namespace (only if backup succeeded)
+        if: github.event.client_payload.package == '@wolffm/task' && steps.backup.outputs.backup-success == 'true' && github.event.client_payload.flush_kv == 'true'
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKER_FLUSH_TOKEN }}
+          FLUSH_CONFIRM: yes
+        run: |
+          echo "🗑️  Flushing KV namespace (backup created successfully)..."
+          echo "⚠️  This will delete all existing data"
+          
+          node scripts/flush-kv.mjs
+          
+          echo "✅ KV namespace flushed - ready for new storage structure"
+      
       - name: Update package
         run: |
           PACKAGE="${{ github.event.client_payload.package }}"
@@ -52,6 +102,7 @@ jobs:
           echo "✅ Updated public/mf/registry.json with new versions"
       
       - name: Commit and push if changed
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -59,12 +110,72 @@ jobs:
           # Check if any package files or bundle files changed
           if git diff --quiet package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/; then
             echo "ℹ️  No package updates needed"
+            echo "updated=false" >> $GITHUB_OUTPUT
           else
             git add package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/
             git commit -m "chore: update ${{ github.event.client_payload.package }} to latest"
             git push
             echo "✅ Updated package and pushed changes"
+            echo "updated=true" >> $GITHUB_OUTPUT
+            
+            # Save new version for comment
+            NEW_VERSION=$(node -p "require('./workers/task-api/package.json').dependencies['@wolffm/task']")
+            echo "new-version=$NEW_VERSION" >> $GITHUB_ENV
           fi
+      
+      - name: Comment with backup info
+        if: steps.commit.outputs.updated == 'true' && github.event.client_payload.package == '@wolffm/task'
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const fs = require('fs');
+            let backupFile = 'unknown';
+            try {
+              const backupFiles = fs.readdirSync('backups');
+              backupFile = backupFiles.find(f => f.startsWith('tasks-kv-backup-')) || 'unknown';
+            } catch (e) {
+              console.log('No backup files found');
+            }
+            
+            // Get the latest commit (the one we just pushed)
+            const { data: commits } = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 1
+            });
+            const latestCommit = commits[0].sha;
+            
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: latestCommit,
+              body: `## 🔄 KV Backup Created
+            
+            **Package Update**
+            - Package: \`@wolffm/task\`
+            - Old version: \`${{ env.current-version }}\`
+            - New version: \`${{ env.new-version }}\`
+            
+            **Backup Information**
+            - Backup file: \`${backupFile}\`
+            - Artifact: \`kv-backup-${{ github.sha }}\`
+            - Retention: 90 days
+            
+            **To download the backup:**
+            1. Go to [this workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            2. Download the \`kv-backup-${{ github.sha }}\` artifact
+            
+            **To restore from backup:**
+            \`\`\`bash
+            node scripts/restore-kv.mjs backups/${backupFile}
+            \`\`\`
+            
+            ⚠️ **Note:** If the new package uses a different storage structure, you may need to flush KV:
+            \`\`\`bash
+            node scripts/flush-kv.mjs
+            \`\`\``
+            });
       
       - name: Trigger deployment
         if: success()

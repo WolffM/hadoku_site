@@ -102,6 +102,108 @@ npm run update-task-bundle
 - Places it in `public/mf/task/`
 - Automatically runs before build and as part of package updates
 
+### 5. `backup-kv.mjs` - KV Namespace Backup
+
+Creates a timestamped backup of all keys and values in the TASKS_KV namespace.
+
+**Usage:**
+```bash
+node scripts/backup-kv.mjs
+```
+
+**What it does:**
+- Lists all keys in TASKS_KV namespace
+- Fetches each key-value pair
+- Saves to `backups/tasks-kv-backup-TIMESTAMP.json`
+- Outputs backup statistics
+
+**When it runs:**
+- Automatically before `@wolffm/task` package updates (via GitHub Actions)
+- Can be run manually before making risky changes
+- Recommended before flushing KV namespace
+
+**Output:**
+```
+📦 Creating KV backup before package update...
+✅ Found 15 keys
+💾 Writing backup to file...
+✅ Backup saved: backups/tasks-kv-backup-2025-10-14T18-30-00.json
+📊 Backup size: 0.05 MB
+📊 Total keys backed up: 15
+```
+
+### 6. `restore-kv.mjs` - KV Namespace Restore
+
+Restores a KV namespace from a backup JSON file.
+
+**Usage:**
+```bash
+node scripts/restore-kv.mjs backups/tasks-kv-backup-2025-10-14T18-30-00.json
+```
+
+**What it does:**
+- Loads backup file
+- Validates backup structure
+- Restores each key-value pair to TASKS_KV
+- Reports success/failure statistics
+
+**When to use:**
+- After accidentally flushing KV
+- Rolling back to a previous state
+- Migrating data between environments
+- Recovering from a failed update
+
+**Output:**
+```
+🔄 Starting KV restore...
+📂 Loading backup from: backups/tasks-kv-backup-2025-10-14T18-30-00.json
+✅ Backup loaded successfully
+   Timestamp: 2025-10-14T18:30:00.000Z
+   Key count: 15
+📦 Restoring key-value pairs...
+   Progress: 15/15 keys restored
+✅ Restore completed!
+```
+
+### 7. `flush-kv.mjs` - KV Namespace Flush
+
+Deletes all keys from the TASKS_KV namespace.
+
+**⚠️ WARNING:** This is destructive! Always backup first.
+
+**Usage:**
+```bash
+# Interactive (requires typing "FLUSH" to confirm)
+node scripts/flush-kv.mjs
+
+# Auto-confirm for CI (bypasses confirmation)
+FLUSH_CONFIRM=yes node scripts/flush-kv.mjs
+```
+
+**What it does:**
+- Lists all keys in namespace
+- Prompts for confirmation (unless auto-confirmed)
+- Deletes each key
+- Reports deletion statistics
+
+**When to use:**
+- Before deploying a package with incompatible storage structure
+- Clearing test/development data
+- Starting fresh with a new data schema
+- As part of migration process
+
+**Output:**
+```
+⚠️  KV NAMESPACE FLUSH
+This will DELETE ALL KEYS from the TASKS_KV namespace.
+Make sure you have created a backup first!
+
+Type "FLUSH" to confirm deletion: FLUSH
+🗑️  Deleting keys...
+   Progress: 15/15 keys deleted
+✅ Flush completed!
+```
+
 ## Quick Start
 
 ### Initial Setup Verification
