@@ -3,6 +3,17 @@ main = "src/index.ts"
 compatibility_date = "2025-10-11"
 workers_dev = true
 
+# Observability settings
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
 # Build configuration
 [build]
 command = ""
