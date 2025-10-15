@@ -66,12 +66,8 @@ export function extractField(
 			case 'body':
 				// Note: This assumes body has been parsed. For performance,
 				// consider caching parsed body in context
-				try {
-					const body = c.req.json();
-					value = (body as any)[key];
-				} catch {
-					value = undefined;
-				}
+				// Body reading should be done explicitly before calling this function
+				value = undefined; // Don't try to read body here
 				break;
 			case 'param':
 				value = c.req.param(key);

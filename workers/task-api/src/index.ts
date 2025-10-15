@@ -332,19 +332,37 @@ app.post('/task/api', async (c) => {
 
 // Batch update tags - MUST be before /:id route to avoid matching "batch-tag" as an id
 const batchUpdateTagsHandler = async (c: any) => {
-	const boardId = c.req.param('boardId') || extractField(c, ['body:boardId', 'query:boardId'], 'main');
+	// First read the body to get boardId if not in URL
+	const body = await c.req.json();
+	const boardIdFromParam = c.req.param('boardId');
+	const boardId = boardIdFromParam || body.boardId || 'main';
 	
-	logRequest('PATCH', '/task/api/batch-tag', { 
+	const method = boardIdFromParam ? 'POST' : 'PATCH';
+	const route = boardIdFromParam 
+		? '/task/api/boards/:boardId/tasks/batch/update-tags'
+		: '/task/api/batch-tag';
+	
+	logRequest(method, route, { 
 		userType: c.get('authContext').userType,
 		boardId 
 	});
 	
-	return handleBatchOperation(
-		c,
-		['updates'],
-		(storage, auth, body) => TaskHandlers.batchUpdateTags(storage, auth, { ...body, boardId }),
-		(body, userType, userId) => [`${userType}:${userId}:${boardId}`]
-	);
+	// Validate required fields
+	const error = requireFields(body, ['updates']);
+	if (error) {
+		return badRequest(c, error);
+	}
+	
+	// Handle with board lock
+	const { storage, auth } = getContext(c);
+	const userId = getStableUserId(c);
+	const boardKey = `${auth.userType}:${userId}:${boardId}`;
+	
+	const result = await withBoardLock(boardKey, async () => {
+		return await TaskHandlers.batchUpdateTags(storage, { ...auth, userId }, { ...body, boardId });
+	});
+	
+	return c.json(result);
 };
 
 app.post('/task/api/boards/:boardId/tasks/batch/update-tags', batchUpdateTagsHandler);
@@ -376,7 +394,9 @@ app.patch('/task/api/:id', async (c) => {
 // Complete task
 app.post('/task/api/:id/complete', async (c) => {
 	const id = c.req.param('id');
-	const boardId = extractField(c, ['body:boardId', 'query:boardId'], 'main');
+	// Read body to get boardId
+	const body = await c.req.json().catch(() => ({}));
+	const boardId = (body as any).boardId || extractField(c, ['query:boardId'], 'main');
 	
 	// Validate task ID is provided
 	if (!id || id.trim() === '') {
