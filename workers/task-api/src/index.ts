@@ -172,31 +172,91 @@ const getStableUserId = (c: Context<AppContext>): string => {
 	return auth.userType;
 };
 
+// Generic handler wrapper for operations without locking
+async function handleOperation<T>(
+	c: Context<AppContext>,
+	operation: (storage: TaskStorage, auth: TaskAuthContext) => Promise<T>
+): Promise<Response> {
+	const { storage, auth } = getContext(c);
+	const userId = getStableUserId(c);
+	
+	const result = await operation(storage, { ...auth, userId });
+	return c.json(result);
+}
+
+// Generic handler wrapper for single-board operations
+async function handleBoardOperation<T>(
+	c: Context<AppContext>,
+	boardId: string,
+	operation: (storage: TaskStorage, auth: TaskAuthContext) => Promise<T>
+): Promise<Response> {
+	const { storage, auth } = getContext(c);
+	const userId = getStableUserId(c);
+	const boardKey = `${auth.userType}:${userId}:${boardId}`;
+	
+	const result = await withBoardLock(boardKey, async () => {
+		return await operation(storage, { ...auth, userId });
+	});
+	
+	return c.json(result);
+}
+
+// Generic handler wrapper for batch operations
+async function handleBatchOperation<T>(
+	c: Context<AppContext>,
+	requiredFields: string[],
+	operation: (storage: TaskStorage, auth: TaskAuthContext, body: any) => Promise<T>,
+	getBoardKeys?: (body: any, userType: string, userId: string) => string[]
+): Promise<Response> {
+	const { storage, auth } = getContext(c);
+	const body = await c.req.json();
+	const userId = getStableUserId(c);
+	
+	// Validate required fields
+	const error = requireFields(body, requiredFields);
+	if (error) {
+		return badRequest(c, error);
+	}
+	
+	// If no board keys provided, no locking needed
+	if (!getBoardKeys) {
+		const result = await operation(storage, { ...auth, userId }, body);
+		return c.json(result);
+	}
+	
+	// Get board keys and apply locks
+	const boardKeys = getBoardKeys(body, auth.userType, userId);
+	
+	// Single board lock
+	if (boardKeys.length === 1) {
+		const result = await withBoardLock(boardKeys[0], async () => {
+			return await operation(storage, { ...auth, userId }, body);
+		});
+		return c.json(result);
+	}
+	
+	// Multiple board locks (in consistent order to prevent deadlocks)
+	const sortedKeys = [...boardKeys].sort();
+	const result = await withBoardLock(sortedKeys[0], async () => {
+		return await withBoardLock(sortedKeys[1], async () => {
+			return await operation(storage, { ...auth, userId }, body);
+		});
+	});
+	return c.json(result);
+}
+
 // 6. Task API Routes - Thin adapters to TaskHandlers
 // ---- v2 Endpoints ----
 
 // Get all boards (and optionally tasks per board depending on handler design)
 app.get('/task/api/boards', async (c) => {
-	const { storage, auth } = getContext(c);
-	const userId = getStableUserId(c);
-	
-	logRequest('GET', '/task/api/boards', { userType: auth.userType, userId });
-	
-	try {
-		const result = await TaskHandlers.getBoards(storage, { ...auth, userId });
-		logRequest('GET', '/task/api/boards', { success: true, boardCount: result.boards?.length || 0 });
-		return c.json(result);
-	} catch (error: any) {
-		logError('GET', '/task/api/boards', error.message);
-		throw error;
-	}
+	logRequest('GET', '/task/api/boards', { userType: c.get('authContext').userType });
+	return handleOperation(c, (storage, auth) => TaskHandlers.getBoards(storage, auth));
 });
 
 // Create a new board
 app.post('/task/api/boards', async (c) => {
-	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
-	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(body, ['id', 'name']);
@@ -205,17 +265,19 @@ app.post('/task/api/boards', async (c) => {
 		return badRequest(c, error);
 	}
 	
-	logRequest('POST', '/task/api/boards', { userType: auth.userType, userId, boardId: body.id });
+	logRequest('POST', '/task/api/boards', { 
+		userType: c.get('authContext').userType, 
+		boardId: body.id 
+	});
 	
-	const result = await TaskHandlers.createBoard(storage, { ...auth, userId }, body);
-	return c.json(result);
+	return handleOperation(c, (storage, auth) => 
+		TaskHandlers.createBoard(storage, auth, body)
+	);
 });
 
 // Delete a board
 app.delete('/task/api/boards/:boardId', async (c) => {
-	const { storage, auth } = getContext(c);
 	const boardId = c.req.param('boardId');
-	const userId = getStableUserId(c);
 	
 	// Validate boardId is provided
 	if (!boardId || boardId.trim() === '') {
@@ -223,30 +285,34 @@ app.delete('/task/api/boards/:boardId', async (c) => {
 		return badRequest(c, 'Missing required parameter: board ID');
 	}
 	
-	logRequest('DELETE', `/task/api/boards/${boardId}`, { userType: auth.userType, userId, boardId });
+	logRequest('DELETE', `/task/api/boards/${boardId}`, { 
+		userType: c.get('authContext').userType, 
+		boardId 
+	});
 	
-	const result = await TaskHandlers.deleteBoard(storage, { ...auth, userId }, boardId);
-	return c.json(result);
+	return handleOperation(c, (storage, auth) => 
+		TaskHandlers.deleteBoard(storage, auth, boardId)
+	);
 });
 
 // Get tasks for a board
 app.get('/task/api/tasks', async (c) => {
-	const { storage, auth } = getContext(c);
-	const userId = getStableUserId(c);
 	const boardId = extractField(c, ['query:boardId'], 'main');
 	
-	logRequest('GET', '/task/api/tasks', { userType: auth.userType, userId, boardId });
+	logRequest('GET', '/task/api/tasks', { 
+		userType: c.get('authContext').userType, 
+		boardId 
+	});
 	
-	const result = await TaskHandlers.getBoardTasks(storage, { ...auth, userId }, boardId);
-	return c.json(result);
+	return handleOperation(c, (storage, auth) => 
+		TaskHandlers.getBoardTasks(storage, auth, boardId)
+	);
 });
 
 // Create task (boardId required)
 app.post('/task/api', async (c) => {
-	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
 	const { boardId = 'main', ...input } = body;
-	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(input, ['id', 'title']);
@@ -255,23 +321,22 @@ app.post('/task/api', async (c) => {
 		return badRequest(c, error);
 	}
 	
-	logRequest('POST', '/task/api', { userType: auth.userType, userId, boardId, taskId: input.id });
-	
-	// Use board lock to prevent race conditions
-	const boardKey = `${auth.userType}:${userId}:${boardId}`;
-	const result = await withBoardLock(boardKey, async () => {
-		return await TaskHandlers.createTask(storage, { ...auth, userId }, input, boardId);
+	logRequest('POST', '/task/api', { 
+		userType: c.get('authContext').userType, 
+		boardId, 
+		taskId: input.id 
 	});
-	return c.json(result);
+	
+	return handleBoardOperation(c, boardId, (storage, auth) => 
+		TaskHandlers.createTask(storage, auth, input, boardId)
+	);
 });
 
 // Update task
 app.patch('/task/api/:id', async (c) => {
-	const { storage, auth } = getContext(c);
 	const id = c.req.param('id');
 	const body = await c.req.json();
 	const { boardId = 'main', ...input } = body;
-	const userId = getStableUserId(c);
 	
 	// Validate task ID is provided
 	if (!id || id.trim() === '') {
@@ -279,44 +344,21 @@ app.patch('/task/api/:id', async (c) => {
 		return badRequest(c, 'Missing required parameter: task ID');
 	}
 	
-	// Detailed logging for race condition debugging
 	logRequest('PATCH', `/task/api/${id}`, { 
-		userType: auth.userType, 
-		userId, 
+		userType: c.get('authContext').userType, 
 		boardId, 
-		taskId: id,
-		updates: input,
-		timestamp: Date.now()
+		taskId: id
 	});
 	
-	// Use board lock to prevent race conditions with concurrent updates
-	const boardKey = `${auth.userType}:${userId}:${boardId}`;
-	
-	try {
-		const result = await withBoardLock(boardKey, async () => {
-			return await TaskHandlers.updateTask(storage, { ...auth, userId }, id, input, boardId);
-		});
-		
-		logRequest('PATCH SUCCESS', `/task/api/${id}`, { 
-			taskId: id, 
-			success: true,
-			result: result,
-			timestamp: Date.now()
-		});
-		return c.json(result);
-	} catch (error: any) {
-		logError('PATCH FAILED', `/task/api/${id}`, error.message + ' | taskId: ' + id);
-		throw error;
-	}
+	return handleBoardOperation(c, boardId, (storage, auth) => 
+		TaskHandlers.updateTask(storage, auth, id, input, boardId)
+	);
 });
 
 // Complete task
 app.post('/task/api/:id/complete', async (c) => {
-	const { storage, auth } = getContext(c);
 	const id = c.req.param('id');
-	const body = await c.req.json().catch(() => ({}));
 	const boardId = extractField(c, ['body:boardId', 'query:boardId'], 'main');
-	const userId = getStableUserId(c);
 	
 	// Validate task ID is provided
 	if (!id || id.trim() === '') {
@@ -324,23 +366,22 @@ app.post('/task/api/:id/complete', async (c) => {
 		return badRequest(c, 'Missing required parameter: task ID');
 	}
 	
-	logRequest('POST', '/task/api/:id/complete', { userType: auth.userType, userId, boardId, taskId: id });
-	
-	// Use board lock to prevent race conditions
-	const boardKey = `${auth.userType}:${userId}:${boardId}`;
-	const result = await withBoardLock(boardKey, async () => {
-		return await TaskHandlers.completeTask(storage, { ...auth, userId }, id, boardId);
+	logRequest('POST', '/task/api/:id/complete', { 
+		userType: c.get('authContext').userType, 
+		boardId, 
+		taskId: id 
 	});
-	return c.json(result);
+	
+	return handleBoardOperation(c, boardId, (storage, auth) => 
+		TaskHandlers.completeTask(storage, auth, id, boardId)
+	);
 });
 
 // Delete task
 app.delete('/task/api/:id', async (c) => {
-	const { storage, auth } = getContext(c);
 	const id = c.req.param('id');
 	const body = await c.req.json().catch(() => ({}));
 	const boardId = body.boardId || extractField(c, ['query:boardId'], 'main');
-	const userId = getStableUserId(c);
 	
 	// Validate task ID is provided
 	if (!id || id.trim() === '') {
@@ -348,33 +389,34 @@ app.delete('/task/api/:id', async (c) => {
 		return badRequest(c, 'Missing required parameter: task ID');
 	}
 	
-	logRequest('DELETE', `/task/api/${id}`, { userType: auth.userType, userId, boardId, taskId: id });
-	
-	// Use board lock to prevent race conditions
-	const boardKey = `${auth.userType}:${userId}:${boardId}`;
-	const result = await withBoardLock(boardKey, async () => {
-		return await TaskHandlers.deleteTask(storage, { ...auth, userId }, id, boardId);
+	logRequest('DELETE', `/task/api/${id}`, { 
+		userType: c.get('authContext').userType, 
+		boardId, 
+		taskId: id 
 	});
-	return c.json(result);
+	
+	return handleBoardOperation(c, boardId, (storage, auth) => 
+		TaskHandlers.deleteTask(storage, auth, id, boardId)
+	);
 });
 
 // Get stats for a board
 app.get('/task/api/stats', async (c) => {
-	const { storage, auth } = getContext(c);
-	const userId = getStableUserId(c);
 	const boardId = extractField(c, ['query:boardId'], 'main');
 	
-	logRequest('GET', '/task/api/stats', { userType: auth.userType, userId, boardId });
+	logRequest('GET', '/task/api/stats', { 
+		userType: c.get('authContext').userType, 
+		boardId 
+	});
 	
-	const result = await TaskHandlers.getBoardStats(storage, { ...auth, userId }, boardId);
-	return c.json(result);
+	return handleOperation(c, (storage, auth) => 
+		TaskHandlers.getBoardStats(storage, auth, boardId)
+	);
 });
 
 // Create tag on board
 app.post('/task/api/tags', async (c) => {
-	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
-	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(body, ['boardId', 'tag']);
@@ -383,17 +425,20 @@ app.post('/task/api/tags', async (c) => {
 		return badRequest(c, error);
 	}
 	
-	logRequest('POST', '/task/api/tags', { userType: auth.userType, userId, boardId: body.boardId, tag: body.tag });
+	logRequest('POST', '/task/api/tags', { 
+		userType: c.get('authContext').userType, 
+		boardId: body.boardId, 
+		tag: body.tag 
+	});
 	
-	const result = await TaskHandlers.createTag(storage, { ...auth, userId }, body);
-	return c.json(result);
+	return handleOperation(c, (storage, auth) => 
+		TaskHandlers.createTag(storage, auth, body)
+	);
 });
 
 // Delete tag from board
 app.delete('/task/api/tags', async (c) => {
-	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
-	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(body, ['boardId', 'tag']);
@@ -402,10 +447,62 @@ app.delete('/task/api/tags', async (c) => {
 		return badRequest(c, error);
 	}
 	
-	logRequest('DELETE', '/task/api/tags', { userType: auth.userType, userId, boardId: body.boardId, tag: body.tag });
+	logRequest('DELETE', '/task/api/tags', { 
+		userType: c.get('authContext').userType, 
+		boardId: body.boardId, 
+		tag: body.tag 
+	});
 	
-	const result = await TaskHandlers.deleteTag(storage, { ...auth, userId }, body);
-	return c.json(result);
+	return handleOperation(c, (storage, auth) => 
+		TaskHandlers.deleteTag(storage, auth, body)
+	);
+});
+
+// ---- Batch Operations ----
+
+// Batch update tags on multiple tasks
+app.post('/task/api/boards/:boardId/tasks/batch/update-tags', async (c) => {
+	logRequest('POST', '/task/api/boards/:boardId/tasks/batch/update-tags', { 
+		userType: c.get('authContext').userType 
+	});
+	
+	return handleBatchOperation(
+		c,
+		['boardId', 'updates'],
+		(storage, auth, body) => TaskHandlers.batchUpdateTags(storage, auth, body),
+		(body, userType, userId) => [`${userType}:${userId}:${body.boardId}`]
+	);
+});
+
+// Batch move tasks between boards
+app.post('/task/api/batch/move-tasks', async (c) => {
+	logRequest('POST', '/task/api/batch/move-tasks', { 
+		userType: c.get('authContext').userType 
+	});
+	
+	return handleBatchOperation(
+		c,
+		['sourceBoardId', 'targetBoardId', 'taskIds'],
+		(storage, auth, body) => TaskHandlers.batchMoveTasks(storage, auth, body),
+		(body, userType, userId) => [
+			`${userType}:${userId}:${body.sourceBoardId}`,
+			`${userType}:${userId}:${body.targetBoardId}`
+		]
+	);
+});
+
+// Batch clear tag from multiple tasks
+app.post('/task/api/boards/:boardId/tasks/batch/clear-tag', async (c) => {
+	logRequest('POST', '/task/api/boards/:boardId/tasks/batch/clear-tag', { 
+		userType: c.get('authContext').userType 
+	});
+	
+	return handleBatchOperation(
+		c,
+		['boardId', 'tag', 'taskIds'],
+		(storage, auth, body) => TaskHandlers.batchClearTag(storage, auth, body),
+		(body, userType, userId) => [`${userType}:${userId}:${body.boardId}`]
+	);
 });
 
 // Get user preferences
@@ -453,13 +550,14 @@ app.put('/task/api/preferences', async (c) => {
 
 // Backwards compatibility: old v1 list endpoint (maps to main board)
 app.get('/task/api', async (c) => {
-	const { storage, auth } = getContext(c);
-	const userId = getStableUserId(c);
+	logRequest('GET', '/task/api', { 
+		userType: c.get('authContext').userType, 
+		boardId: 'main' 
+	});
 	
-	logRequest('GET', '/task/api', { userType: auth.userType, userId, boardId: 'main' });
-	
-	const result = await TaskHandlers.getBoardTasks(storage, { ...auth, userId }, 'main');
-	return c.json(result);
+	return handleOperation(c, (storage, auth) => 
+		TaskHandlers.getBoardTasks(storage, auth, 'main')
+	);
 });
 
 export default app;
