@@ -330,6 +330,26 @@ app.post('/task/api', async (c) => {
 	);
 });
 
+// Batch update tags - MUST be before /:id route to avoid matching "batch-tag" as an id
+const batchUpdateTagsHandler = async (c: any) => {
+	const boardId = c.req.param('boardId') || extractField(c, ['body:boardId', 'query:boardId'], 'main');
+	
+	logRequest('PATCH', '/task/api/batch-tag', { 
+		userType: c.get('authContext').userType,
+		boardId 
+	});
+	
+	return handleBatchOperation(
+		c,
+		['updates'],
+		(storage, auth, body) => TaskHandlers.batchUpdateTags(storage, auth, { ...body, boardId }),
+		(body, userType, userId) => [`${userType}:${userId}:${boardId}`]
+	);
+};
+
+app.post('/task/api/boards/:boardId/tasks/batch/update-tags', batchUpdateTagsHandler);
+app.patch('/task/api/batch-tag', batchUpdateTagsHandler); // Legacy alias
+
 // Update task
 app.patch('/task/api/:id', async (c) => {
 	const id = c.req.param('id');
@@ -457,26 +477,6 @@ app.delete('/task/api/tags', async (c) => {
 });
 
 // ---- Batch Operations ----
-
-// Batch update tags on multiple tasks (with legacy alias)
-const batchUpdateTagsHandler = async (c: any) => {
-	const boardId = c.req.param('boardId') || extractField(c, ['body:boardId', 'query:boardId'], 'main');
-	
-	logRequest('PATCH', '/task/api/batch-tag', { 
-		userType: c.get('authContext').userType,
-		boardId 
-	});
-	
-	return handleBatchOperation(
-		c,
-		['updates'],
-		(storage, auth, body) => TaskHandlers.batchUpdateTags(storage, auth, { ...body, boardId }),
-		(body, userType, userId) => [`${userType}:${userId}:${boardId}`]
-	);
-};
-
-app.post('/task/api/boards/:boardId/tasks/batch/update-tags', batchUpdateTagsHandler);
-app.patch('/task/api/batch-tag', batchUpdateTagsHandler); // Legacy alias for client compatibility
 
 // Batch move tasks between boards (with legacy alias)
 const batchMoveHandler = async (c: any) => {
