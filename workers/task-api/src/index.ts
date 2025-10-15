@@ -128,25 +128,46 @@ const getContext = (c: Context<AppContext>) => ({
 	auth: c.get('authContext'),
 });
 
+// Helper to get stable userId - uses userType as default to ensure data sharing across sessions
+const getStableUserId = (c: Context<AppContext>): string => {
+	const { userId } = extractUserContext(c);
+	const auth = c.get('authContext');
+	
+	// If userId is explicitly provided and looks stable (not a UUID from frontend), use it
+	// Otherwise default to userType for data sharing across sessions with same key
+	if (userId && userId !== 'undefined' && userId !== 'null' && !userId.includes('-')) {
+		return userId;
+	}
+	
+	// Default: use userType as userId for consistency across sessions
+	return auth.userType;
+};
+
 // 6. Task API Routes - Thin adapters to TaskHandlers
 // ---- v2 Endpoints ----
 
 // Get all boards (and optionally tasks per board depending on handler design)
 app.get('/task/api/boards', async (c) => {
 	const { storage, auth } = getContext(c);
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	logRequest('GET', '/task/api/boards', { userType: auth.userType, userId });
 	
-	const result = await TaskHandlers.getBoards(storage, { ...auth, userId });
-	return ok(c, result);
+	try {
+		const result = await TaskHandlers.getBoards(storage, { ...auth, userId });
+		logRequest('GET', '/task/api/boards', { success: true, boardCount: result.boards?.length || 0 });
+		return ok(c, result);
+	} catch (error: any) {
+		logError('GET', '/task/api/boards', error.message);
+		throw error;
+	}
 });
 
 // Create a new board
 app.post('/task/api/boards', async (c) => {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(body, ['id', 'name']);
@@ -165,7 +186,7 @@ app.post('/task/api/boards', async (c) => {
 app.delete('/task/api/boards/:boardId', async (c) => {
 	const { storage, auth } = getContext(c);
 	const boardId = c.req.param('boardId');
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	// Validate boardId is provided
 	if (!boardId || boardId.trim() === '') {
@@ -182,7 +203,7 @@ app.delete('/task/api/boards/:boardId', async (c) => {
 // Get tasks for a board
 app.get('/task/api/tasks', async (c) => {
 	const { storage, auth } = getContext(c);
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	const boardId = extractField(c, ['query:boardId'], 'main');
 	
 	logRequest('GET', '/task/api/tasks', { userType: auth.userType, userId, boardId });
@@ -196,7 +217,7 @@ app.post('/task/api', async (c) => {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
 	const { boardId = 'main', ...input } = body;
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(input, ['id', 'title']);
@@ -217,7 +238,7 @@ app.patch('/task/api/:id', async (c) => {
 	const id = c.req.param('id');
 	const body = await c.req.json();
 	const { boardId = 'main', ...input } = body;
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	// Validate task ID is provided
 	if (!id || id.trim() === '') {
@@ -237,7 +258,7 @@ app.post('/task/api/:id/complete', async (c) => {
 	const id = c.req.param('id');
 	const body = await c.req.json().catch(() => ({}));
 	const boardId = extractField(c, ['body:boardId', 'query:boardId'], 'main');
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	// Validate task ID is provided
 	if (!id || id.trim() === '') {
@@ -257,7 +278,7 @@ app.delete('/task/api/:id', async (c) => {
 	const id = c.req.param('id');
 	const body = await c.req.json().catch(() => ({}));
 	const boardId = body.boardId || extractField(c, ['query:boardId'], 'main');
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	// Validate task ID is provided
 	if (!id || id.trim() === '') {
@@ -274,7 +295,7 @@ app.delete('/task/api/:id', async (c) => {
 // Get stats for a board
 app.get('/task/api/stats', async (c) => {
 	const { storage, auth } = getContext(c);
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	const boardId = extractField(c, ['query:boardId'], 'main');
 	
 	logRequest('GET', '/task/api/stats', { userType: auth.userType, userId, boardId });
@@ -287,7 +308,7 @@ app.get('/task/api/stats', async (c) => {
 app.post('/task/api/tags', async (c) => {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(body, ['boardId', 'tag']);
@@ -306,7 +327,7 @@ app.post('/task/api/tags', async (c) => {
 app.delete('/task/api/tags', async (c) => {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(body, ['boardId', 'tag']);
@@ -323,7 +344,7 @@ app.delete('/task/api/tags', async (c) => {
 
 // Get user preferences
 app.get('/task/api/preferences', async (c) => {
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	const { auth } = getContext(c);
 	const userType = auth.userType;
 	
@@ -345,7 +366,7 @@ app.get('/task/api/preferences', async (c) => {
 
 // Save user preferences
 app.put('/task/api/preferences', async (c) => {
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	const { auth } = getContext(c);
 	const userType = auth.userType;
 	const body = await c.req.json();
@@ -367,7 +388,7 @@ app.put('/task/api/preferences', async (c) => {
 // Backwards compatibility: old v1 list endpoint (maps to main board)
 app.get('/task/api', async (c) => {
 	const { storage, auth } = getContext(c);
-	const { userId } = extractUserContext(c);
+	const userId = getStableUserId(c);
 	
 	logRequest('GET', '/task/api', { userType: auth.userType, userId, boardId: 'main' });
 	
