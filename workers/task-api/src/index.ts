@@ -458,19 +458,25 @@ app.delete('/task/api/tags', async (c) => {
 
 // ---- Batch Operations ----
 
-// Batch update tags on multiple tasks
-app.post('/task/api/boards/:boardId/tasks/batch/update-tags', async (c) => {
-	logRequest('POST', '/task/api/boards/:boardId/tasks/batch/update-tags', { 
-		userType: c.get('authContext').userType 
+// Batch update tags on multiple tasks (with legacy alias)
+const batchUpdateTagsHandler = async (c: any) => {
+	const boardId = c.req.param('boardId') || extractField(c, ['body:boardId', 'query:boardId'], 'main');
+	
+	logRequest('PATCH', '/task/api/batch-tag', { 
+		userType: c.get('authContext').userType,
+		boardId 
 	});
 	
 	return handleBatchOperation(
 		c,
-		['boardId', 'updates'],
-		(storage, auth, body) => TaskHandlers.batchUpdateTags(storage, auth, body),
-		(body, userType, userId) => [`${userType}:${userId}:${body.boardId}`]
+		['updates'],
+		(storage, auth, body) => TaskHandlers.batchUpdateTags(storage, auth, { ...body, boardId }),
+		(body, userType, userId) => [`${userType}:${userId}:${boardId}`]
 	);
-});
+};
+
+app.post('/task/api/boards/:boardId/tasks/batch/update-tags', batchUpdateTagsHandler);
+app.patch('/task/api/batch-tag', batchUpdateTagsHandler); // Legacy alias for client compatibility
 
 // Batch move tasks between boards (with legacy alias)
 const batchMoveHandler = async (c: any) => {
