@@ -488,25 +488,37 @@ app.post('/task/api/tags', async (c) => {
 	);
 });
 
-// Delete tag from board
+// Delete tag from board - using DELETE with query params to avoid body issues
 app.delete('/task/api/tags', async (c) => {
-	const body = await c.req.json();
+	// Try to read from body first (for backwards compatibility), fall back to query params
+	let boardId: string | undefined;
+	let tag: string | undefined;
+	
+	try {
+		const body = await c.req.json();
+		boardId = body.boardId;
+		tag = body.tag;
+	} catch {
+		// If body parsing fails, try query params
+		boardId = c.req.query('boardId');
+		tag = c.req.query('tag');
+	}
 	
 	// Validate required fields
-	const error = requireFields(body, ['boardId', 'tag']);
-	if (error) {
+	if (!boardId || !tag) {
+		const error = 'Missing required fields: boardId and tag';
 		logError('DELETE', '/task/api/tags', error);
 		return badRequest(c, error);
 	}
 	
 	logRequest('DELETE', '/task/api/tags', { 
 		userType: c.get('authContext').userType, 
-		boardId: body.boardId, 
-		tag: body.tag 
+		boardId, 
+		tag 
 	});
 	
 	return handleOperation(c, (storage, auth) => 
-		TaskHandlers.deleteTag(storage, auth, body)
+		TaskHandlers.deleteTag(storage, auth, { boardId, tag })
 	);
 });
 
