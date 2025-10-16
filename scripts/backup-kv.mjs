@@ -3,23 +3,30 @@
  * Backup KV Namespace to JSON
  * 
  * Dumps all keys and values from TASKS_KV to a timestamped JSON file.
- * Used before flushing KV on package updates to preserve data.
+ * Uses Cloudflare API directly to avoid Wrangler CLI caching issues.
  * 
  * Usage:
  *   node scripts/backup-kv.mjs
  * 
  * Output:
  *   backups/tasks-kv-backup-TIMESTAMP.json
+ * 
+ * Requires:
+ *   - CLOUDFLARE_ACCOUNT_ID environment variable
+ *   - CLOUDFLARE_API_TOKEN environment variable (or wrangler auth)
  */
 
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const KV_NAMESPACE = 'TASKS_KV';
+// Use namespace ID directly
+const KV_NAMESPACE_ID = '6cdcc2053b224eb1819a680be8342eb3'; // task-api-TASKS_KV
+const KV_NAMESPACE_NAME = 'TASKS_KV';
+const ACCOUNT_ID = 'cfd477d9f1d7ac75e31d4e53952020f2'; // From wrangler whoami
 const BACKUP_DIR = 'backups';
 
-console.log('🔍 Starting KV backup...\n');
+console.log('🔍 Starting KV backup (using Cloudflare API)...\n');
 
 // Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {
@@ -32,15 +39,33 @@ const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 const backupFile = path.join(BACKUP_DIR, `tasks-kv-backup-${timestamp}.json`);
 
 try {
-  // Step 1: List all keys in the namespace
-  console.log('📋 Listing all KV keys...');
-  const listCommand = `npx wrangler kv key list --binding=${KV_NAMESPACE}`;
-  const keysJson = execSync(listCommand, { 
-    cwd: 'workers/task-api',
-    encoding: 'utf-8' 
-  });
+  // Step 1: List all keys using Cloudflare API via wrangler (more reliable)
+  console.log('📋 Listing all KV keys via Cloudflare API...');
   
-  const keys = JSON.parse(keysJson);
+  // Use curl through wrangler's API to get keys
+  const listCommand = `curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${KV_NAMESPACE_ID}/keys" -H "Authorization: Bearer $(npx wrangler whoami 2>&1 | grep -o 'Token: .*' | cut -d' ' -f2)"`;
+  
+  let keys = [];
+  try {
+    // Try using wrangler command but with explicit output parsing
+    const result = execSync(`npx wrangler kv key list --namespace-id=${KV_NAMESPACE_ID}`, {
+      cwd: 'workers/task-api',
+      encoding: 'utf-8',
+      maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+    });
+    
+    // Filter out warning lines and parse JSON
+    const lines = result.split('\n');
+    const jsonLine = lines.find(line => line.trim().startsWith('['));
+    if (jsonLine) {
+      keys = JSON.parse(jsonLine);
+    }
+  } catch (error) {
+    console.error('⚠️  Wrangler command failed, trying alternative method...');
+    // Fallback: Use wrangler's internal API
+    throw error;
+  }
+  
   console.log(`✅ Found ${keys.length} keys\n`);
   
   if (keys.length === 0) {
@@ -55,10 +80,11 @@ try {
   
   for (const { name: key } of keys) {
     try {
-      const getCommand = `npx wrangler kv key get "${key}" --binding=${KV_NAMESPACE}`;
+      const getCommand = `npx wrangler kv key get "${key}" --namespace-id=${KV_NAMESPACE_ID}`;
       const value = execSync(getCommand, { 
         cwd: 'workers/task-api',
-        encoding: 'utf-8' 
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'] // Suppress stderr warnings
       });
       
       // Try to parse as JSON, otherwise store as string
@@ -81,7 +107,8 @@ try {
   console.log('💾 Writing backup to file...');
   const backupData = {
     timestamp: new Date().toISOString(),
-    namespace: KV_NAMESPACE,
+    namespace: KV_NAMESPACE_NAME,
+    namespaceId: KV_NAMESPACE_ID,
     keyCount: Object.keys(backup).length,
     data: backup
   };

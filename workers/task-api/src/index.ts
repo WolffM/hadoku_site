@@ -488,37 +488,25 @@ app.post('/task/api/tags', async (c) => {
 	);
 });
 
-// Delete tag from board - using DELETE with query params to avoid body issues
-app.delete('/task/api/tags', async (c) => {
-	// Try to read from body first (for backwards compatibility), fall back to query params
-	let boardId: string | undefined;
-	let tag: string | undefined;
-	
-	try {
-		const body = await c.req.json();
-		boardId = body.boardId;
-		tag = body.tag;
-	} catch {
-		// If body parsing fails, try query params
-		boardId = c.req.query('boardId');
-		tag = c.req.query('tag');
-	}
+// Delete tag from board - POST to avoid DELETE body issues with proxies
+app.post('/task/api/tags/delete', async (c) => {
+	const body = await c.req.json();
 	
 	// Validate required fields
-	if (!boardId || !tag) {
-		const error = 'Missing required fields: boardId and tag';
-		logError('DELETE', '/task/api/tags', error);
+	const error = requireFields(body, ['boardId', 'tag']);
+	if (error) {
+		logError('POST', '/task/api/tags/delete', error);
 		return badRequest(c, error);
 	}
 	
-	logRequest('DELETE', '/task/api/tags', { 
+	logRequest('POST', '/task/api/tags/delete', { 
 		userType: c.get('authContext').userType, 
-		boardId, 
-		tag 
+		boardId: body.boardId, 
+		tag: body.tag 
 	});
 	
 	return handleOperation(c, (storage, auth) => 
-		TaskHandlers.deleteTag(storage, auth, { boardId, tag })
+		TaskHandlers.deleteTag(storage, auth, body)
 	);
 });
 
@@ -570,13 +558,13 @@ app.get('/task/api/preferences', async (c) => {
 	try {
 		const prefs = await c.env.TASKS_KV.get(prefsKey, 'json');
 		if (prefs) {
-			return ok(c, prefs);
+			return c.json(prefs);
 		}
 		// Return default preferences
-		return ok(c, { theme: 'light' });
+		return c.json({ theme: 'light' });
 	} catch (error: any) {
 		logError('GET', '/task/api/preferences', error);
-		return ok(c, { theme: 'light' });
+		return c.json({ theme: 'light' });
 	}
 });
 
@@ -594,7 +582,7 @@ app.put('/task/api/preferences', async (c) => {
 	
 	try {
 		await c.env.TASKS_KV.put(prefsKey, JSON.stringify(body));
-		return ok(c, { message: 'Preferences saved' });
+		return c.json({ ok: true, message: 'Preferences saved' });
 	} catch (error: any) {
 		logError('PUT', '/task/api/preferences', error);
 		return badRequest(c, 'Failed to save preferences');

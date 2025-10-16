@@ -102,18 +102,23 @@ npm run update-task-bundle
 - Places it in `public/mf/task/`
 - Automatically runs before build and as part of package updates
 
-### 5. `backup-kv.mjs` - KV Namespace Backup
+### 5. `backup-kv.py` - KV Namespace Backup
 
-Creates a timestamped backup of all keys and values in the TASKS_KV namespace.
+Creates a timestamped backup of all keys and values in the TASKS_KV namespace.  
+**Uses Cloudflare API directly** to avoid Wrangler CLI caching/consistency issues.
 
 **Usage:**
 ```bash
-node scripts/backup-kv.mjs
+python scripts/backup-kv.py
 ```
 
+**Requirements:**
+- Python 3.x with `requests` library
+- `CLOUDFLARE_API_TOKEN` in environment or `.env` file
+
 **What it does:**
-- Lists all keys in TASKS_KV namespace
-- Fetches each key-value pair
+- Lists all keys via Cloudflare API
+- Fetches each key-value pair with pagination support
 - Saves to `backups/tasks-kv-backup-TIMESTAMP.json`
 - Outputs backup statistics
 
@@ -121,6 +126,8 @@ node scripts/backup-kv.mjs
 - Automatically before `@wolffm/task` package updates (via GitHub Actions)
 - Can be run manually before making risky changes
 - Recommended before flushing KV namespace
+
+**Note:** The old `backup-kv.mjs` Node.js version has been deprecated due to Wrangler CLI issues with listing keys.
 
 **Output:**
 ```

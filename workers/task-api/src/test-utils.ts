@@ -324,8 +324,8 @@ export async function deleteTag(
 	boardId: string,
 	tag: string
 ) {
-	return app.request('/task/api/tags', {
-		method: 'DELETE',
+	return app.request('/task/api/tags/delete', {
+		method: 'POST',
 		headers,
 		body: JSON.stringify({ boardId, tag }),
 	}, env);
@@ -394,7 +394,7 @@ export async function batchClearTag(
 	tag: string,
 	taskIds: string[]
 ) {
-	return app.request(`/task/api/boards/${boardId}/tasks/batch/clear-tag`, {
+	return app.request('/task/api/batch-clear-tag', {
 		method: 'POST',
 		headers,
 		body: JSON.stringify({ boardId, tag, taskIds }),

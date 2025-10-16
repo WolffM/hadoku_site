@@ -73,8 +73,9 @@ describe('Route Collision Tests', () => {
 		const board = boardsData.boards.find((b: any) => b.id === boardId);
 		expect(board).toBeDefined();
 
+		// Note: tasks use 'tag' (string), not 'tags' (array)
 		const taggedTasks = board.tasks.filter((t: any) => 
-			t.tags && t.tags.includes('important')
+			t.tag && t.tag.split(' ').includes('important')
 		);
 		expect(taggedTasks.length).toBe(3);
 	});
@@ -99,6 +100,7 @@ describe('Route Collision Tests', () => {
 		const boardsData: any = await boardsRes.json();
 		const board = boardsData.boards.find((b: any) => b.id === boardId);
 		const task = board.tasks.find((t: any) => t.id === taskId);
-		expect(task.tags).toContain('legacy-test');
+		// Note: tasks use 'tag' (string), not 'tags' (array)
+		expect(task.tag).toContain('legacy-test');
 	});
 });

@@ -14,7 +14,9 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 
-const KV_NAMESPACE = 'TASKS_KV';
+// Use namespace ID directly to avoid binding resolution issues
+const KV_NAMESPACE_ID = '6cdcc2053b224eb1819a680be8342eb3'; // task-api-TASKS_KV
+const KV_NAMESPACE_NAME = 'TASKS_KV';
 
 // Get backup file from command line argument
 const backupFile = process.argv[2];
@@ -67,10 +69,10 @@ try {
       // Escape quotes for shell command
       const escapedValue = valueStr.replace(/"/g, '\\"');
       
-      const putCommand = `npx wrangler kv key put "${key}" "${escapedValue}" --binding=${KV_NAMESPACE}`;
+      const putCommand = `npx wrangler kv key put "${key}" "${escapedValue}" --namespace-id=${KV_NAMESPACE_ID}`;
       execSync(putCommand, { 
         cwd: 'workers/task-api',
-        stdio: 'pipe' // Suppress output
+        stdio: ['pipe', 'pipe', 'ignore'] // Suppress stderr warnings
       });
       
       count++;

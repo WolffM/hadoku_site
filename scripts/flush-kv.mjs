@@ -15,7 +15,9 @@
 import { execSync } from 'child_process';
 import readline from 'readline';
 
-const KV_NAMESPACE = 'TASKS_KV';
+// Use namespace ID directly to avoid binding resolution issues
+const KV_NAMESPACE_ID = '6cdcc2053b224eb1819a680be8342eb3'; // task-api-TASKS_KV
+const KV_NAMESPACE_NAME = 'TASKS_KV';
 
 console.log('⚠️  KV NAMESPACE FLUSH\n');
 console.log('This will DELETE ALL KEYS from the TASKS_KV namespace.');
@@ -55,10 +57,11 @@ async function main() {
   
   try {
     // List all keys
-    const listCommand = `npx wrangler kv key list --binding=${KV_NAMESPACE}`;
+    const listCommand = `npx wrangler kv key list --namespace-id=${KV_NAMESPACE_ID}`;
     const keysJson = execSync(listCommand, { 
       cwd: 'workers/task-api',
-      encoding: 'utf-8' 
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'] // Suppress stderr warnings
     });
     
     const keys = JSON.parse(keysJson);
@@ -76,10 +79,10 @@ async function main() {
     
     for (const { name: key } of keys) {
       try {
-        const deleteCommand = `npx wrangler kv key delete "${key}" --binding=${KV_NAMESPACE}`;
+        const deleteCommand = `npx wrangler kv key delete "${key}" --namespace-id=${KV_NAMESPACE_ID}`;
         execSync(deleteCommand, { 
           cwd: 'workers/task-api',
-          stdio: 'pipe' // Suppress output
+          stdio: ['pipe', 'pipe', 'ignore'] // Suppress stderr warnings
         });
         
         count++;
