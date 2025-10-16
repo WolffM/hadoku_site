@@ -143,6 +143,17 @@ function createKVStorage(env: Env): TaskStorage {
 			const key = statsKey(userType, userId, boardId);
 			await env.TASKS_KV.put(key, JSON.stringify(stats));
 		},
+
+		// --- Delete board data ---
+		async deleteBoardData(userType: UserType, userId: string, boardId: string) {
+			// Delete tasks and stats for the board
+			const taskKey = tasksKey(userType, userId, boardId);
+			const statKey = statsKey(userType, userId, boardId);
+			await Promise.all([
+				env.TASKS_KV.delete(taskKey),
+				env.TASKS_KV.delete(statKey)
+			]);
+		}
 	};
 }
 
@@ -522,8 +533,8 @@ app.post('/task/api/batch/move-tasks', batchMoveHandler);
 app.post('/task/api/batch-move', batchMoveHandler); // Legacy alias for client compatibility
 
 // Batch clear tag from multiple tasks
-app.post('/task/api/boards/:boardId/tasks/batch/clear-tag', async (c) => {
-	logRequest('POST', '/task/api/boards/:boardId/tasks/batch/clear-tag', { 
+app.post('/task/api/batch-clear-tag', async (c) => {
+	logRequest('POST', '/task/api/batch-clear-tag', { 
 		userType: c.get('authContext').userType 
 	});
 	
