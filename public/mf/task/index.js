@@ -641,8 +641,8 @@ function ge(t = "public", e = "public", a) {
     },
     async deleteTag(s, n = "main") {
       const r = await o.deleteTag(s, n);
-      return fetch("/task/api/tags", {
-        method: "DELETE",
+      return fetch("/task/api/tags/delete", {
+        method: "POST",
         headers: j(t, e, a),
         body: JSON.stringify({ boardId: n, tag: s })
       }).then(() => console.log("[api] Background sync: deleteTag completed")).catch((c) => console.error("[api] Failed to sync deleteTag:", c)), r;
