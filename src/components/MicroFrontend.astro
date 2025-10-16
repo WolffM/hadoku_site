@@ -18,8 +18,8 @@ const {
 } = Astro.props;
 ---
 
-<!-- Full-screen container with no overflow -->
-<div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden;">
+<!-- Full-screen container with scrolling enabled -->
+<div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: auto;">
   <!-- Isolated container for micro-frontend - child app handles its own style isolation -->
   <div id="root" data-app-name={appName}></div>
   
