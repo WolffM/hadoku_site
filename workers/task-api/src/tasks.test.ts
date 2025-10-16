@@ -18,7 +18,7 @@ import {
 
 describe('Task CRUD Operations', () => {
 	const env = createTestEnv();
-	const adminHeaders = createAuthHeaders(env.ADMIN_KEY, 'automated_testing_admin');
+	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	it('should create and delete task', async () => {
 		// Setup: Create a board

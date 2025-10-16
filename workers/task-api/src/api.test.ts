@@ -10,7 +10,7 @@ import { createTestEnv, createAuthHeaders, uniqueId } from './test-utils';
 
 describe('Task API - Smoke Tests', () => {
 	const env = createTestEnv();
-	const adminHeaders = createAuthHeaders(env.ADMIN_KEY, 'automated_testing_admin');
+	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	describe('Health Check', () => {
 		it('should return health status', async () => {

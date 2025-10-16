@@ -63,19 +63,20 @@ jobs:
           retention-days: 90
           if-no-files-found: error
       
-      - name: Flush KV namespace (only if backup succeeded)
-        if: github.event.client_payload.package == '@wolffm/task' && steps.backup.outputs.backup-success == 'true' && github.event.client_payload.flush_kv == 'true'
-        continue-on-error: true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKER_FLUSH_TOKEN }}
-          FLUSH_CONFIRM: yes
-        run: |
-          echo "🗑️  Flushing KV namespace (backup created successfully)..."
-          echo "⚠️  This will delete all existing data"
-          
-          node scripts/flush-kv.mjs
-          
-          echo "✅ KV namespace flushed - ready for new storage structure"
+      # Flush step disabled - run manually when needed with: node scripts/flush-kv.mjs
+      # - name: Flush KV namespace (only if backup succeeded)
+      #   if: github.event.client_payload.package == '@wolffm/task' && steps.backup.outputs.backup-success == 'true' && github.event.client_payload.flush_kv == 'true'
+      #   continue-on-error: true
+      #   env:
+      #     CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKER_FLUSH_TOKEN }}
+      #     FLUSH_CONFIRM: yes
+      #   run: |
+      #     echo "🗑️  Flushing KV namespace (backup created successfully)..."
+      #     echo "⚠️  This will delete all existing data"
+      #     
+      #     node scripts/flush-kv.mjs
+      #     
+      #     echo "✅ KV namespace flushed - ready for new storage structure"
       
       - name: Update package
         run: |

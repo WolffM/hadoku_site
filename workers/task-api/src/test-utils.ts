@@ -65,19 +65,20 @@ export function createMockKV(): KVNamespace {
 }
 
 /**
- * Create a test environment with mock bindings.
+ * Create a test environment with mock KV storage.
  * 
  * @param overrides - Optional environment overrides
  * @returns Test environment with mocked KV and keys
  */
 export function createTestEnv(overrides: Partial<{
-	ADMIN_KEY: string;
-	FRIEND_KEY: string;
+	ADMIN_KEYS: string;
+	FRIEND_KEYS: string;
 	TASKS_KV: KVNamespace;
 }> = {}) {
 	return {
-		ADMIN_KEY: 'test-admin-key',
-		FRIEND_KEY: 'test-friend-key',
+		// JSON key objects for testing
+		ADMIN_KEYS: JSON.stringify({ 'test-admin-key': 'admin' }),
+		FRIEND_KEYS: JSON.stringify({ 'test-friend-key': 'friend' }),
 		TASKS_KV: createMockKV(),
 		...overrides,
 	};
@@ -93,14 +94,39 @@ export function uniqueId(): string {
 }
 
 /**
- * Create request headers with authentication.
+ * Extract the first admin key from the test environment.
  * 
- * @param userKey - User key (ADMIN_KEY or FRIEND_KEY) from test environment
+ * @param env - Test environment
+ * @returns First admin key from ADMIN_KEYS JSON
+ */
+function getTestAdminKey(env: ReturnType<typeof createTestEnv>): string {
+	try {
+		const keys = JSON.parse(env.ADMIN_KEYS || '{}');
+		return Object.keys(keys)[0] || 'test-admin-key';
+	} catch {
+		return 'test-admin-key';
+	}
+}
+
+/**
+ * Create request headers with authentication.
+ * Uses the test admin key by default.
+ * 
+ * @param userKey - User key (or test environment to auto-extract admin key)
  * @param userId - User ID (e.g., 'automated_testing_admin' or 'automated_testing_friend')
  * @param extraHeaders - Additional headers to include
  * @returns Headers object with authentication
  */
-export function createAuthHeaders(userKey: string, userId: string, extraHeaders: Record<string, string> = {}) {
+export function createAuthHeaders(
+	userKeyOrEnv: string | ReturnType<typeof createTestEnv>, 
+	userId: string = 'automated_testing_admin', 
+	extraHeaders: Record<string, string> = {}
+) {
+	// If passed an env object, extract the admin key
+	const userKey = typeof userKeyOrEnv === 'string' 
+		? userKeyOrEnv 
+		: getTestAdminKey(userKeyOrEnv);
+	
 	return {
 		'X-User-Key': userKey,
 		'X-User-Id': userId,

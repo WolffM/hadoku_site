@@ -21,6 +21,7 @@
 export {
 	createAuthMiddleware,
 	createKeyAuth,
+	parseKeysFromEnv,
 	getAuthContext,
 	hasUserType,
 	requireUserType

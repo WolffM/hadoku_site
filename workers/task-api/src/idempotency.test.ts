@@ -9,7 +9,7 @@ import { createTestEnv, createAuthHeaders, createBoard, createTag, getBoards } f
 
 describe('Board and Tag Idempotency Tests', () => {
 	const env = createTestEnv();
-	const adminHeaders = createAuthHeaders(env.ADMIN_KEY, 'automated_testing_admin');
+	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	it('should handle duplicate board creation gracefully', async () => {
 		const boardId = 'testBoard1';

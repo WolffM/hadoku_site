@@ -77,13 +77,13 @@ jobs:
           cd workers/task-api
           npm install -g wrangler
           
-          # Set secrets (only if they're provided in GitHub Secrets)
-          if [ -n "${{ secrets.ADMIN_KEY }}" ]; then
-            echo "${{ secrets.ADMIN_KEY }}" | wrangler secret put ADMIN_KEY
+          # Set secrets (JSON key objects for authentication)
+          if [ -n "${{ secrets.ADMIN_KEYS }}" ]; then
+            echo "${{ secrets.ADMIN_KEYS }}" | wrangler secret put ADMIN_KEYS
           fi
           
-          if [ -n "${{ secrets.FRIEND_KEY }}" ]; then
-            echo "${{ secrets.FRIEND_KEY }}" | wrangler secret put FRIEND_KEY
+          if [ -n "${{ secrets.FRIEND_KEYS }}" ]; then
+            echo "${{ secrets.FRIEND_KEYS }}" | wrangler secret put FRIEND_KEYS
           fi
           
           if [ -n "${{ secrets.TASK_GITHUB_TOKEN }}" ]; then

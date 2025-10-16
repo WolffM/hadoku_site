@@ -12,6 +12,7 @@ import { TaskHandlers } from '@wolffm/task/api';
 import type { TaskStorage, AuthContext as TaskAuthContext, UserType, TasksFile, StatsFile } from '@wolffm/task/api';
 import {
 	createKeyAuth,
+	parseKeysFromEnv,
 	createHadokuCors,
 	extractUserContext,
 	extractField,
@@ -25,8 +26,9 @@ import {
 } from '../../util';
 
 interface Env {
-	ADMIN_KEY: string;
-	FRIEND_KEY: string;
+	// JSON key objects mapping keys to userIds
+	ADMIN_KEYS?: string;
+	FRIEND_KEYS?: string;
 	TASKS_KV: KVNamespace;
 }
 
@@ -74,10 +76,12 @@ app.use('*', createHadokuCors(['https://task-api.hadoku.me']));
 
 // 2. Authentication Middleware
 app.use('*', createKeyAuth<Env>(
-	(env) => ({
-		[env.ADMIN_KEY]: 'admin',
-		[env.FRIEND_KEY]: 'friend'
-	}),
+	(env) => {
+		// Parse JSON key objects
+		const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS);
+		const friendKeys = parseKeysFromEnv(env.FRIEND_KEYS);
+		return { ...adminKeys, ...friendKeys };
+	},
 	{
 		sources: ['header:X-User-Key', 'query:key'],
 		defaultUserType: 'public',

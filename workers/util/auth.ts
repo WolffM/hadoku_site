@@ -113,18 +113,67 @@ export function createAuthMiddleware<TEnv = any>(
 }
 
 /**
+ * Parse JSON keys from environment variable
+ * 
+ * @param jsonString - JSON string from environment variable (e.g., '{"key1": "user1", "key2": "user2"}')
+ * @returns Map of keys to user types/IDs
+ * 
+ * @example
+ * ```typescript
+ * const keys = parseKeysFromEnv('{"abc123": "admin", "def456": "admin2"}');
+ * // Returns: { "abc123": "admin", "def456": "admin2" }
+ * 
+ * const keys = parseKeysFromEnv(undefined);
+ * // Returns: {}
+ * ```
+ */
+export function parseKeysFromEnv(
+	jsonString: string | undefined
+): Record<string, string> {
+	if (!jsonString) {
+		return {};
+	}
+	
+	try {
+		const parsed = JSON.parse(jsonString);
+		if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+			return parsed as Record<string, string>;
+		}
+	} catch (error) {
+		console.warn('Failed to parse keys JSON:', error);
+	}
+	
+	return {};
+}
+
+/**
  * Create a simple key-based auth middleware (common pattern)
  * 
- * @param keyMap - Map of key values to user types
+ * @param keyMap - Function that returns a map of keys to user types
  * @param options - Additional options
  * @returns Hono middleware handler
  * 
  * @example
  * ```typescript
+ * // Parse JSON key objects from environment
+ * app.use('*', createKeyAuth(
+ *   (env) => {
+ *     const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS);
+ *     const friendKeys = parseKeysFromEnv(env.FRIEND_KEYS);
+ *     return { ...adminKeys, ...friendKeys };
+ *   },
+ *   {
+ *     sources: ['header:X-User-Key', 'query:key'],
+ *     defaultUserType: 'public',
+ *     includeHelpers: true
+ *   }
+ * ));
+ * 
+ * // Or use a static map
  * app.use('*', createKeyAuth(
  *   (env) => ({
- *     [env.ADMIN_KEY]: 'admin',
- *     [env.FRIEND_KEY]: 'friend'
+ *     'key-abc-123': 'admin',
+ *     'key-def-456': 'friend'
  *   }),
  *   {
  *     sources: ['header:X-User-Key', 'query:key'],

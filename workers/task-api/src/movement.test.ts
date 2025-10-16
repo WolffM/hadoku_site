@@ -19,7 +19,7 @@ import {
 
 describe('Task Movement Tests', () => {
 	const env = createTestEnv();
-	const adminHeaders = createAuthHeaders(env.ADMIN_KEY, 'automated_testing_admin');
+	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	it('should move task between boards', async () => {
 		const mainBoard = 'main';

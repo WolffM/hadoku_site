@@ -43,6 +43,9 @@ preview_id = "3fb96829c28b497a9101dd554c97fdec"
 # REPO_NAME = "hadoku_site"
 # REPO_BRANCH = "main"
 
-# Secrets (set via: wrangler secret put <NAME>)
-# - ADMIN_KEY: Admin access key
-# - FRIEND_KEY: Friend access key
+# Secrets (set via: wrangler secret put <NAME> or via GitHub Actions)
+# Authentication keys are JSON objects mapping keys to userIds:
+# - ADMIN_KEYS: JSON object, e.g., '{"key1": "admin1", "key2": "admin2"}'
+# - FRIEND_KEYS: JSON object, e.g., '{"key1": "friend1", "key2": "friend2"}'
+#
+# Users visit site with ?key=xxx parameter, worker validates against these lists

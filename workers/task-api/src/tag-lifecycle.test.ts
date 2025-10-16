@@ -20,7 +20,7 @@ import {
 
 describe('Tag Lifecycle Tests', () => {
 	const env = createTestEnv();
-	const adminHeaders = createAuthHeaders(env.ADMIN_KEY, 'automated_testing_admin');
+	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	it('should create task, assign tag, delete tag, and complete task', async () => {
 		const boardId = 'testBoard1';

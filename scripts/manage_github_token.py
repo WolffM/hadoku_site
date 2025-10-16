@@ -92,15 +92,23 @@ SECRET_CONFIGS = {
         ]
     },
     'cloudflare': {
-        'description': 'Deployment secrets for hadoku_site (Cloudflare and Packages)',
-        'secrets': ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_WORKER_FLUSH_TOKEN', 'ROUTE_CONFIG', 'ADMIN_KEY', 'FRIEND_KEY', 'TASK_GITHUB_TOKEN', 'DEPLOY_PACKAGE_TOKEN'],
+        'description': 'Deployment secrets for hadoku_site (Cloudflare Workers)',
+        'secrets': [
+            'CLOUDFLARE_API_TOKEN', 
+            'CLOUDFLARE_WORKER_FLUSH_TOKEN', 
+            'ROUTE_CONFIG', 
+            'ADMIN_KEYS',      # JSON object: maps keys to userIds for backend validation
+            'FRIEND_KEYS',     # JSON object: maps keys to userIds for backend validation
+            'TASK_GITHUB_TOKEN', 
+            'DEPLOY_PACKAGE_TOKEN'
+        ],
         'repos': [
             "WolffM/hadoku_site",
         ],
         # Map .env names to GitHub Secret names
         'secret_mapping': {
-            'ADMIN_KEY': 'PUBLIC_ADMIN_KEY',
-            'FRIEND_KEY': 'PUBLIC_FRIEND_KEY',
+            'ADMIN_KEYS': 'ADMIN_KEYS',
+            'FRIEND_KEYS': 'FRIEND_KEYS',
             'TASK_GITHUB_TOKEN': 'HADOKU_SITE_TOKEN',
             'DEPLOY_PACKAGE_TOKEN': 'DEPLOY_PACKAGE_TOKEN'
         }
@@ -226,6 +234,22 @@ class GitHubTokenManager:
                 except json.JSONDecodeError as e:
                     print(f"  ❌ ROUTE_CONFIG is not valid JSON: {e}")
                     return False
+            
+            # Validate ADMIN_KEYS and FRIEND_KEYS JSON structure
+            for key_name in ['ADMIN_KEYS', 'FRIEND_KEYS']:
+                if key_name in self.secret_values:
+                    keys_json = self.secret_values[key_name]
+                    print(f"  🧪 Validating {key_name} JSON structure...")
+                    try:
+                        import json
+                        keys_data = json.loads(keys_json)
+                        if not isinstance(keys_data, dict):
+                            print(f"  ❌ {key_name} must be a JSON object (dict), got {type(keys_data)}")
+                            return False
+                        print(f"  ✅ {key_name} is valid JSON with {len(keys_data)} key(s): {list(keys_data.keys())}")
+                    except json.JSONDecodeError as e:
+                        print(f"  ❌ {key_name} is not valid JSON: {e}")
+                        return False
         
         print(f"✅ Validation complete")
         return True

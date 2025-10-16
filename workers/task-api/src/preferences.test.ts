@@ -9,7 +9,7 @@ import { createTestEnv, createAuthHeaders, getPreferences, savePreferences } fro
 
 describe('User Preferences Tests', () => {
 	const env = createTestEnv();
-	const adminHeaders = createAuthHeaders(env.ADMIN_KEY, 'automated_testing_admin');
+	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	it('should save and retrieve preferences', async () => {
 		// 1. Get current preferences (should be light theme by default)

@@ -23,7 +23,7 @@ import {
 
 describe('Complex Batch Operations Tests', () => {
 	const env = createTestEnv();
-	const adminHeaders = createAuthHeaders(env.ADMIN_KEY, 'automated_testing_admin');
+	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	it('should handle complex batch operations workflow', async () => {
 		const mainBoard = 'main';

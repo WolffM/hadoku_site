@@ -19,7 +19,7 @@ import {
 
 describe('Route Collision Tests', () => {
 	const env = createTestEnv();
-	const adminHeaders = createAuthHeaders(env.ADMIN_KEY, 'automated_testing_admin');
+	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	it('should NOT confuse batch-tag route with :id parameter', async () => {
 		// Setup: Create a board and tasks
