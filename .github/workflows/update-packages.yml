@@ -88,8 +88,8 @@ jobs:
           PACKAGE="${{ github.event.client_payload.package }}"
           echo "📦 Updating $PACKAGE to latest version..."
           
-          # Update root package
-          pnpm add $PACKAGE@latest
+          # Update root package (workspace root)
+          pnpm add -w $PACKAGE@latest
           echo "✅ Updated root package.json and pnpm-lock.yaml"
           
           # Update worker directory
