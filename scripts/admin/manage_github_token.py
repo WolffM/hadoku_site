@@ -131,8 +131,8 @@ class GitHubTokenManager:
         
     def load_env(self) -> Dict[str, str]:
         """Load environment variables from .env file."""
-        # Look for .env in the parent directory (repo root)
-        env_path = Path(__file__).parent.parent / '.env'
+        # Look for .env in the repo root (two levels up from admin/)
+        env_path = Path(__file__).parent.parent.parent / '.env'
         env_vars = {}
         
         if env_path.exists():

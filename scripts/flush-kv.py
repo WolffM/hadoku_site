@@ -1,8 +1,7 @@
 ﻿#!/usr/bin/env python3
-"""KV Backup Script - Standalone"""
-import requests, json, os
+"""KV Flush Script"""
+import requests, os, sys
 from pathlib import Path
-from datetime import datetime
 
 def load_config():
     env_path = Path(__file__).parent.parent / '.env'
@@ -19,13 +18,10 @@ def load_config():
     return config
 
 def main():
-    print("Starting KV backup...")
+    print("WARNING: This will delete ALL keys from KV!")
     cfg = load_config()
     if not all([cfg['CLOUDFLARE_API_TOKEN'], cfg['CLOUDFLARE_ACCOUNT_ID'], cfg['CLOUDFLARE_NAMESPACE_ID']]):
         print("Error: Missing credentials"); return 1
-    
-    backup_dir = Path(__file__).parent / 'backups'
-    backup_dir.mkdir(exist_ok=True)
     
     url = f"https://api.cloudflare.com/client/v4/accounts/{cfg['CLOUDFLARE_ACCOUNT_ID']}/storage/kv/namespaces/{cfg['CLOUDFLARE_NAMESPACE_ID']}/keys"
     headers = {'Authorization': f'Bearer {cfg['CLOUDFLARE_API_TOKEN']}'}
@@ -41,24 +37,20 @@ def main():
         cursor = data.get('result_info', {}).get('cursor')
         if not cursor: break
     
-    print(f"Found {len(all_keys)} keys")
+    print(f"Found {len(all_keys)} keys to delete")
+    if not all_keys: print("Nothing to delete"); return 0
     
-    backup_data = {'timestamp': datetime.utcnow().isoformat() + 'Z', 'namespace_id': cfg['CLOUDFLARE_NAMESPACE_ID'], 'keys': {}}
+    if os.environ.get('FLUSH_CONFIRM') != 'yes':
+        confirm = input('Type "FLUSH" to confirm deletion: ')
+        if confirm != 'FLUSH': print("Cancelled"); return 1
+    
     for i, key in enumerate(all_keys, 1):
-        value_url = f"https://api.cloudflare.com/client/v4/accounts/{cfg['CLOUDFLARE_ACCOUNT_ID']}/storage/kv/namespaces/{cfg['CLOUDFLARE_NAMESPACE_ID']}/values/{key}"
-        r = requests.get(value_url, headers=headers)
-        if r.status_code == 200:
-            try: backup_data['keys'][key] = r.json()
-            except: backup_data['keys'][key] = r.text
+        delete_url = f"https://api.cloudflare.com/client/v4/accounts/{cfg['CLOUDFLARE_ACCOUNT_ID']}/storage/kv/namespaces/{cfg['CLOUDFLARE_NAMESPACE_ID']}/values/{key}"
+        requests.delete(delete_url, headers=headers)
         print(f"Progress: {i}/{len(all_keys)}", end='\r')
     
-    timestamp = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
-    backup_file = backup_dir / f'tasks-kv-backup-{timestamp}.json'
-    with open(backup_file, 'w') as f: json.dump(backup_data, f, indent=2)
-    
-    print(f"\nBackup saved: {backup_file}")
-    print(f"Total keys: {len(all_keys)}")
+    print(f"\nFlush complete: {len(all_keys)} keys deleted")
     return 0
 
 if __name__ == '__main__':
-    import sys; sys.exit(main())
+    sys.exit(main())

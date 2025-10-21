@@ -170,12 +170,13 @@ jobs:
             
             **To restore from backup:**
             \`\`\`bash
-            node scripts/restore-kv.mjs backups/${backupFile}
+            python scripts/restore-kv.py backups/${backupFile}
             \`\`\`
             
             ⚠️ **Note:** If the new package uses a different storage structure, you may need to flush KV:
             \`\`\`bash
-            node scripts/flush-kv.mjs
+            python scripts/flush-kv.py
+            # Type "FLUSH" when prompted to confirm
             \`\`\``
             });
       
