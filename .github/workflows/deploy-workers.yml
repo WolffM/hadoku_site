@@ -34,10 +34,8 @@ jobs:
           echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
       
-      - name: Install dependencies
-        run: |
-          cd workers/edge-router
-          pnpm install
+      - name: Install dependencies (including workspace deps)
+        run: pnpm install --filter edge-router...
       
       - name: Deploy to Cloudflare
         env:
@@ -70,8 +68,8 @@ jobs:
           echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
       
-      - name: Install dependencies for task-api
-        run: pnpm --filter task-api install
+      - name: Install dependencies (including workspace deps)
+        run: pnpm install --filter task-api...
       
       - name: Deploy to Cloudflare
         env:
