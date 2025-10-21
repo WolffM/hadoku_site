@@ -42,9 +42,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           ROUTE_CONFIG: ${{ secrets.ROUTE_CONFIG }}
         run: |
-          npm install -g wrangler
-          # Deploy from root so pnpm workspace resolution works
-          wrangler deploy --config workers/edge-router/wrangler.toml --var ROUTE_CONFIG:"$ROUTE_CONFIG"
+          # Deploy using pnpm exec so workspace deps are resolved
+          pnpm --filter edge-router exec wrangler deploy --var ROUTE_CONFIG:"$ROUTE_CONFIG"
   
   deploy-task-api:
     name: Deploy Task API Worker
@@ -75,20 +74,18 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          npm install -g wrangler
-          
           # Set secrets (JSON key objects for authentication)
           if [ -n "${{ secrets.ADMIN_KEYS }}" ]; then
-            echo "${{ secrets.ADMIN_KEYS }}" | wrangler secret put ADMIN_KEYS --config workers/task-api/wrangler.toml
+            echo "${{ secrets.ADMIN_KEYS }}" | pnpm --filter task-api exec wrangler secret put ADMIN_KEYS
           fi
           
           if [ -n "${{ secrets.FRIEND_KEYS }}" ]; then
-            echo "${{ secrets.FRIEND_KEYS }}" | wrangler secret put FRIEND_KEYS --config workers/task-api/wrangler.toml
+            echo "${{ secrets.FRIEND_KEYS }}" | pnpm --filter task-api exec wrangler secret put FRIEND_KEYS
           fi
           
           if [ -n "${{ secrets.TASK_GITHUB_TOKEN }}" ]; then
-            echo "${{ secrets.TASK_GITHUB_TOKEN }}" | wrangler secret put GITHUB_PAT --config workers/task-api/wrangler.toml
+            echo "${{ secrets.TASK_GITHUB_TOKEN }}" | pnpm --filter task-api exec wrangler secret put GITHUB_PAT
           fi
           
-          # Deploy from root so pnpm workspace resolution works
-          wrangler deploy --config workers/task-api/wrangler.toml
+          # Deploy using pnpm exec so workspace deps are resolved
+          pnpm --filter task-api exec wrangler deploy
