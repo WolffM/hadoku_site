@@ -17,9 +17,14 @@ jobs:
         with:
           token: ${{ secrets.HADOKU_SITE_TOKEN }}
       
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'pnpm'
       
       - name: Create .npmrc for GitHub Packages
         run: |
@@ -84,23 +89,23 @@ jobs:
           echo "📦 Updating $PACKAGE to latest version..."
           
           # Update root package
-          npm install $PACKAGE@latest
-          echo "✅ Updated root package.json and package-lock.json"
+          pnpm add $PACKAGE@latest
+          echo "✅ Updated root package.json and pnpm-lock.yaml"
           
           # Update worker directory
           echo "📦 Updating $PACKAGE in workers/task-api..."
           cp .npmrc ./workers/task-api/
-          npm install --prefix ./workers/task-api $PACKAGE@latest
-          echo "✅ Updated workers/task-api/package.json and package-lock.json"
+          pnpm --filter task-api add $PACKAGE@latest
+          echo "✅ Updated workers/task-api/package.json"
           
           # Update task bundle (copies dist files to public/mf/task/)
           echo "📦 Updating task micro-frontend bundle..."
-          npm run update-task-bundle
+          pnpm run update-task-bundle
           echo "✅ Updated public/mf/task/ bundle files"
           
           # Regenerate registry with new version numbers for cache busting
           echo "📦 Regenerating registry with cache-busting version..."
-          npm run generate-registry
+          pnpm run generate-registry
           echo "✅ Updated public/mf/registry.json with new versions"
       
       - name: Commit and push if changed
@@ -110,11 +115,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Check if any package files or bundle files changed
-          if git diff --quiet package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/; then
+          if git diff --quiet package.json pnpm-lock.yaml workers/task-api/package.json public/mf/; then
             echo "ℹ️  No package updates needed"
             echo "updated=false" >> $GITHUB_OUTPUT
           else
-            git add package.json package-lock.json workers/task-api/package.json workers/task-api/package-lock.json public/mf/
+            git add package.json pnpm-lock.yaml workers/task-api/package.json public/mf/
             git commit -m "chore: update ${{ github.event.client_payload.package }} to latest"
             git push
             echo "✅ Updated package and pushed changes"

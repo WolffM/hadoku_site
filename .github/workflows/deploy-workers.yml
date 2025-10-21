@@ -19,10 +19,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'pnpm'
       
       - name: Create .npmrc for GitHub Packages
         run: |
@@ -32,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd workers/edge-router
-          npm install
+          pnpm install
       
       - name: Deploy to Cloudflare
         env:
@@ -50,10 +55,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'pnpm'
       
       - name: Create .npmrc for GitHub Packages
         run: |
@@ -63,12 +73,12 @@ jobs:
       - name: Install shared worker dependencies
         run: |
           cd workers
-          npm install
+          pnpm install
       
       - name: Install dependencies
         run: |
           cd workers/task-api
-          npm install
+          pnpm install
       
       - name: Deploy to Cloudflare
         env:
