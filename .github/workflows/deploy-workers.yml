@@ -21,7 +21,7 @@ jobs:
       
       - uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 9
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,10 +29,10 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       
-      - name: Create .npmrc for GitHub Packages
+      - name: Create .npmrc for GitHub Packages (root for pnpm)
         run: |
-          echo "@wolffm:registry=https://npm.pkg.github.com" > workers/edge-router/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> workers/edge-router/.npmrc
+          echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
       
       - name: Install dependencies
         run: |
@@ -57,7 +57,7 @@ jobs:
       
       - uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 9
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -65,20 +65,13 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       
-      - name: Create .npmrc for GitHub Packages
+      - name: Create .npmrc for GitHub Packages (root for pnpm)
         run: |
-          echo "@wolffm:registry=https://npm.pkg.github.com" > workers/task-api/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> workers/task-api/.npmrc
+          echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
       
-      - name: Install shared worker dependencies
-        run: |
-          cd workers
-          pnpm install
-      
-      - name: Install dependencies
-        run: |
-          cd workers/task-api
-          pnpm install
+      - name: Install dependencies for task-api
+        run: pnpm --filter task-api install
       
       - name: Deploy to Cloudflare
         env:
