@@ -63,6 +63,9 @@ importers:
 
   workers/task-api:
     dependencies:
+      '@hadoku/worker-utils':
+        specifier: workspace:*
+        version: link:../util
       '@wolffm/task':
         specifier: ^3.0.31
         version: 3.0.31
