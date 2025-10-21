@@ -81,13 +81,14 @@ importers:
         version: 4.44.0(@cloudflare/workers-types@4.20251014.0)
 
   workers/util:
+    dependencies:
+      hono:
+        specifier: ^4.6.11
+        version: 4.10.1
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241011.0
         version: 4.20251014.0
-      hono:
-        specifier: ^4.6.11
-        version: 4.10.1
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
