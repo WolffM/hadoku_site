@@ -25,6 +25,37 @@ import {
 	logError
 } from '../../util';
 
+/**
+ * Validate a key and determine userType
+ * Centralized logic used by both auth middleware and validate-key endpoint
+ */
+function validateKeyAndGetType(
+	key: string,
+	adminKeys: Record<string, string> | Set<string>,
+	friendKeys: Record<string, string> | Set<string>
+): { valid: boolean; userType: 'admin' | 'friend' | 'public'; userId?: string } {
+	// Check admin keys
+	if (adminKeys instanceof Set) {
+		if (adminKeys.has(key)) {
+			return { valid: true, userType: 'admin', userId: key };
+		}
+	} else if (key in adminKeys) {
+		return { valid: true, userType: 'admin', userId: adminKeys[key] || key };
+	}
+	
+	// Check friend keys
+	if (friendKeys instanceof Set) {
+		if (friendKeys.has(key)) {
+			return { valid: true, userType: 'friend', userId: key };
+		}
+	} else if (key in friendKeys) {
+		return { valid: true, userType: 'friend', userId: friendKeys[key] || key };
+	}
+	
+	// Not found in either
+	return { valid: false, userType: 'public', userId: undefined };
+}
+
 // Extend AuthContext to include the authentication key
 interface ExtendedAuthContext extends TaskAuthContext {
 	key?: string;  // The authentication key used for KV storage
@@ -103,35 +134,10 @@ app.use('*', async (c, next) => {
 	const adminKeys = parseKeysFromEnv(c.env.ADMIN_KEYS);
 	const friendKeys = parseKeysFromEnv(c.env.FRIEND_KEYS);
 	
-	// Determine userType and userId
-	let userType: string = 'public';
-	let userId: string | undefined;
-	
-	if (key) {
-		// Check admin keys
-		if (adminKeys instanceof Set) {
-			if (adminKeys.has(key)) {
-				userType = 'admin';
-				userId = key; // Use key as userId for array format
-			}
-		} else if (key in adminKeys) {
-			userType = 'admin';
-			userId = adminKeys[key] || key; // Use mapped userId or key itself
-		}
-		
-		// Check friend keys if not already admin
-		if (userType === 'public') {
-			if (friendKeys instanceof Set) {
-				if (friendKeys.has(key)) {
-					userType = 'friend';
-					userId = key; // Use key as userId for array format
-				}
-			} else if (key in friendKeys) {
-				userType = 'friend';
-				userId = friendKeys[key] || key; // Use mapped userId or key itself
-			}
-		}
-	}
+	// Validate key and determine userType using centralized logic
+	const { valid, userType, userId } = key 
+		? validateKeyAndGetType(key, adminKeys, friendKeys)
+		: { valid: false, userType: 'public' as const, userId: undefined };
 	
 	// Store extended auth context with the key
 	const authContext: ExtendedAuthContext = {
@@ -829,30 +835,17 @@ app.post('/task/api/validate-key', async (c) => {
 	const adminKeys = parseKeysFromEnv(c.env.ADMIN_KEYS);
 	const friendKeys = parseKeysFromEnv(c.env.FRIEND_KEYS);
 	
-	// Check if key exists in either admin or friend keys
-	let valid = false;
-	
-	if (adminKeys instanceof Set) {
-		valid = adminKeys.has(key);
-	} else {
-		valid = key in adminKeys;
-	}
-	
-	if (!valid) {
-		if (friendKeys instanceof Set) {
-			valid = friendKeys.has(key);
-		} else {
-			valid = key in friendKeys;
-		}
-	}
+	// Use centralized validation logic
+	const validation = validateKeyAndGetType(key, adminKeys, friendKeys);
 	
 	logRequest('POST', '/task/api/validate-key', { 
 		keyProvided: !!key,
-		valid,
+		valid: validation.valid,
+		userType: validation.userType,
 		keyPreview: key.substring(0, 4) + '...' // Log first 4 chars only for security
 	});
 	
-	return c.json({ valid });
+	return c.json({ valid: validation.valid });
 });
 
 // Set User ID Endpoint
