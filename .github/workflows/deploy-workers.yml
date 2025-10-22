@@ -74,18 +74,36 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          # Deploy using pnpm exec so workspace deps are resolved
+          echo "🚀 Step 1: Deploying worker..."
           pnpm --filter task-api exec wrangler deploy
+          echo "✅ Worker deployed successfully"
           
-          # Set secrets AFTER deployment (secrets require worker to be deployed first)
+          echo ""
+          echo "🔐 Step 2: Updating secrets (requires worker to be deployed first)..."
+          
           if [ -n "${{ secrets.ADMIN_KEYS }}" ]; then
+            echo "  📝 Updating ADMIN_KEYS..."
             echo "${{ secrets.ADMIN_KEYS }}" | pnpm --filter task-api exec wrangler secret put ADMIN_KEYS
+            echo "  ✅ ADMIN_KEYS updated"
+          else
+            echo "  ⚠️  ADMIN_KEYS secret not found in GitHub Secrets"
           fi
           
           if [ -n "${{ secrets.FRIEND_KEYS }}" ]; then
+            echo "  📝 Updating FRIEND_KEYS..."
             echo "${{ secrets.FRIEND_KEYS }}" | pnpm --filter task-api exec wrangler secret put FRIEND_KEYS
+            echo "  ✅ FRIEND_KEYS updated"
+          else
+            echo "  ⚠️  FRIEND_KEYS secret not found in GitHub Secrets"
           fi
           
           if [ -n "${{ secrets.TASK_GITHUB_TOKEN }}" ]; then
+            echo "  📝 Updating GITHUB_PAT..."
             echo "${{ secrets.TASK_GITHUB_TOKEN }}" | pnpm --filter task-api exec wrangler secret put GITHUB_PAT
+            echo "  ✅ GITHUB_PAT updated"
+          else
+            echo "  ⚠️  TASK_GITHUB_TOKEN secret not found in GitHub Secrets"
           fi
+          
+          echo ""
+          echo "🎉 Deployment and secret updates complete!"

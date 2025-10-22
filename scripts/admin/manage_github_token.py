@@ -97,8 +97,8 @@ SECRET_CONFIGS = {
             'CLOUDFLARE_API_TOKEN', 
             'CLOUDFLARE_WORKER_FLUSH_TOKEN', 
             'ROUTE_CONFIG', 
-            'ADMIN_KEYS',      # JSON object: maps keys to userIds for backend validation
-            'FRIEND_KEYS',     # JSON object: maps keys to userIds for backend validation
+            'ADMIN_KEYS',      # JSON object or array: authentication keys
+            'FRIEND_KEYS',     # JSON object or array: authentication keys
             'TASK_GITHUB_TOKEN', 
             'DEPLOY_PACKAGE_TOKEN'
         ],
