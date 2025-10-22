@@ -334,6 +334,15 @@ app.get('/task/api/boards', async (c) => {
 	
 	// Add current auth context to response (overriding any stored values)
 	// This ensures the response reflects the CURRENT authentication, not stored metadata
+	console.log('[GET /task/api/boards] Auth context:', {
+		userType: auth.userType,
+		userId: auth.userId,
+		key: auth.key?.substring(0, 8) + '...',
+		isPublic: auth.isPublic,
+		isFriend: auth.isFriend,
+		isAdmin: auth.isAdmin
+	});
+	
 	return c.json({
 		...boardsData,
 		userId: auth.userId || auth.userType,  // Use userId or fallback to userType
