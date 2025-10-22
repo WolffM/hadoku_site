@@ -324,8 +324,21 @@ async function handleBatchOperation<T>(
 
 // Get all boards (and optionally tasks per board depending on handler design)
 app.get('/task/api/boards', async (c) => {
-	logRequest('GET', '/task/api/boards', { userType: c.get('authContext').userType });
-	return handleOperation(c, (storage, auth) => TaskHandlers.getBoards(storage, auth));
+	const authContext = c.get('authContext');
+	logRequest('GET', '/task/api/boards', { userType: authContext.userType });
+	
+	// Get boards data from handler
+	const { storage, auth } = getContext(c);
+	const userId = getStableUserId(c);
+	const boardsData = await TaskHandlers.getBoards(storage, { ...auth, userId });
+	
+	// Add current auth context to response (overriding any stored values)
+	// This ensures the response reflects the CURRENT authentication, not stored metadata
+	return c.json({
+		...boardsData,
+		userId: auth.userId || auth.userType,  // Use userId or fallback to userType
+		userType: auth.userType  // Always reflect current auth
+	});
 });
 
 // Create a new board
