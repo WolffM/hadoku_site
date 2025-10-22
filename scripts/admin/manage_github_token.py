@@ -8,9 +8,12 @@ Self-contained script that:
 4. Updates secrets in target repositories
 5. Verifies the updates
 
+Note: ADMIN_KEYS and FRIEND_KEYS are managed directly in Cloudflare, not GitHub.
+To update those, run: pnpm --filter task-api exec wrangler secret put ADMIN_KEYS
+
 Usage: 
   python manage_github_token.py                    # Update HADOKU_SITE_TOKEN in child repos
-  python manage_github_token.py --mode=cloudflare  # Update Cloudflare secrets in hadoku_site
+  python manage_github_token.py --mode=cloudflare  # Update Cloudflare deployment secrets (NOT auth keys)
   python manage_github_token.py --mode=all         # Update all secrets
 """
 
@@ -97,8 +100,6 @@ SECRET_CONFIGS = {
             'CLOUDFLARE_API_TOKEN', 
             'CLOUDFLARE_WORKER_FLUSH_TOKEN', 
             'ROUTE_CONFIG', 
-            'ADMIN_KEYS',      # JSON object or array: authentication keys
-            'FRIEND_KEYS',     # JSON object or array: authentication keys
             'TASK_GITHUB_TOKEN', 
             'DEPLOY_PACKAGE_TOKEN'
         ],
@@ -107,8 +108,6 @@ SECRET_CONFIGS = {
         ],
         # Map .env names to GitHub Secret names
         'secret_mapping': {
-            'ADMIN_KEYS': 'ADMIN_KEYS',
-            'FRIEND_KEYS': 'FRIEND_KEYS',
             'TASK_GITHUB_TOKEN': 'HADOKU_SITE_TOKEN',
             'DEPLOY_PACKAGE_TOKEN': 'DEPLOY_PACKAGE_TOKEN'
         }
@@ -235,25 +234,9 @@ class GitHubTokenManager:
                     print(f"  ❌ ROUTE_CONFIG is not valid JSON: {e}")
                     return False
             
-            # Validate ADMIN_KEYS and FRIEND_KEYS JSON structure
-            for key_name in ['ADMIN_KEYS', 'FRIEND_KEYS']:
-                if key_name in self.secret_values:
-                    keys_json = self.secret_values[key_name]
-                    print(f"  🧪 Validating {key_name} JSON structure...")
-                    try:
-                        import json
-                        keys_data = json.loads(keys_json)
-                        # Accept both dict (object) and list (array) formats
-                        if isinstance(keys_data, dict):
-                            print(f"  ✅ {key_name} is valid JSON object with {len(keys_data)} key(s): {list(keys_data.keys())[:3]}{'...' if len(keys_data) > 3 else ''}")
-                        elif isinstance(keys_data, list):
-                            print(f"  ✅ {key_name} is valid JSON array with {len(keys_data)} key(s): {keys_data[:3]}{'...' if len(keys_data) > 3 else ''}")
-                        else:
-                            print(f"  ❌ {key_name} must be a JSON object or array, got {type(keys_data)}")
-                            return False
-                    except json.JSONDecodeError as e:
-                        print(f"  ❌ {key_name} is not valid JSON: {e}")
-                        return False
+            # Note: ADMIN_KEYS and FRIEND_KEYS are now managed directly in Cloudflare
+            # via: pnpm --filter task-api exec wrangler secret put <SECRET_NAME>
+            print(f"  ℹ️  Note: ADMIN_KEYS and FRIEND_KEYS are managed directly in Cloudflare")
         
         print(f"✅ Validation complete")
         return True
@@ -467,8 +450,12 @@ def main():
         epilog="""
 Examples:
   python manage_github_token.py                    # Update HADOKU_SITE_TOKEN in child repos
-  python manage_github_token.py --mode=cloudflare  # Update Cloudflare secrets in hadoku_site
+  python manage_github_token.py --mode=cloudflare  # Update Cloudflare deployment secrets (NOT auth keys)
   python manage_github_token.py --mode=all         # Update all secrets in all repos
+
+Note: 
+  ADMIN_KEYS and FRIEND_KEYS are managed directly in Cloudflare via wrangler CLI.
+  To update: cd workers/task-api && pnpm exec wrangler secret put ADMIN_KEYS
         """
     )
     
