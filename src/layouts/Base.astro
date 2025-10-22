@@ -41,12 +41,19 @@ const friendKey = import.meta.env.PUBLIC_FRIEND_KEY || '';
       box-sizing: border-box;
     }
     
+    html {
+      height: 100%;
+      overflow: hidden;
+    }
+    
     /* Prevent white flash on page load by matching browser theme preference */
     body {
       margin: 0;
       padding: 0;
+      height: 100%;
       background-color: #1a1a1a; /* Default dark */
       transition: background-color 0.3s ease;
+      overflow: hidden;
     }
     
     /* Respect user's system theme preference */
