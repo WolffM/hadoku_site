@@ -855,56 +855,6 @@ app.post('/task/api/validate-key', async (c) => {
 	return c.json({ valid: validation.valid });
 });
 
-// Set User ID Endpoint
-// Update the userId associated with the current session
-// This is different from migrate-userid:
-//   - migrate-userid: Advisory endpoint that tells admin to update .env
-//   - user/set-id: Actually updates the in-memory mapping (session-only, not persisted)
-app.post('/task/api/user/set-id', async (c) => {
-	const { auth } = getContext(c);
-	const currentKey = auth.key;
-	
-	// Only authenticated users can set userId
-	if (auth.userType === 'public' || !currentKey) {
-		return c.json({ error: 'Setting userId not available for public users' }, 401);
-	}
-	
-	const body = await c.req.json();
-	const { newUserId } = body;
-	
-	// Validate newUserId
-	if (!newUserId || typeof newUserId !== 'string') {
-		return c.json({ error: 'newUserId is required' }, 400);
-	}
-	
-	if (newUserId.length < 1 || newUserId.length > 50) {
-		return c.json({ error: 'newUserId must be 1-50 characters' }, 400);
-	}
-	
-	if (!/^[a-zA-Z0-9_-]+$/.test(newUserId)) {
-		return c.json({ error: 'newUserId can only contain letters, numbers, underscores, and hyphens' }, 400);
-	}
-	
-	if (newUserId.toLowerCase() === 'public') {
-		return c.json({ error: 'userId "public" is reserved' }, 400);
-	}
-	
-	logRequest('POST', '/task/api/user/set-id', { 
-		oldUserId: auth.userId,
-		newUserId,
-		userType: auth.userType,
-		key: currentKey
-	});
-	
-	// Note: This is a session-only update. The actual mapping is stored in ADMIN_KEYS/FRIEND_KEYS env vars.
-	// This endpoint just returns success to indicate the frontend can update sessionStorage.
-	// The real userId mapping happens on the backend via env vars.
-	return c.json({
-		ok: true,
-		message: 'User ID updated for display purposes. Backend mapping remains in environment variables.'
-	});
-});
-
 // Backwards compatibility: old v1 list endpoint (maps to main board)
 app.get('/task/api', async (c) => {
 	logRequest('GET', '/task/api', { 
