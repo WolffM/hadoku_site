@@ -55,10 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           const urlParams = new URLSearchParams(window.location.search);
           const keyFromUrl = urlParams.get('key');
           
-          // Determine userType from key parameter
-          const adminKey = document.querySelector('meta[name="admin-key"]')?.getAttribute('content') || '';
-          const friendKey = document.querySelector('meta[name="friend-key"]')?.getAttribute('content') || '';
-          
           let userType = 'public';
           let userId = 'public';
           let sessionId = null;
@@ -67,17 +63,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           const key = keyFromUrl || sessionStorage.getItem('hadoku_session_key');
           
           if (key) {
-            if (key === adminKey) {
-              userType = 'admin';
-              userId = 'admin';
-            } else if (key === friendKey) {
-              userType = 'friend';
-              userId = 'friend';
-            } else {
-              // Unknown key - treat as userId for friend/admin context
-              userType = 'admin';
-              userId = key;
-            }
+            // Don't determine userType here - let the backend validate via /validate-key
+            // For now, assume 'friend' as default (backend will correct it)
+            userType = 'friend';
+            userId = key; // Use key as temporary userId until backend provides real one
             
             // Try to get existing session from sessionStorage
             sessionId = sessionStorage.getItem('hadoku_session_id');
