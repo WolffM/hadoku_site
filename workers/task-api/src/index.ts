@@ -134,6 +134,13 @@ app.use('*', async (c, next) => {
 	const adminKeys = parseKeysFromEnv(c.env.ADMIN_KEYS);
 	const friendKeys = parseKeysFromEnv(c.env.FRIEND_KEYS);
 	
+	// DEBUG: Log what we parsed (TEMPORARY - REMOVE AFTER DEBUGGING)
+	console.log('[AUTH DEBUG] ADMIN_KEYS type:', adminKeys instanceof Set ? 'Set' : 'Record', 'size:', adminKeys instanceof Set ? adminKeys.size : Object.keys(adminKeys).length);
+	console.log('[AUTH DEBUG] FRIEND_KEYS type:', friendKeys instanceof Set ? 'Set' : 'Record', 'size:', friendKeys instanceof Set ? friendKeys.size : Object.keys(friendKeys).length);
+	if (key) {
+		console.log('[AUTH DEBUG] Checking key:', key.substring(0, 8) + '...');
+	}
+	
 	// Validate key and determine userType using centralized logic
 	const { valid, userType, userId } = key 
 		? validateKeyAndGetType(key, adminKeys, friendKeys)
