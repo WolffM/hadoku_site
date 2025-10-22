@@ -825,12 +825,26 @@ app.post('/task/api/validate-key', async (c) => {
 		return c.json({ valid: false, error: 'Key is required' }, 400);
 	}
 	
-	// Parse key mappings from env
+	// Parse key mappings from env (can be Set for arrays or Record for objects)
 	const adminKeys = parseKeysFromEnv(c.env.ADMIN_KEYS);
 	const friendKeys = parseKeysFromEnv(c.env.FRIEND_KEYS);
-	const allKeys = { ...adminKeys, ...friendKeys };
 	
-	const valid = key in allKeys;
+	// Check if key exists in either admin or friend keys
+	let valid = false;
+	
+	if (adminKeys instanceof Set) {
+		valid = adminKeys.has(key);
+	} else {
+		valid = key in adminKeys;
+	}
+	
+	if (!valid) {
+		if (friendKeys instanceof Set) {
+			valid = friendKeys.has(key);
+		} else {
+			valid = key in friendKeys;
+		}
+	}
 	
 	logRequest('POST', '/task/api/validate-key', { 
 		keyProvided: !!key,
