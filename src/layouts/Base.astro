@@ -40,9 +40,26 @@ const friendKey = import.meta.env.PUBLIC_FRIEND_KEY || '';
       padding: 0;
       box-sizing: border-box;
     }
+    
+    /* Prevent white flash on page load by matching browser theme preference */
     body {
       margin: 0;
       padding: 0;
+      background-color: #1a1a1a; /* Default dark */
+      transition: background-color 0.3s ease;
+    }
+    
+    /* Respect user's system theme preference */
+    @media (prefers-color-scheme: light) {
+      body {
+        background-color: #f5f5f5;
+      }
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #1a1a1a;
+      }
     }
   </style>
 </head>
