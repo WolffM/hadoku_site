@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (module.mount) {
           // Get runtime props from URL parameters
           const urlParams = new URLSearchParams(window.location.search);
-          const key = urlParams.get('key');
+          const keyFromUrl = urlParams.get('key');
           
           // Determine userType from key parameter
           const adminKey = document.querySelector('meta[name="admin-key"]')?.getAttribute('content') || '';
@@ -62,6 +62,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           let userType = 'public';
           let userId = 'public';
           let sessionId = null;
+          
+          // Check for key in URL first, otherwise check sessionStorage
+          const key = keyFromUrl || sessionStorage.getItem('hadoku_session_key');
           
           if (key) {
             if (key === adminKey) {
@@ -76,24 +79,61 @@ document.addEventListener('DOMContentLoaded', async () => {
               userId = key;
             }
             
-            // Create a session for this key (key stays server-side)
-            try {
-              const sessionResponse = await fetch('/session/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key })
-              });
-              
-              if (sessionResponse.ok) {
-                const sessionData = await sessionResponse.json();
-                sessionId = sessionData.sessionId;
-                console.log(`Session created: ${sessionId}`);
-              } else {
-                console.error('Failed to create session:', await sessionResponse.text());
+            // Try to get existing session from sessionStorage
+            sessionId = sessionStorage.getItem('hadoku_session_id');
+            
+            // If we have a key from URL or no existing session, create/refresh session
+            if (keyFromUrl || !sessionId) {
+              try {
+                const sessionResponse = await fetch('/session/create', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ key })
+                });
+                
+                if (sessionResponse.ok) {
+                  const sessionData = await sessionResponse.json();
+                  sessionId = sessionData.sessionId;
+                  
+                  // Store session data in sessionStorage (survives page reloads, not browser close)
+                  sessionStorage.setItem('hadoku_session_id', sessionId);
+                  sessionStorage.setItem('hadoku_session_key', key);
+                  
+                  // Scrub key from URL for security (only if it was in the URL)
+                  if (keyFromUrl) {
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.delete('key');
+                    window.history.replaceState({}, '', newUrl);
+                    console.log('🔒 Key removed from URL for security');
+                  }
+                  
+                  console.log(`Session created/refreshed: ${sessionId}`);
+                  
+                  // If key was in URL, scrub it for security
+                  if (keyFromUrl) {
+                    const url = new URL(window.location);
+                    url.searchParams.delete('key');
+                    window.history.replaceState({}, '', url);
+                    console.log('🔒 Key scrubbed from URL for security');
+                  }
+                } else {
+                  console.error('Failed to create session:', await sessionResponse.text());
+                  // Clear invalid session data
+                  sessionStorage.removeItem('hadoku_session_id');
+                  sessionStorage.removeItem('hadoku_session_key');
+                }
+              } catch (err) {
+                console.error('Error creating session:', err);
+                sessionStorage.removeItem('hadoku_session_id');
+                sessionStorage.removeItem('hadoku_session_key');
               }
-            } catch (err) {
-              console.error('Error creating session:', err);
+            } else {
+              console.log(`Using existing session: ${sessionId}`);
             }
+          } else {
+            // No key found - clear any stale session data
+            sessionStorage.removeItem('hadoku_session_id');
+            sessionStorage.removeItem('hadoku_session_key');
           }
           
           // Merge registry props with runtime overrides
@@ -122,3 +162,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Failed to load micro-app:', error);
   }
 });
+
+/**
+ * Global helper for child apps to update session when user changes key via UI
+ * This allows the "Enter New Key" feature to work without page reload
+ * 
+ * @param {string} newKey - The new authentication key
+ * @returns {Promise<{success: boolean, sessionId?: string, error?: string}>}
+ */
+window.updateHadokuSession = async function(newKey) {
+  if (!newKey || typeof newKey !== 'string') {
+    return { success: false, error: 'Invalid key provided' };
+  }
+  
+  try {
+    const sessionResponse = await fetch('/session/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: newKey })
+    });
+    
+    if (sessionResponse.ok) {
+      const sessionData = await sessionResponse.json();
+      const sessionId = sessionData.sessionId;
+      
+      // Update sessionStorage with new session
+      sessionStorage.setItem('hadoku_session_id', sessionId);
+      sessionStorage.setItem('hadoku_session_key', newKey);
+      
+      console.log(`Session updated: ${sessionId}`);
+      return { success: true, sessionId };
+    } else {
+      const errorText = await sessionResponse.text();
+      console.error('Failed to update session:', errorText);
+      return { success: false, error: errorText };
+    }
+  } catch (err) {
+    console.error('Error updating session:', err);
+    return { success: false, error: err.message };
+  }
+};
