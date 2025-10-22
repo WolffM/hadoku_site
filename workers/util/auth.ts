@@ -129,7 +129,7 @@ export function createAuthMiddleware<TEnv = any>(
  */
 export function parseKeysFromEnv(
 	jsonString: string | undefined
-): Record<string, string> {
+): Record<string, string> | Set<string> {
 	if (!jsonString) {
 		return {};
 	}
@@ -138,15 +138,9 @@ export function parseKeysFromEnv(
 		const parsed = JSON.parse(jsonString);
 		
 		// Handle array format: ["key1", "key2", "key3"]
-		// Each key gets userId = "" (empty string)
+		// Return as Set for membership checking
 		if (Array.isArray(parsed)) {
-			const result: Record<string, string> = {};
-			parsed.forEach(key => {
-				if (typeof key === 'string') {
-					result[key] = '';  // Default userId to empty string
-				}
-			});
-			return result;
+			return new Set(parsed.filter(key => typeof key === 'string'));
 		}
 		
 		// Handle object format: {"key1": "userId1", "key2": "userId2"}

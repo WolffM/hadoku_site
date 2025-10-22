@@ -99,22 +99,37 @@ app.use('*', async (c, next) => {
 		if (key) break;
 	}
 	
-	// Parse key mappings
+	// Parse key mappings (can be Set for arrays or Record for objects)
 	const adminKeys = parseKeysFromEnv(c.env.ADMIN_KEYS);
 	const friendKeys = parseKeysFromEnv(c.env.FRIEND_KEYS);
-	const allKeys = { ...adminKeys, ...friendKeys };
 	
 	// Determine userType and userId
 	let userType: string = 'public';
 	let userId: string | undefined;
 	
-	if (key && key in allKeys) {  // Use 'in' operator to check key existence, not value truthiness
-		userId = allKeys[key];
-		// Determine userType based on which mapping the key came from
-		if (key in adminKeys) {
+	if (key) {
+		// Check admin keys
+		if (adminKeys instanceof Set) {
+			if (adminKeys.has(key)) {
+				userType = 'admin';
+				userId = key; // Use key as userId for array format
+			}
+		} else if (key in adminKeys) {
 			userType = 'admin';
-		} else if (key in friendKeys) {
-			userType = 'friend';
+			userId = adminKeys[key] || key; // Use mapped userId or key itself
+		}
+		
+		// Check friend keys if not already admin
+		if (userType === 'public') {
+			if (friendKeys instanceof Set) {
+				if (friendKeys.has(key)) {
+					userType = 'friend';
+					userId = key; // Use key as userId for array format
+				}
+			} else if (key in friendKeys) {
+				userType = 'friend';
+				userId = friendKeys[key] || key; // Use mapped userId or key itself
+			}
 		}
 	}
 	
