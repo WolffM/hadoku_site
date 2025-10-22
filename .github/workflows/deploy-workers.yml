@@ -74,7 +74,10 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          # Set secrets (JSON key objects for authentication)
+          # Deploy using pnpm exec so workspace deps are resolved
+          pnpm --filter task-api exec wrangler deploy
+          
+          # Set secrets AFTER deployment (secrets require worker to be deployed first)
           if [ -n "${{ secrets.ADMIN_KEYS }}" ]; then
             echo "${{ secrets.ADMIN_KEYS }}" | pnpm --filter task-api exec wrangler secret put ADMIN_KEYS
           fi
@@ -86,6 +89,3 @@ jobs:
           if [ -n "${{ secrets.TASK_GITHUB_TOKEN }}" ]; then
             echo "${{ secrets.TASK_GITHUB_TOKEN }}" | pnpm --filter task-api exec wrangler secret put GITHUB_PAT
           fi
-          
-          # Deploy using pnpm exec so workspace deps are resolved
-          pnpm --filter task-api exec wrangler deploy
