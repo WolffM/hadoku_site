@@ -28,32 +28,33 @@ import {
 /**
  * Validate a key and determine userType
  * Centralized logic used by both auth middleware and validate-key endpoint
+ * Note: userId is NOT part of auth - it's stored metadata in boards
  */
 function validateKeyAndGetType(
 	key: string,
 	adminKeys: Record<string, string> | Set<string>,
 	friendKeys: Record<string, string> | Set<string>
-): { valid: boolean; userType: 'admin' | 'friend' | 'public'; userId?: string } {
+): { valid: boolean; userType: 'admin' | 'friend' | 'public' } {
 	// Check admin keys
 	if (adminKeys instanceof Set) {
 		if (adminKeys.has(key)) {
-			return { valid: true, userType: 'admin', userId: key };
+			return { valid: true, userType: 'admin' };
 		}
 	} else if (key in adminKeys) {
-		return { valid: true, userType: 'admin', userId: adminKeys[key] || key };
+		return { valid: true, userType: 'admin' };
 	}
 	
 	// Check friend keys
 	if (friendKeys instanceof Set) {
 		if (friendKeys.has(key)) {
-			return { valid: true, userType: 'friend', userId: key };
+			return { valid: true, userType: 'friend' };
 		}
 	} else if (key in friendKeys) {
-		return { valid: true, userType: 'friend', userId: friendKeys[key] || key };
+		return { valid: true, userType: 'friend' };
 	}
 	
 	// Not found in either
-	return { valid: false, userType: 'public', userId: undefined };
+	return { valid: false, userType: 'public' };
 }
 
 // Extend AuthContext to include the authentication key
@@ -142,15 +143,15 @@ app.use('*', async (c, next) => {
 	}
 	
 	// Validate key and determine userType using centralized logic
-	const { valid, userType, userId } = key 
+	const { valid, userType } = key 
 		? validateKeyAndGetType(key, adminKeys, friendKeys)
-		: { valid: false, userType: 'public' as const, userId: undefined };
+		: { valid: false, userType: 'public' as const };
 	
 	// Store extended auth context with the key
+	// Note: userId is NOT part of auth - it's stored in board metadata
 	const authContext: ExtendedAuthContext = {
 		userType,
-		userId,
-		key,  // Store the actual key for KV storage
+		key,  // The only thing that matters for authentication
 		isPublic: userType === 'public',
 		isFriend: userType === 'friend',
 		isAdmin: userType === 'admin'
@@ -349,7 +350,6 @@ app.get('/task/api/boards', async (c) => {
 	// This ensures the response reflects the CURRENT authentication, not stored metadata
 	console.log('[GET /task/api/boards] Auth context:', {
 		userType: auth.userType,
-		userId: auth.userId,
 		key: auth.key?.substring(0, 8) + '...',
 		isPublic: auth.isPublic,
 		isFriend: auth.isFriend,
@@ -358,8 +358,8 @@ app.get('/task/api/boards', async (c) => {
 	
 	return c.json({
 		...boardsData,
-		userId: auth.userId || auth.userType,  // Use userId or fallback to userType
-		userType: auth.userType  // Always reflect current auth
+		// userId comes from stored board metadata, not auth
+		userType: auth.userType  // Always reflect current authentication
 	});
 });
 
