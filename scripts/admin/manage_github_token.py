@@ -243,10 +243,14 @@ class GitHubTokenManager:
                     try:
                         import json
                         keys_data = json.loads(keys_json)
-                        if not isinstance(keys_data, dict):
-                            print(f"  ❌ {key_name} must be a JSON object (dict), got {type(keys_data)}")
+                        # Accept both dict (object) and list (array) formats
+                        if isinstance(keys_data, dict):
+                            print(f"  ✅ {key_name} is valid JSON object with {len(keys_data)} key(s): {list(keys_data.keys())[:3]}{'...' if len(keys_data) > 3 else ''}")
+                        elif isinstance(keys_data, list):
+                            print(f"  ✅ {key_name} is valid JSON array with {len(keys_data)} key(s): {keys_data[:3]}{'...' if len(keys_data) > 3 else ''}")
+                        else:
+                            print(f"  ❌ {key_name} must be a JSON object or array, got {type(keys_data)}")
                             return False
-                        print(f"  ✅ {key_name} is valid JSON with {len(keys_data)} key(s): {list(keys_data.keys())}")
                     except json.JSONDecodeError as e:
                         print(f"  ❌ {key_name} is not valid JSON: {e}")
                         return False
