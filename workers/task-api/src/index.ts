@@ -57,13 +57,8 @@ function validateKeyAndGetType(
 	return { valid: false, userType: 'public' };
 }
 
-// Extend AuthContext to include the authentication key
-interface ExtendedAuthContext extends TaskAuthContext {
-	key?: string;  // The authentication key used for KV storage
-	isPublic?: boolean;
-	isFriend?: boolean;
-	isAdmin?: boolean;
-}
+// Use the standard AuthContext from the package
+// No need for extension - the new API only needs userType and sessionId
 
 interface Env {
 	// JSON key objects mapping keys to userIds
@@ -76,7 +71,7 @@ interface Env {
 type AppContext = {
 	Bindings: Env;
 	Variables: {
-		authContext: ExtendedAuthContext;
+		authContext: TaskAuthContext & { key?: string };  // Keep key for backward compatibility
 	};
 };
 
@@ -147,14 +142,11 @@ app.use('*', async (c, next) => {
 		? validateKeyAndGetType(key, adminKeys, friendKeys)
 		: { valid: false, userType: 'public' as const };
 	
-	// Store extended auth context with the key
-	// Note: userId is NOT part of auth - it's stored in board metadata
-	const authContext: ExtendedAuthContext = {
+	// Store auth context with sessionId (using key as sessionId for backward compatibility)
+	const authContext: TaskAuthContext & { key?: string } = {
 		userType,
-		key,  // The only thing that matters for authentication
-		isPublic: userType === 'public',
-		isFriend: userType === 'friend',
-		isAdmin: userType === 'admin'
+		sessionId: key || 'public',  // Use key as sessionId
+		key  // Keep key for backward compatibility with storage
 	};
 	
 	c.set('authContext', authContext);
@@ -163,35 +155,36 @@ app.use('*', async (c, next) => {
 
 // 3. Workers KV Storage Implementation
 // This is the parent's responsibility - adapt storage to the environment.
-function createKVStorage(env: Env, authContext: ExtendedAuthContext): TaskStorage {
-	// Storage keys use the authentication key for data isolation
-	// Format: {type}:{key} where key is the authentication key
-	// For public users without a key, use 'public' as the key
-	const storageKey = authContext.key || 'public';
+function createKVStorage(env: Env): TaskStorage {
+	// Storage keys use sessionId for data isolation
+	// Format: {type}:{sessionId} where sessionId is the session identifier
 	
-	const boardKey = () => `boards:${storageKey}`;
-	const tasksKey = (boardId: string) => `tasks:${storageKey}:${boardId}`;
-	const statsKey = (boardId: string) => `stats:${storageKey}:${boardId}`;
+	const boardKey = (sessionId?: string) => `boards:${sessionId || 'public'}`;
+	const tasksKey = (sessionId: string | undefined, boardId: string) => `tasks:${sessionId || 'public'}:${boardId}`;
+	const statsKey = (sessionId: string | undefined, boardId: string) => `stats:${sessionId || 'public'}:${boardId}`;
 
 	return {
-	// --- Boards ---
-	async getBoards(userType: UserType, userId?: string) {
-		const kvKey = boardKey();
-		const data = await env.TASKS_KV.get(kvKey, 'json') as any | null;
-		if (data) return data;
-		// Default with a single 'main' board
-		return {
-			version: 1,
-			boards: [ { id: 'main', name: 'main', tags: [], tasks: [] } ],
-			updatedAt: new Date().toISOString(),
-		};
-	},
-	async saveBoards(userType: UserType, boards: any, userId?: string) {
-		const kvKey = boardKey();
-		await env.TASKS_KV.put(kvKey, JSON.stringify(boards));
-	},		// --- Tasks (board scoped) ---
-		async getTasks(userType: UserType, userId: string | undefined, boardId: string) {
-			const kvKey = tasksKey(boardId);
+		// --- Boards ---
+		async getBoards(userType: UserType, sessionId?: string) {
+			const kvKey = boardKey(sessionId);
+			const data = await env.TASKS_KV.get(kvKey, 'json') as any | null;
+			if (data) return data;
+			// Default with a single 'main' board
+			return {
+				version: 1,
+				boards: [ { id: 'main', name: 'main', tags: [], tasks: [] } ],
+				updatedAt: new Date().toISOString(),
+			};
+		},
+		async saveBoards(userType: UserType, boards: any, sessionId?: string) {
+			const kvKey = boardKey(sessionId);
+			await env.TASKS_KV.put(kvKey, JSON.stringify(boards));
+		},
+		
+		// --- Tasks (board scoped) ---
+		async getTasks(userType: UserType, sessionId?: string, boardId?: string) {
+			if (!boardId) boardId = 'main';
+			const kvKey = tasksKey(sessionId, boardId);
 			const data = await env.TASKS_KV.get(kvKey, 'json') as TasksFile | null;
 			if (data) return data;
 			return {
@@ -200,14 +193,16 @@ function createKVStorage(env: Env, authContext: ExtendedAuthContext): TaskStorag
 				updatedAt: new Date().toISOString(),
 			};
 		},
-		async saveTasks(userType: UserType, userId: string | undefined, boardId: string, tasks: TasksFile) {
-			const kvKey = tasksKey(boardId);
+		async saveTasks(userType: UserType, sessionId: string | undefined, boardId: string | undefined, tasks: TasksFile) {
+			if (!boardId) boardId = 'main';
+			const kvKey = tasksKey(sessionId, boardId);
 			await env.TASKS_KV.put(kvKey, JSON.stringify(tasks));
 		},
 
 		// --- Stats (board scoped) ---
-		async getStats(userType: UserType, userId: string | undefined, boardId: string) {
-			const kvKey = statsKey(boardId);
+		async getStats(userType: UserType, sessionId?: string, boardId?: string) {
+			if (!boardId) boardId = 'main';
+			const kvKey = statsKey(sessionId, boardId);
 			const data = await env.TASKS_KV.get(kvKey, 'json') as StatsFile | null;
 			if (data) return data;
 			return {
@@ -218,16 +213,17 @@ function createKVStorage(env: Env, authContext: ExtendedAuthContext): TaskStorag
 				updatedAt: new Date().toISOString(),
 			};
 		},
-		async saveStats(userType: UserType, userId: string | undefined, boardId: string, stats: StatsFile) {
-			const kvKey = statsKey(boardId);
+		async saveStats(userType: UserType, sessionId: string | undefined, boardId: string | undefined, stats: StatsFile) {
+			if (!boardId) boardId = 'main';
+			const kvKey = statsKey(sessionId, boardId);
 			await env.TASKS_KV.put(kvKey, JSON.stringify(stats));
 		},
 
 		// --- Delete board data ---
-		async deleteBoardData(userType: UserType, userId: string, boardId: string) {
+		async deleteBoardData(userType: UserType, sessionId: string, boardId: string) {
 			// Delete tasks and stats for the board
-			const taskKey = tasksKey(boardId);
-			const statKey = statsKey(boardId);
+			const taskKey = tasksKey(sessionId, boardId);
+			const statKey = statsKey(sessionId, boardId);
 			await Promise.all([
 				env.TASKS_KV.delete(taskKey),
 				env.TASKS_KV.delete(statKey)
@@ -241,24 +237,9 @@ app.get('/task/api/health', (c) => healthCheck(c, 'task-api-adapter', { kv: true
 
 // 5. Helper to get storage and auth from context
 const getContext = (c: Context<AppContext>) => ({
-	storage: createKVStorage(c.env, c.get('authContext')),
+	storage: createKVStorage(c.env),
 	auth: c.get('authContext'),
 });
-
-// Helper to get stable userId - uses userType as default to ensure data sharing across sessions
-const getStableUserId = (c: Context<AppContext>): string => {
-	const { userId } = extractUserContext(c);
-	const auth = c.get('authContext');
-	
-	// If userId is explicitly provided and looks stable (not a UUID from frontend), use it
-	// Otherwise default to userType for data sharing across sessions with same key
-	if (userId && userId !== 'undefined' && userId !== 'null' && !userId.includes('-')) {
-		return userId;
-	}
-	
-	// Default: use userType as userId for consistency across sessions
-	return auth.userType;
-};
 
 // Generic handler wrapper for operations without locking
 async function handleOperation<T>(
@@ -266,9 +247,8 @@ async function handleOperation<T>(
 	operation: (storage: TaskStorage, auth: TaskAuthContext) => Promise<T>
 ): Promise<Response> {
 	const { storage, auth } = getContext(c);
-	const userId = getStableUserId(c);
 	
-	const result = await operation(storage, { ...auth, userId });
+	const result = await operation(storage, auth);
 	return c.json(result);
 }
 
@@ -279,11 +259,10 @@ async function handleBoardOperation<T>(
 	operation: (storage: TaskStorage, auth: TaskAuthContext) => Promise<T>
 ): Promise<Response> {
 	const { storage, auth } = getContext(c);
-	const userId = getStableUserId(c);
-	const boardKey = `${auth.userType}:${userId}:${boardId}`;
+	const boardKey = `${auth.userType}:${auth.sessionId}:${boardId}`;
 	
 	const result = await withBoardLock(boardKey, async () => {
-		return await operation(storage, { ...auth, userId });
+		return await operation(storage, auth);
 	});
 	
 	return c.json(result);
@@ -294,11 +273,10 @@ async function handleBatchOperation<T>(
 	c: Context<AppContext>,
 	requiredFields: string[],
 	operation: (storage: TaskStorage, auth: TaskAuthContext, body: any) => Promise<T>,
-	getBoardKeys?: (body: any, userType: string, userId: string) => string[]
+	getBoardKeys?: (body: any, userType: string, sessionId: string) => string[]
 ): Promise<Response> {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();
-	const userId = getStableUserId(c);
 	
 	// Validate required fields
 	const error = requireFields(body, requiredFields);
@@ -308,17 +286,17 @@ async function handleBatchOperation<T>(
 	
 	// If no board keys provided, no locking needed
 	if (!getBoardKeys) {
-		const result = await operation(storage, { ...auth, userId }, body);
+		const result = await operation(storage, auth, body);
 		return c.json(result);
 	}
 	
 	// Get board keys and apply locks
-	const boardKeys = getBoardKeys(body, auth.userType, userId);
+	const boardKeys = getBoardKeys(body, auth.userType, auth.sessionId || 'public');
 	
 	// Single board lock
 	if (boardKeys.length === 1) {
 		const result = await withBoardLock(boardKeys[0], async () => {
-			return await operation(storage, { ...auth, userId }, body);
+			return await operation(storage, auth, body);
 		});
 		return c.json(result);
 	}
@@ -327,7 +305,7 @@ async function handleBatchOperation<T>(
 	const sortedKeys = [...boardKeys].sort();
 	const result = await withBoardLock(sortedKeys[0], async () => {
 		return await withBoardLock(sortedKeys[1], async () => {
-			return await operation(storage, { ...auth, userId }, body);
+			return await operation(storage, auth, body);
 		});
 	});
 	return c.json(result);
@@ -343,23 +321,20 @@ app.get('/task/api/boards', async (c) => {
 	
 	// Get boards data from handler
 	const { storage, auth } = getContext(c);
-	const userId = getStableUserId(c);
-	const boardsData = await TaskHandlers.getBoards(storage, { ...auth, userId });
+	const boardsData = await TaskHandlers.getBoards(storage, auth);
 	
 	// Add current auth context to response (overriding any stored values)
 	// This ensures the response reflects the CURRENT authentication, not stored metadata
 	console.log('[GET /task/api/boards] Auth context:', {
 		userType: auth.userType,
-		key: auth.key?.substring(0, 8) + '...',
-		isPublic: auth.isPublic,
-		isFriend: auth.isFriend,
-		isAdmin: auth.isAdmin
+		sessionId: auth.sessionId?.substring(0, 8) + '...',
+		key: auth.key?.substring(0, 8) + '...'
 	});
 	
 	return c.json({
 		...boardsData,
-		// userId comes from stored board metadata, not auth
-		userType: auth.userType  // Always reflect current authentication
+		// Always reflect current authentication
+		userType: auth.userType
 	});
 });
 
@@ -469,11 +444,10 @@ const batchUpdateTagsHandler = async (c: any) => {
 	
 	// Handle with board lock
 	const { storage, auth } = getContext(c);
-	const userId = getStableUserId(c);
-	const boardKey = `${auth.userType}:${userId}:${boardId}`;
+	const boardKey = `${auth.userType}:${auth.sessionId}:${boardId}`;
 	
 	const result = await withBoardLock(boardKey, async () => {
-		return await TaskHandlers.batchUpdateTags(storage, { ...auth, userId }, { ...body, boardId });
+		return await TaskHandlers.batchUpdateTags(storage, auth, { ...body, boardId });
 	});
 	
 	return c.json(result);
@@ -622,9 +596,9 @@ const batchMoveHandler = async (c: any) => {
 		c,
 		['sourceBoardId', 'targetBoardId', 'taskIds'],
 		(storage, auth, body) => TaskHandlers.batchMoveTasks(storage, auth, body),
-		(body, userType, userId) => [
-			`${userType}:${userId}:${body.sourceBoardId}`,
-			`${userType}:${userId}:${body.targetBoardId}`
+		(body, userType, sessionId) => [
+			`${userType}:${sessionId}:${body.sourceBoardId}`,
+			`${userType}:${sessionId}:${body.targetBoardId}`
 		]
 	);
 };
@@ -642,16 +616,16 @@ app.post('/task/api/batch-clear-tag', async (c) => {
 		c,
 		['boardId', 'tag', 'taskIds'],
 		(storage, auth, body) => TaskHandlers.batchClearTag(storage, auth, body),
-		(body, userType, userId) => [`${userType}:${userId}:${body.boardId}`]
+		(body, userType, sessionId) => [`${userType}:${sessionId}:${body.boardId}`]
 	);
 });
 
 // Get user preferences
 app.get('/task/api/preferences', async (c) => {
 	const { auth } = getContext(c);
-	const storageKey = auth.key || 'public';
+	const storageKey = auth.sessionId || 'public';
 	
-	// Use key-based storage for preferences
+	// Use sessionId-based storage for preferences
 	const prefsKey = `prefs:${storageKey}`;
 	
 	try {
@@ -670,13 +644,13 @@ app.get('/task/api/preferences', async (c) => {
 // Save user preferences
 app.put('/task/api/preferences', async (c) => {
 	const { auth } = getContext(c);
-	const storageKey = auth.key || 'public';
+	const storageKey = auth.sessionId || 'public';
 	const body = await c.req.json();
 	
-	// Use key-based storage for preferences
+	// Use sessionId-based storage for preferences
 	const prefsKey = `prefs:${storageKey}`;
 	
-	logRequest('PUT', '/task/api/preferences', { userType: auth.userType, userId: auth.userId, prefs: body });
+	logRequest('PUT', '/task/api/preferences', { userType: auth.userType, sessionId: auth.sessionId, prefs: body });
 	
 	try {
 		await c.env.TASKS_KV.put(prefsKey, JSON.stringify(body));
@@ -688,144 +662,15 @@ app.put('/task/api/preferences', async (c) => {
 });
 
 // User ID Migration Endpoint
-// NOTE: This migrates data within the same key (changes userId display name)
-// It does NOT move data between different keys
+// DEPRECATED: This endpoint is deprecated in v3.0.39+ as the API now only uses sessionId
+// The concept of userId migration no longer applies
 app.post('/task/api/migrate-userid', async (c) => {
-	const { auth } = getContext(c);
-	const currentKey = auth.key;
-	const currentUserId = auth.userId;
-	
-	// Only authenticated users can migrate
-	if (auth.userType === 'public' || !currentKey) {
-		return c.json({ error: 'Migration not available for public users' }, 401);
-	}
-	
-	if (!currentUserId) {
-		return c.json({ error: 'Current userId not found' }, 400);
-	}
-	
-	const { newUserId } = await c.req.json();
-	
-	// Validate newUserId
-	if (!newUserId || typeof newUserId !== 'string' || newUserId.length === 0) {
-		return c.json({ error: 'newUserId must be 1-50 characters' }, 400);
-	}
-	
-	if (newUserId.length < 1 || newUserId.length > 50) {
-		return c.json({ error: 'newUserId must be 1-50 characters' }, 400);
-	}
-	
-	if (!/^[a-zA-Z0-9_-]+$/.test(newUserId)) {
-		return c.json({ error: 'newUserId can only contain letters, numbers, underscores, and hyphens' }, 400);
-	}
-	
-	if (newUserId.toLowerCase() === 'public') {
-		return c.json({ error: 'userId "public" is reserved' }, 400);
-	}
-	
-	if (newUserId === currentUserId) {
-		return c.json({ error: 'newUserId must be different from current userId' }, 400);
-	}
-	
-	// Check if newUserId already has data (prevent overwriting existing user data)
-	// Since data is stored by key, not userId, we need to check if there's
-	// any existing data that was created with the target userId
-	// This happens when someone used X-User-Id header with this userId before
-	const boardsKey = `boards:${currentKey}`;
-	const existingBoardsData = await c.env.TASKS_KV.get(boardsKey);
-	
-	if (existingBoardsData) {
-		const boards = JSON.parse(existingBoardsData);
-		
-		// If boards.userId exists and matches newUserId, someone already used that userId
-		// OR if boards.userId is undefined but currentUserId is different from newUserId,
-		// and there are boards, then the newUserId might have created those boards
-		if (boards.userId === newUserId) {
-			return c.json({ error: `userId "${newUserId}" already has data` }, 409);
-		}
-		
-		// If there's no userId field yet, but there are boards, and we're trying to
-		// migrate to a different userId than what we came in with, we need to check
-		// if those boards might belong to the target userId by checking the updatedAt
-		// or other metadata. However, since we don't have that info, we'll be conservative:
-		// If currentUserId is empty/undefined (new key with no userId set yet), allow migration.
-		// If currentUserId exists and is different from newUserId, check if boards exist.
-		if (!boards.userId && boards.boards && boards.boards.length > 0 && currentUserId !== newUserId) {
-			// There are boards but no userId set yet. This means they were created before
-			// userId tracking. We can't tell who created them, so block the migration to be safe.
-			return c.json({ error: `userId "${newUserId}" already has data` }, 409);
-		}
-	}
-
-	
-	logRequest('POST', '/task/api/migrate-userid', { 
-		oldUserId: currentUserId, 
-		newUserId, 
-		userType: auth.userType,
-		key: currentKey
-	});
-	
-	// Update userId metadata in all KV entries for this key
-	const storage = createKVStorage(c.env, auth);
-	const migratedKeys: string[] = [];
-	
-	try {
-		// Get boards metadata
-		const boardsKey = `boards:${currentKey}`;
-		const boardsData = await c.env.TASKS_KV.get(boardsKey);
-		
-		if (boardsData) {
-			const boards = JSON.parse(boardsData);
-			
-			// Update userId in boards metadata
-			boards.userId = newUserId;
-			boards.userType = auth.userType;
-			
-			await c.env.TASKS_KV.put(boardsKey, JSON.stringify(boards));
-			migratedKeys.push(boardsKey);
-			
-			// Track all related keys (tasks and stats for each board)
-			if (boards.boards && Array.isArray(boards.boards)) {
-				for (const board of boards.boards) {
-					const tasksKey = `tasks:${currentKey}:${board.id}`;
-					const statsKey = `stats:${currentKey}:${board.id}`;
-					
-					// Check if they exist
-					if (await c.env.TASKS_KV.get(tasksKey)) {
-						migratedKeys.push(tasksKey);
-					}
-					if (await c.env.TASKS_KV.get(statsKey)) {
-						migratedKeys.push(statsKey);
-					}
-				}
-			}
-		}
-		
-		// Update preferences metadata (if exists)
-		const prefsKey = `prefs:${currentKey}`;
-		const prefsData = await c.env.TASKS_KV.get(prefsKey);
-		if (prefsData) {
-			const prefs = JSON.parse(prefsData);
-			prefs.userId = newUserId;
-			await c.env.TASKS_KV.put(prefsKey, JSON.stringify(prefs));
-			migratedKeys.push(prefsKey);
-		}
-		
-		return c.json({
-			success: true,
-			oldUserId: currentUserId || '',
-			newUserId,
-			migratedKeys,
-			message: `userId updated from "${currentUserId || '(empty)'}" to "${newUserId}". Admin should update FRIEND_KEYS/ADMIN_KEYS mapping from "${currentKey}": "${currentUserId}" to "${currentKey}": "${newUserId}" in .env and redeploy.`,
-			note: 'Data remains stored by key - only userId metadata was updated'
-		});
-	} catch (error) {
-		console.error('Migration error:', error);
-		return c.json({ 
-			error: 'Migration failed', 
-			details: error instanceof Error ? error.message : String(error)
-		}, 500);
-	}
+	return c.json({ 
+		error: 'This endpoint is deprecated. The task API now uses sessionId only and does not support userId migration.',
+		deprecated: true,
+		version: '3.0.39+',
+		migration: 'Use sessionId as the stable identifier instead of userId'
+	}, 410); // 410 Gone - indicates the endpoint is no longer available
 });
 
 // Validate Key Endpoint
