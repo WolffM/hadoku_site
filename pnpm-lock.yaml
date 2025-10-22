@@ -12,8 +12,8 @@ importers:
         specifier: ^9.4.6
         version: 9.5.0(astro@5.14.8(@types/node@24.9.1)(rollup@4.52.5)(typescript@5.9.3))
       '@wolffm/task':
-        specifier: ^3.1.2
-        version: 3.1.2
+        specifier: ^3.0.41
+        version: 3.0.41
       astro:
         specifier: ^5.14.1
         version: 5.14.8(@types/node@24.9.1)(rollup@4.52.5)(typescript@5.9.3)
@@ -67,8 +67,8 @@ importers:
         specifier: workspace:*
         version: link:../util
       '@wolffm/task':
-        specifier: ^3.1.2
-        version: 3.1.2
+        specifier: ^3.0.41
+        version: 3.0.41
       hono:
         specifier: ^4.0.0
         version: 4.10.1
@@ -1335,8 +1335,8 @@ packages:
   '@vitest/utils@2.1.9':
     resolution: {integrity: sha512-v0psaMSkNJ3A2NMrUEHFRzJtDPFn+/VWZ5WxImB21T9fjucJRmS7xCS3ppEnARb9y11OAzaD+P2Ps+b+BGX5iQ==}
 
-  '@wolffm/task@3.1.2':
-    resolution: {integrity: sha512-Jw8QbrEFaK+KPHZlVKbr6VLVPYfnraRnDXZkSZ/rFrGTBd/lFk7puTpnK3Pj66W8/EO+i5nygfhf85RCHjHcIA==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.1.2/e5cdadab5b7a355922164968be7f49bb582d551f}
+  '@wolffm/task@3.0.41':
+    resolution: {integrity: sha512-GoHIH6zedr9x+S6I1sUUFfT+pCnXlUfxm4QGGBn3/3jH0i2TjSD4yqELIbaikeVTqUtXZkf6TwiKeEddGaf6kA==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.0.41/6a8742fdbe8487d66eca26e701cc296763e3ebba}
 
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
@@ -3942,7 +3942,7 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 1.2.0
 
-  '@wolffm/task@3.1.2':
+  '@wolffm/task@3.0.41':
     dependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
