@@ -11,14 +11,11 @@ import { Hono, type Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
 import type { TaskStorage, AuthContext as TaskAuthContext, UserType, TasksFile, StatsFile } from '@wolffm/task/api';
 import {
-	createKeyAuth,
+	createAuthMiddleware,
 	parseKeysFromEnv,
 	createHadokuCors,
-	extractUserContext,
 	extractField,
 	requireFields,
-	ok,
-	created,
 	badRequest,
 	healthCheck,
 	logRequest,
@@ -35,8 +32,7 @@ import {
 
 /**
  * Validate a key and determine userType
- * Centralized logic used by both auth middleware and validate-key endpoint
- * Note: userId is NOT part of auth - it's stored metadata in boards
+ * Used by both auth middleware resolver and validate-key endpoint
  */
 function validateKeyAndGetType(
 	key: string,
@@ -64,9 +60,6 @@ function validateKeyAndGetType(
 	// Not found in either
 	return { valid: false, userType: 'public' };
 }
-
-// Use the standard AuthContext from the package
-// No need for extension - the new API only needs userType and sessionId
 
 interface Env {
 	// JSON key objects mapping keys to userIds
@@ -117,49 +110,34 @@ async function withBoardLock<T>(
 // 1. CORS Middleware
 app.use('*', createHadokuCors(['https://task-api.hadoku.me']));
 
-// 2. Custom Authentication Middleware with key preservation
-app.use('*', async (c, next) => {
-	// Extract the authentication key
-	const sources = ['header:X-User-Key', 'query:key'];
-	let key: string | undefined;
-	
-	for (const source of sources) {
-		if (source.startsWith('header:')) {
-			const headerName = source.split(':')[1];
-			key = c.req.header(headerName);
-		} else if (source.startsWith('query:')) {
-			const queryName = source.split(':')[1];
-			key = c.req.query(queryName);
+// 2. Authentication Middleware using util function
+app.use('*', createAuthMiddleware<Env>({
+	sources: ['header:X-User-Key', 'query:key'],
+	resolver: (credential, env) => {
+		// Parse key mappings
+		const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS);
+		const friendKeys = parseKeysFromEnv(env.FRIEND_KEYS);
+		
+		// DEBUG: Log what we parsed (TEMPORARY - REMOVE AFTER DEBUGGING)
+		console.log('[AUTH DEBUG] ADMIN_KEYS type:', adminKeys instanceof Set ? 'Set' : 'Record', 'size:', adminKeys instanceof Set ? adminKeys.size : Object.keys(adminKeys).length);
+		console.log('[AUTH DEBUG] FRIEND_KEYS type:', friendKeys instanceof Set ? 'Set' : 'Record', 'size:', friendKeys instanceof Set ? friendKeys.size : Object.keys(friendKeys).length);
+		if (credential) {
+			console.log('[AUTH DEBUG] Checking key:', credential.substring(0, 8) + '...');
 		}
-		if (key) break;
+		
+		// Validate key and determine userType
+		const { userType } = credential
+			? validateKeyAndGetType(credential, adminKeys, friendKeys)
+			: { userType: 'public' as const };
+		
+		// Return auth context with sessionId and key for backward compatibility
+		return {
+			userType,
+			sessionId: credential || 'public',
+			key: credential // Preserve key for backward compatibility
+		};
 	}
-	
-	// Parse key mappings (can be Set for arrays or Record for objects)
-	const adminKeys = parseKeysFromEnv(c.env.ADMIN_KEYS);
-	const friendKeys = parseKeysFromEnv(c.env.FRIEND_KEYS);
-	
-	// DEBUG: Log what we parsed (TEMPORARY - REMOVE AFTER DEBUGGING)
-	console.log('[AUTH DEBUG] ADMIN_KEYS type:', adminKeys instanceof Set ? 'Set' : 'Record', 'size:', adminKeys instanceof Set ? adminKeys.size : Object.keys(adminKeys).length);
-	console.log('[AUTH DEBUG] FRIEND_KEYS type:', friendKeys instanceof Set ? 'Set' : 'Record', 'size:', friendKeys instanceof Set ? friendKeys.size : Object.keys(friendKeys).length);
-	if (key) {
-		console.log('[AUTH DEBUG] Checking key:', key.substring(0, 8) + '...');
-	}
-	
-	// Validate key and determine userType using centralized logic
-	const { valid, userType } = key 
-		? validateKeyAndGetType(key, adminKeys, friendKeys)
-		: { valid: false, userType: 'public' as const };
-	
-	// Store auth context with sessionId (using key as sessionId for backward compatibility)
-	const authContext: TaskAuthContext & { key?: string } = {
-		userType,
-		sessionId: key || 'public',  // Use key as sessionId
-		key  // Keep key for backward compatibility with storage
-	};
-	
-	c.set('authContext', authContext);
-	await next();
-});
+}));
 
 // 3. Workers KV Storage Implementation
 // This is the parent's responsibility - adapt storage to the environment.

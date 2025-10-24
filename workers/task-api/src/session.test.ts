@@ -80,14 +80,19 @@ describe('Session Handshake Tests', () => {
 			expect(data.isNewSession).toBe(false);
 			expect(data.migratedFrom).toBe(oldSessionId);
 
-			// 4. Verify both sessionIds have their own copy of preferences
+			// 4. Verify preferences were MOVED (not copied)
+			// Old sessionId preferences should be DELETED
 			const oldPrefs = await env.TASKS_KV.get(`prefs:${oldSessionId}`, 'json') as any;
 			const newPrefs = await env.TASKS_KV.get(`prefs:${newSessionId}`, 'json') as any;
 			
-			expect(oldPrefs).toBeDefined();
-			expect(newPrefs).toBeDefined();
-			expect(oldPrefs.theme).toBe('dark');
+			expect(oldPrefs).toBeNull(); // Old prefs deleted
+			expect(newPrefs).toBeDefined(); // New prefs exist
 			expect(newPrefs.theme).toBe('dark');
+			expect(newPrefs.customField).toBe('test-value');
+			
+			// Old session info should also be deleted
+			const oldSessionInfo = await env.TASKS_KV.get(`session-info:${oldSessionId}`, 'json');
+			expect(oldSessionInfo).toBeNull();
 		});
 	});
 
@@ -188,6 +193,56 @@ describe('Session Handshake Tests', () => {
 			expect(mapping.sessionIds).toContain('session-multi-002');
 			expect(mapping.sessionIds).toContain('session-multi-003');
 			expect(mapping.lastSessionId).toBe('session-multi-003'); // Most recent
+		});
+
+		it('should remove old sessionId from mapping when migrating', async () => {
+			const uniqueKey = `migration-test-${Date.now()}`;
+			const adminHeaders = {
+				'X-User-Key': uniqueKey,
+				'X-User-Id': 'migration-admin',
+				'Content-Type': 'application/json'
+			};
+			
+			// Add the key to ADMIN_KEYS
+			const existingKeys = JSON.parse(env.ADMIN_KEYS || '{}');
+			existingKeys[uniqueKey] = uniqueKey;
+			env.ADMIN_KEYS = JSON.stringify(existingKeys);
+			
+			const authKey = uniqueKey;
+			
+			// Create initial session
+			const oldSessionId = 'session-old-001';
+			await app.request('/task/api/session/handshake', {
+				method: 'POST',
+				headers: adminHeaders,
+				body: JSON.stringify({
+					oldSessionId: null,
+					newSessionId: oldSessionId
+				})
+			}, env);
+
+			// Verify initial mapping
+			let mapping = await env.TASKS_KV.get(`session-map:${authKey}`, 'json') as any;
+			expect(mapping.sessionIds).toHaveLength(1);
+			expect(mapping.sessionIds).toContain(oldSessionId);
+
+			// Migrate to new session
+			const newSessionId = 'session-new-001';
+			await app.request('/task/api/session/handshake', {
+				method: 'POST',
+				headers: adminHeaders,
+				body: JSON.stringify({
+					oldSessionId: oldSessionId,
+					newSessionId: newSessionId
+				})
+			}, env);
+
+			// Verify mapping updated: old removed, new added
+			mapping = await env.TASKS_KV.get(`session-map:${authKey}`, 'json') as any;
+			expect(mapping.sessionIds).toHaveLength(1);
+			expect(mapping.sessionIds).not.toContain(oldSessionId); // Old removed
+			expect(mapping.sessionIds).toContain(newSessionId); // New added
+			expect(mapping.lastSessionId).toBe(newSessionId);
 		});
 	});
 

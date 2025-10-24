@@ -227,12 +227,12 @@ export interface HandshakeResponse {
  * 
  * Logic:
  * 1. If oldSessionId provided, try to load preferences from it
- * 2. If oldSessionId not found, check authKey mapping for last sessionId
+ * 2. If oldSessionId not found, check authKey mapping for last sessionId (for fallback only, don't delete)
  * 3. If nothing found, use default preferences
- * 4. Save preferences under newSessionId (create new copy)
+ * 4. MOVE preferences to newSessionId ONLY if oldSessionId was provided (delete old, save new)
  * 5. Update authKey → sessionId mapping
  * 6. Create session info for newSessionId
- * 7. Update oldSessionId last access time if it existed
+ * 7. Delete old session info if it was migrated
  */
 export async function handleSessionHandshake(
 	kv: KVNamespace,
@@ -245,19 +245,20 @@ export async function handleSessionHandshake(
 	let preferences: UserPreferences | null = null;
 	let migratedFrom: string | undefined = undefined;
 	let isNewSession = true;
+	let sessionIdToDelete: string | null = null;
 	
-	// Try to load preferences from oldSessionId
+	// Try to load preferences from oldSessionId (explicit migration)
 	if (oldSessionId) {
 		preferences = await getPreferencesBySessionId(kv, oldSessionId);
 		if (preferences) {
 			migratedFrom = oldSessionId;
 			isNewSession = false;
-			// Update old session's last access time
-			await updateSessionAccess(kv, oldSessionId);
+			sessionIdToDelete = oldSessionId; // Only delete if explicitly migrating
 		}
 	}
 	
-	// If oldSessionId not found, try authKey mapping
+	// If oldSessionId not provided or not found, try authKey mapping as fallback
+	// Note: We DON'T delete this - it might be another device still using it
 	if (!preferences) {
 		const mapping = await getSessionMapping(kv, authKey);
 		if (mapping && mapping.lastSessionId) {
@@ -265,6 +266,7 @@ export async function handleSessionHandshake(
 			if (preferences) {
 				migratedFrom = mapping.lastSessionId;
 				isNewSession = false;
+				// DON'T mark for deletion - this might be a new device
 			}
 		}
 	}
@@ -274,10 +276,23 @@ export async function handleSessionHandshake(
 		preferences = { ...DEFAULT_PREFERENCES };
 	}
 	
-	// Save preferences under newSessionId (create new copy)
+	// Save preferences to newSessionId
 	await savePreferencesBySessionId(kv, newSessionId, preferences);
 	
-	// Update authKey → sessionId mapping
+	// Delete old preferences and session info ONLY if explicitly migrating
+	if (sessionIdToDelete && sessionIdToDelete !== newSessionId) {
+		await kv.delete(preferencesKey(sessionIdToDelete));
+		await kv.delete(sessionInfoKey(sessionIdToDelete));
+		
+		// Remove old sessionId from mapping
+		const mapping = await getSessionMapping(kv, authKey);
+		if (mapping) {
+			mapping.sessionIds = mapping.sessionIds.filter(id => id !== sessionIdToDelete);
+			await kv.put(sessionMappingKey(authKey), JSON.stringify(mapping));
+		}
+	}
+	
+	// Add new sessionId to mapping
 	await updateSessionMapping(kv, authKey, newSessionId);
 	
 	// Create session info for newSessionId
