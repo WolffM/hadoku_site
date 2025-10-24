@@ -29,6 +29,16 @@ import {
 	type HandshakeResponse,
 	type UserPreferences
 } from './session';
+import {
+	getBoardIdFromContext,
+	getTaskIdFromParam,
+	getSessionIdFromRequest,
+	validateTaskId,
+	validateBoardId,
+	maskKey,
+	maskSessionId,
+	parseBodySafely
+} from './request-utils';
 
 /**
  * Validate a key and determine userType
@@ -313,8 +323,8 @@ app.get('/task/api/boards', async (c) => {
 	// This ensures the response reflects the CURRENT authentication, not stored metadata
 	console.log('[GET /task/api/boards] Auth context:', {
 		userType: auth.userType,
-		sessionId: auth.sessionId?.substring(0, 8) + '...',
-		key: auth.key?.substring(0, 8) + '...'
+		sessionId: maskSessionId(auth.sessionId || ''),
+		key: maskKey(auth.key || '')
 	});
 	
 	return c.json({
@@ -348,11 +358,10 @@ app.post('/task/api/boards', async (c) => {
 // Delete a board
 app.delete('/task/api/boards/:boardId', async (c) => {
 	const boardId = c.req.param('boardId');
-	
-	// Validate boardId is provided
-	if (!boardId || boardId.trim() === '') {
-		logError('DELETE', '/task/api/boards/:boardId', 'Missing board ID in URL');
-		return badRequest(c, 'Missing required parameter: board ID');
+	const validationError = validateBoardId(boardId);
+	if (validationError) {
+		logError('DELETE', '/task/api/boards/:boardId', validationError);
+		return badRequest(c, validationError);
 	}
 	
 	logRequest('DELETE', `/task/api/boards/${boardId}`, { 
@@ -361,7 +370,7 @@ app.delete('/task/api/boards/:boardId', async (c) => {
 	});
 	
 	return handleOperation(c, (storage, auth) => 
-		TaskHandlers.deleteBoard(storage, auth, boardId)
+		TaskHandlers.deleteBoard(storage, auth, boardId!)
 	);
 });
 
@@ -444,15 +453,15 @@ app.patch('/task/api/batch-tag', batchUpdateTagsHandler); // Legacy alias
 
 // Update task
 app.patch('/task/api/:id', async (c) => {
-	const id = c.req.param('id');
+	const id = getTaskIdFromParam(c);
+	const validationError = validateTaskId(id);
+	if (validationError) {
+		logError('PATCH', '/task/api/:id', validationError);
+		return badRequest(c, validationError);
+	}
+	
 	const body = await c.req.json();
 	const { boardId = 'main', ...input } = body;
-	
-	// Validate task ID is provided
-	if (!id || id.trim() === '') {
-		logError('PATCH', '/task/api/:id', 'Missing task ID in URL');
-		return badRequest(c, 'Missing required parameter: task ID');
-	}
 	
 	logRequest('PATCH', `/task/api/${id}`, { 
 		userType: c.get('authContext').userType, 
@@ -461,22 +470,22 @@ app.patch('/task/api/:id', async (c) => {
 	});
 	
 	return handleBoardOperation(c, boardId, (storage, auth) => 
-		TaskHandlers.updateTask(storage, auth, id, input, boardId)
+		TaskHandlers.updateTask(storage, auth, id!, input, boardId)
 	);
 });
 
 // Complete task
 app.post('/task/api/:id/complete', async (c) => {
-	const id = c.req.param('id');
-	// Read body to get boardId
-	const body = await c.req.json().catch(() => ({}));
-	const boardId = (body as any).boardId || extractField(c, ['query:boardId'], 'main');
-	
-	// Validate task ID is provided
-	if (!id || id.trim() === '') {
-		logError('POST', '/task/api/:id/complete', 'Missing task ID in URL');
-		return badRequest(c, 'Missing required parameter: task ID');
+	const id = getTaskIdFromParam(c);
+	const validationError = validateTaskId(id);
+	if (validationError) {
+		logError('POST', '/task/api/:id/complete', validationError);
+		return badRequest(c, validationError);
 	}
+	
+	// Read body to get boardId
+	const body = await parseBodySafely(c);
+	const boardId = getBoardIdFromContext(c, body, 'main');
 	
 	logRequest('POST', '/task/api/:id/complete', { 
 		userType: c.get('authContext').userType, 
@@ -485,21 +494,21 @@ app.post('/task/api/:id/complete', async (c) => {
 	});
 	
 	return handleBoardOperation(c, boardId, (storage, auth) => 
-		TaskHandlers.completeTask(storage, auth, id, boardId)
+		TaskHandlers.completeTask(storage, auth, id!, boardId)
 	);
 });
 
 // Delete task
 app.delete('/task/api/:id', async (c) => {
-	const id = c.req.param('id');
-	const body = await c.req.json().catch(() => ({}));
-	const boardId = body.boardId || extractField(c, ['query:boardId'], 'main');
-	
-	// Validate task ID is provided
-	if (!id || id.trim() === '') {
-		logError('DELETE', '/task/api/:id', 'Missing task ID in URL');
-		return badRequest(c, 'Missing required parameter: task ID');
+	const id = getTaskIdFromParam(c);
+	const validationError = validateTaskId(id);
+	if (validationError) {
+		logError('DELETE', '/task/api/:id', validationError);
+		return badRequest(c, validationError);
 	}
+	
+	const body = await parseBodySafely(c);
+	const boardId = getBoardIdFromContext(c, body, 'main');
 	
 	logRequest('DELETE', `/task/api/${id}`, { 
 		userType: c.get('authContext').userType, 
@@ -508,7 +517,7 @@ app.delete('/task/api/:id', async (c) => {
 	});
 	
 	return handleBoardOperation(c, boardId, (storage, auth) => 
-		TaskHandlers.deleteTask(storage, auth, id, boardId)
+		TaskHandlers.deleteTask(storage, auth, id!, boardId)
 	);
 });
 
@@ -638,9 +647,9 @@ app.post('/task/api/session/handshake', async (c) => {
 		
 		logRequest('POST', '/task/api/session/handshake', {
 			userType: auth.userType,
-			authKey: authKey.substring(0, 8) + '...',
-			oldSessionId: body.oldSessionId ? body.oldSessionId.substring(0, 12) + '...' : null,
-			newSessionId: body.newSessionId.substring(0, 12) + '...'
+			authKey: maskKey(authKey),
+			oldSessionId: body.oldSessionId ? maskSessionId(body.oldSessionId) : null,
+			newSessionId: maskSessionId(body.newSessionId)
 		});
 		
 		// Handle handshake
@@ -668,13 +677,11 @@ app.post('/task/api/session/handshake', async (c) => {
  */
 app.get('/task/api/preferences', async (c) => {
 	const { auth } = getContext(c);
-	
-	// Get sessionId from header or fallback to auth.sessionId
-	const sessionId = c.req.header('X-Session-Id') || auth.sessionId || 'public';
+	const sessionId = getSessionIdFromRequest(c, auth);
 	
 	logRequest('GET', '/task/api/preferences', {
 		userType: auth.userType,
-		sessionId: sessionId.substring(0, 12) + '...'
+		sessionId: maskSessionId(sessionId)
 	});
 	
 	try {
@@ -718,16 +725,14 @@ app.get('/task/api/preferences', async (c) => {
  */
 app.put('/task/api/preferences', async (c) => {
 	const { auth } = getContext(c);
-	
-	// Get sessionId from header or fallback to auth.sessionId
-	const sessionId = c.req.header('X-Session-Id') || auth.sessionId || 'public';
+	const sessionId = getSessionIdFromRequest(c, auth);
 	
 	try {
 		const body = await c.req.json();
 		
 		logRequest('PUT', '/task/api/preferences', {
 			userType: auth.userType,
-			sessionId: sessionId.substring(0, 12) + '...',
+			sessionId: maskSessionId(sessionId),
 			fields: Object.keys(body)
 		});
 		
