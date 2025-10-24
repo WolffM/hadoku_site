@@ -37,7 +37,8 @@ import {
 	validateBoardId,
 	maskKey,
 	maskSessionId,
-	parseBodySafely
+	parseBodySafely,
+	createTaskOperationHandler
 } from './request-utils';
 
 /**
@@ -452,74 +453,43 @@ app.post('/task/api/boards/:boardId/tasks/batch/update-tags', batchUpdateTagsHan
 app.patch('/task/api/batch-tag', batchUpdateTagsHandler); // Legacy alias
 
 // Update task
-app.patch('/task/api/:id', async (c) => {
-	const id = getTaskIdFromParam(c);
-	const validationError = validateTaskId(id);
-	if (validationError) {
-		logError('PATCH', '/task/api/:id', validationError);
-		return badRequest(c, validationError);
-	}
-	
-	const body = await c.req.json();
-	const { boardId = 'main', ...input } = body;
-	
-	logRequest('PATCH', `/task/api/${id}`, { 
-		userType: c.get('authContext').userType, 
-		boardId, 
-		taskId: id
-	});
-	
-	return handleBoardOperation(c, boardId, (storage, auth) => 
-		TaskHandlers.updateTask(storage, auth, id!, input, boardId)
-	);
-});
+app.patch('/task/api/:id', createTaskOperationHandler(
+	'PATCH',
+	'/task/api/:id',
+	(storage, auth, id, boardId, body) => {
+		const { boardId: _, ...input } = body;
+		return TaskHandlers.updateTask(storage, auth, id, input, boardId);
+	},
+	handleBoardOperation,
+	logRequest,
+	logError,
+	badRequest,
+	getContext
+));
 
 // Complete task
-app.post('/task/api/:id/complete', async (c) => {
-	const id = getTaskIdFromParam(c);
-	const validationError = validateTaskId(id);
-	if (validationError) {
-		logError('POST', '/task/api/:id/complete', validationError);
-		return badRequest(c, validationError);
-	}
-	
-	// Read body to get boardId
-	const body = await parseBodySafely(c);
-	const boardId = getBoardIdFromContext(c, body, 'main');
-	
-	logRequest('POST', '/task/api/:id/complete', { 
-		userType: c.get('authContext').userType, 
-		boardId, 
-		taskId: id 
-	});
-	
-	return handleBoardOperation(c, boardId, (storage, auth) => 
-		TaskHandlers.completeTask(storage, auth, id!, boardId)
-	);
-});
+app.post('/task/api/:id/complete', createTaskOperationHandler(
+	'POST',
+	'/task/api/:id/complete',
+	(storage, auth, id, boardId) => TaskHandlers.completeTask(storage, auth, id, boardId),
+	handleBoardOperation,
+	logRequest,
+	logError,
+	badRequest,
+	getContext
+));
 
 // Delete task
-app.delete('/task/api/:id', async (c) => {
-	const id = getTaskIdFromParam(c);
-	const validationError = validateTaskId(id);
-	if (validationError) {
-		logError('DELETE', '/task/api/:id', validationError);
-		return badRequest(c, validationError);
-	}
-	
-	const body = await parseBodySafely(c);
-	const boardId = getBoardIdFromContext(c, body, 'main');
-	
-	logRequest('DELETE', `/task/api/${id}`, { 
-		userType: c.get('authContext').userType, 
-		boardId, 
-		taskId: id 
-	});
-	
-	return handleBoardOperation(c, boardId, (storage, auth) => 
-		TaskHandlers.deleteTask(storage, auth, id!, boardId)
-	);
-});
+app.delete('/task/api/:id', createTaskOperationHandler(
+	'DELETE',
+	'/task/api/:id',
+	(storage, auth, id, boardId) => TaskHandlers.deleteTask(storage, auth, id, boardId),
+	handleBoardOperation,
+	logRequest,
+	logError,
+	badRequest,
+	getContext
+));
 
 // Get stats for a board
 app.get('/task/api/stats', async (c) => {

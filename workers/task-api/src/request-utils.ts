@@ -135,3 +135,40 @@ export async function parseBodySafely(c: Context): Promise<any> {
 		return {};
 	}
 }
+
+/**
+ * Create a task operation handler (for PATCH/DELETE/POST complete)
+ * Handles common pattern: validate ID, parse body, get boardId, log, execute
+ */
+export function createTaskOperationHandler<T>(
+	method: string,
+	path: string,
+	operation: (storage: any, auth: any, taskId: string, boardId: string, body?: any) => Promise<T>,
+	handleBoardOperation: any,
+	logRequest: any,
+	logError: any,
+	badRequest: any,
+	getContext: any
+) {
+	return async (c: Context) => {
+		const id = getTaskIdFromParam(c);
+		const validationError = validateTaskId(id);
+		if (validationError) {
+			logError(method, path, validationError);
+			return badRequest(c, validationError);
+		}
+		
+		const body = await parseBodySafely(c);
+		const boardId = getBoardIdFromContext(c, body, 'main');
+		
+		logRequest(method, path.replace(':id', id!), { 
+			userType: c.get('authContext').userType, 
+			boardId, 
+			taskId: id 
+		});
+		
+		return handleBoardOperation(c, boardId, (storage: any, auth: any) => 
+			operation(storage, auth, id!, boardId, body)
+		);
+	};
+}
