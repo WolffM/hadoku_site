@@ -17,13 +17,13 @@ cp .npmrc.example .npmrc
 python scripts/verify_and_install.py
 
 # 4. Install dependencies
-npm install
+pnpm install
 
 # 5. Development
-npm run dev
+pnpm run dev
 
 # 6. Build
-npm run build
+pnpm run build
 ```
 
 **Quick Reference:** See **[CHECKLIST.md](CHECKLIST.md)** for setup checklist and troubleshooting.

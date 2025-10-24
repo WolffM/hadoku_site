@@ -411,9 +411,9 @@ python administration.py kv-cleanup --execute```
 
 ✅ Token is valid. Scopes: read:packages, repo
 
-```bash🚀 Running 'npm install' in workers/task-api...
+```bash🚀 Running 'pnpm install' in workers/task-api...
 
-# View all data for a user✅ npm install completed successfully.
+# View all data for a user✅ pnpm install completed successfully.
 
 python administration.py kv-fetch 4355🎉 All steps completed successfully!
 

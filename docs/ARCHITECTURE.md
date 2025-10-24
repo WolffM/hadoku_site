@@ -479,7 +479,7 @@ Total (worker fallback): ~80-170ms
 ### Local Development
 ```bash
 # 1. Start Astro dev server
-npm run dev
+pnpm run dev
 # Runs: astro dev
 # Listens on: http://localhost:4321
 
@@ -501,8 +501,9 @@ npm run dev
 # 1. Navigate to worker directory
 cd workers/task-api
 
-# 2. Install dependencies (requires .npmrc with GitHub Packages auth)
-npm install
+# 2. Install dependencies from root (pnpm workspace)
+cd ../../
+pnpm install
 
 # 3. Start local worker (uses wrangler)
 npx wrangler dev
@@ -559,7 +560,7 @@ git push
 #### Deploy Static Site (GitHub Pages)
 ```bash
 # 1. Build Astro static site
-npm run build
+pnpm run build
 # Output: dist/ (HTML, CSS, JS)
 
 # 2. Deploy via GitHub Actions

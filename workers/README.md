@@ -52,19 +52,16 @@ A stateless API that stores tasks in GitHub repository as JSON files. Provides:
 ### Prerequisites
 
 - Node.js 20+
-- Wrangler CLI: `npm install -g wrangler`
+- pnpm (package manager)
+- Wrangler CLI: `pnpm add -g wrangler`
 - Cloudflare account with API token
 
 ### Setup
 
 ```bash
-# Install dependencies for edge-router
-cd workers/edge-router
-npm install
-
-# Install dependencies for task-api
-cd ../task-api
-npm install
+# Install all workspace dependencies from root
+cd /path/to/hadoku_site
+pnpm install
 ```
 
 ### Testing Locally

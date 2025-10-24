@@ -57,12 +57,12 @@ def check_github_token_scopes(token):
         print(f"❌ An unexpected error occurred during API request: {e}")
         return False
 
-def run_npm_install(worker_dir, env):
-    """Run npm install in the specified directory."""
-    print(f"\n🚀 Running 'npm install' in {worker_dir}...")
+def run_pnpm_install(worker_dir, env):
+    """Run pnpm install in the specified directory (workspace-aware)."""
+    print(f"\n🚀 Running 'pnpm install' in {worker_dir}...")
     try:
         result = subprocess.run(
-            "npm install",
+            "pnpm install",
             shell=True,
             cwd=worker_dir,
             check=True,
@@ -70,10 +70,10 @@ def run_npm_install(worker_dir, env):
             text=True,
             env=env
         )
-        print("✅ npm install completed successfully.")
+        print("✅ pnpm install completed successfully.")
         print(result.stdout)
     except subprocess.CalledProcessError as e:
-        print(f"❌ 'npm install' failed with exit code {e.returncode}.")
+        print(f"❌ 'pnpm install' failed with exit code {e.returncode}.")
         print("----- STDOUT -----")
         print(e.stdout)
         print("----- STDERR -----")
@@ -104,11 +104,11 @@ def main():
         print("\nAborting due to token issues.")
         sys.exit(1)
 
-    # Prepare environment for npm
-    npm_env = os.environ.copy()
-    npm_env["DEPLOY_PACKAGE_TOKEN"] = token
+    # Prepare environment for pnpm
+    pnpm_env = os.environ.copy()
+    pnpm_env["DEPLOY_PACKAGE_TOKEN"] = token
 
-    run_npm_install(worker_api_dir, npm_env)
+    run_pnpm_install(worker_api_dir, pnpm_env)
 
     print("\n🎉 All steps completed successfully!")
 

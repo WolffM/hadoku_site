@@ -77,7 +77,7 @@ Edit `.npmrc` and replace `YOUR_GITHUB_TOKEN_HERE` with your `DEPLOY_PACKAGE_TOK
 ### 5. Install Dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 This will install all dependencies, including private packages from GitHub Packages.
@@ -163,8 +163,8 @@ Expected output:
 🔑 Loaded DEPLOY_PACKAGE_TOKEN (length: 40).
 🔍 Verifying token scopes with GitHub API...
 ✅ Token is valid. Scopes: read:packages, repo
-🚀 Running 'npm install' in workers/task-api...
-✅ npm install completed successfully.
+🚀 Running 'pnpm install' in workers/task-api...
+✅ pnpm install completed successfully.
 🎉 All steps completed successfully!
 ```
 
@@ -243,16 +243,16 @@ gh api repos/WolffM/hadoku_site/dispatches \
 
 ### Package Lock File Out of Sync
 
-**Error**: `npm ci` fails with "lock file out of sync"
+**Error**: `pnpm install` fails with "lock file out of sync"
 
 **Solution**:
 ```bash
-# Regenerate package-lock.json
-npm install
+# Update lock file
+pnpm install
 
 # Commit the updated lock file
-git add package-lock.json
-git commit -m "chore: update package-lock.json"
+git add pnpm-lock.yaml
+git commit -m "chore: update pnpm-lock.yaml"
 git push
 ```
 
@@ -286,13 +286,13 @@ pip install requests PyNaCl
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Run development server
-npm run dev
+pnpm run dev
 
 # Build for production
-npm run build
+pnpm run build
 
 # Update task bundle
 npm run update-task-bundle

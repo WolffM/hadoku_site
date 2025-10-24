@@ -17,7 +17,7 @@ function main() {
 
   if (!existsSync(sourceDir)) {
     console.error('✗ @wolffm/task package not found at', sourceDir);
-    console.error('  Did you run `npm install` with a token that has read:packages?');
+    console.error('  Did you run `pnpm install` with a token that has read:packages?');
     process.exit(1);
   }
 
