@@ -727,20 +727,8 @@ app.put('/task/api/preferences', async (c) => {
 });
 
 // ============================================================================
-// Deprecated Endpoints
+// Utility Endpoints
 // ============================================================================
-
-// User ID Migration Endpoint
-// DEPRECATED: This endpoint is deprecated in v3.0.39+ as the API now only uses sessionId
-// The concept of userId migration no longer applies
-app.post('/task/api/migrate-userid', async (c) => {
-	return c.json({ 
-		error: 'This endpoint is deprecated. The task API now uses sessionId only and does not support userId migration.',
-		deprecated: true,
-		version: '3.0.39+',
-		migration: 'Use sessionId as the stable identifier instead of userId'
-	}, 410); // 410 Gone - indicates the endpoint is no longer available
-});
 
 // Validate Key Endpoint
 // Check if a key is valid (exists in ADMIN_KEYS or FRIEND_KEYS)
@@ -779,6 +767,22 @@ app.get('/task/api', async (c) => {
 	return handleOperation(c, (storage, auth) => 
 		TaskHandlers.getBoardTasks(storage, auth, 'main')
 	);
+});
+
+// ============================================================================
+// Deprecated Endpoints
+// ============================================================================
+
+// User ID Migration Endpoint
+// DEPRECATED: This endpoint is deprecated in v3.0.39+ as the API now only uses sessionId
+// The concept of userId migration no longer applies
+app.post('/task/api/migrate-userid', async (c) => {
+	return c.json({ 
+		error: 'This endpoint is deprecated. The task API now uses sessionId only and does not support userId migration.',
+		deprecated: true,
+		version: '3.0.39+',
+		migration: 'Use sessionId as the stable identifier instead of userId'
+	}, 410); // 410 Gone - indicates the endpoint is no longer available
 });
 
 export default app;
