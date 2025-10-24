@@ -25,10 +25,24 @@ import {
 	handleSessionHandshake,
 	getPreferencesBySessionId,
 	savePreferencesBySessionId,
+	getSessionMapping,
 	type HandshakeRequest,
 	type HandshakeResponse,
 	type UserPreferences
 } from './session';
+import {
+	checkThrottle,
+	recordIncident,
+	blacklistSession,
+	getThrottleState,
+	getIncidents,
+	isSessionBlacklisted,
+	unblacklistSession,
+	resetThrottleState,
+	checkSuspiciousPatterns,
+	THROTTLE_THRESHOLDS,
+	type IncidentRecord
+} from './throttle';
 import {
 	getBoardIdFromContext,
 	getTaskIdFromParam,
@@ -150,7 +164,67 @@ app.use('*', createAuthMiddleware<Env>({
 	}
 }));
 
-// 3. Workers KV Storage Implementation
+// 3. Throttle Middleware - Rate limiting per sessionId
+app.use('*', async (c, next) => {
+	const auth = c.get('authContext');
+	const sessionId = auth.sessionId || 'public';
+	const userType = auth.userType as 'admin' | 'friend' | 'public';
+	
+	// Skip throttling for health check endpoint
+	if (c.req.path === '/task/api/health') {
+		return next();
+	}
+	
+	// Check throttle
+	const throttleResult = await checkThrottle(
+		c.env.TASKS_KV,
+		sessionId,
+		userType
+	);
+	
+	if (!throttleResult.allowed) {
+		// Record violation incident
+		const incident: IncidentRecord = {
+			timestamp: new Date().toISOString(),
+			type: 'throttle_violation',
+			sessionId,
+			authKey: auth.key,
+			userType,
+			details: {
+				reason: throttleResult.reason,
+				violations: throttleResult.state.violations,
+				path: c.req.path,
+				method: c.req.method
+			}
+		};
+		
+		await recordIncident(c.env.TASKS_KV, incident);
+		
+		// Auto-blacklist if too many violations
+		if (throttleResult.state.violations >= THROTTLE_THRESHOLDS.BLACKLIST_VIOLATION_COUNT) {
+			await blacklistSession(
+				c.env.TASKS_KV,
+				sessionId,
+				`Auto-blacklisted after ${throttleResult.state.violations} throttle violations`,
+				auth.key
+			);
+			
+			console.log(`[THROTTLE] Blacklisted session ${sessionId} after ${throttleResult.state.violations} violations`);
+		}
+		
+		console.log(`[THROTTLE] Rate limit exceeded for ${sessionId}: ${throttleResult.reason}`);
+		
+		return c.json({
+			error: 'Rate limit exceeded',
+			message: throttleResult.reason,
+			retryAfter: 60  // seconds
+		}, 429);
+	}
+	
+	return next();
+});
+
+// 4. Workers KV Storage Implementation
 // This is the parent's responsibility - adapt storage to the environment.
 function createKVStorage(env: Env): TaskStorage {
 	// Storage keys use sessionId for data isolation
@@ -724,6 +798,93 @@ app.put('/task/api/preferences', async (c) => {
 		logError('PUT', '/task/api/preferences', error);
 		return badRequest(c, 'Failed to save preferences: ' + error.message);
 	}
+});
+
+// ============================================================================
+// Admin Monitoring Endpoints
+// ============================================================================
+
+// Get throttle status for a sessionId
+app.get('/task/api/admin/throttle/:sessionId', async (c) => {
+	const auth = c.get('authContext');
+	if (auth.userType !== 'admin') {
+		return c.json({ error: 'Admin access required' }, 403);
+	}
+	
+	const sessionId = c.req.param('sessionId');
+	if (!sessionId) {
+		return c.json({ error: 'sessionId required' }, 400);
+	}
+	
+	const state = await getThrottleState(c.env.TASKS_KV, sessionId);
+	const blacklisted = await isSessionBlacklisted(c.env.TASKS_KV, sessionId);
+	const incidents = await getIncidents(c.env.TASKS_KV, sessionId);
+	
+	return c.json({
+		sessionId: maskSessionId(sessionId),
+		throttleState: state,
+		blacklisted,
+		incidents,
+		incidentCount: incidents.length
+	});
+});
+
+// Get all sessions for an authKey
+app.get('/task/api/admin/sessions/:authKey', async (c) => {
+	const auth = c.get('authContext');
+	if (auth.userType !== 'admin') {
+		return c.json({ error: 'Admin access required' }, 403);
+	}
+	
+	const authKey = c.req.param('authKey');
+	if (!authKey) {
+		return c.json({ error: 'authKey required' }, 400);
+	}
+	
+	const mapping = await getSessionMapping(c.env.TASKS_KV, authKey);
+	
+	if (!mapping) {
+		return c.json({ authKey: maskKey(authKey), sessions: [], lastSessionId: null });
+	}
+	
+	// Check for suspicious patterns
+	const suspiciousCheck = await checkSuspiciousPatterns(
+		c.env.TASKS_KV,
+		authKey,
+		mapping.sessionIds
+	);
+	
+	return c.json({
+		authKey: maskKey(authKey),
+		sessionCount: mapping.sessionIds.length,
+		sessions: mapping.sessionIds.map(maskSessionId),
+		lastSessionId: maskSessionId(mapping.lastSessionId),
+		suspicious: suspiciousCheck.suspicious,
+		suspiciousReasons: suspiciousCheck.reasons
+	});
+});
+
+// Unblacklist a sessionId (admin action)
+app.post('/task/api/admin/unblacklist/:sessionId', async (c) => {
+	const auth = c.get('authContext');
+	if (auth.userType !== 'admin') {
+		return c.json({ error: 'Admin access required' }, 403);
+	}
+	
+	const sessionId = c.req.param('sessionId');
+	if (!sessionId) {
+		return c.json({ error: 'sessionId required' }, 400);
+	}
+	
+	await unblacklistSession(c.env.TASKS_KV, sessionId);
+	await resetThrottleState(c.env.TASKS_KV, sessionId);
+	
+	logRequest('POST', `/task/api/admin/unblacklist/${maskSessionId(sessionId)}`, {
+		userType: auth.userType,
+		action: 'unblacklist'
+	});
+	
+	return c.json({ success: true, message: `Session ${maskSessionId(sessionId)} unblacklisted` });
 });
 
 // ============================================================================
