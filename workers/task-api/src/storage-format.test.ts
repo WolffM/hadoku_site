@@ -301,10 +301,14 @@ describe('Storage Format Tests', () => {
 				body: JSON.stringify(prefs)
 			}, env);
 
-			// Verify exact preservation
+			// Verify exact preservation (excluding auto-added lastUpdated)
 			const prefsData = await env.TASKS_KV.get('prefs:test-admin-key', 'json') as any;
 
-			expect(prefsData).toEqual(prefs);
+			expect(prefsData.theme).toBe(prefs.theme);
+			expect(prefsData.notifications).toBe(prefs.notifications);
+			expect(prefsData.language).toBe(prefs.language);
+			expect(prefsData.custom).toEqual(prefs.custom);
+			expect(prefsData.lastUpdated).toBeDefined(); // Auto-added by server
 		});
 	});
 

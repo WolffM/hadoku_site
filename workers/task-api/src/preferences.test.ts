@@ -12,11 +12,11 @@ describe('User Preferences Tests', () => {
 	const adminHeaders = createAuthHeaders(env, 'automated_testing_admin');
 
 	it('should save and retrieve preferences', async () => {
-		// 1. Get current preferences (should be light theme by default)
+		// 1. Get current preferences (should be system theme by default)
 		const initialRes = await getPreferences(app, env, adminHeaders);
 		expect(initialRes.status).toBe(200);
 		const initial: any = await initialRes.json();
-		expect(initial.theme).toBe('light');
+		expect(initial.theme).toBe('system'); // Updated to match new default
 
 		// 2. Change theme to strawberry
 		const updateRes1 = await savePreferences(app, env, adminHeaders, { theme: 'strawberry' });

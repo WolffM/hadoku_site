@@ -24,6 +24,14 @@ import {
 	logRequest,
 	logError
 } from '../../util';
+import {
+	handleSessionHandshake,
+	getPreferencesBySessionId,
+	savePreferencesBySessionId,
+	type HandshakeRequest,
+	type HandshakeResponse,
+	type UserPreferences
+} from './session';
 
 /**
  * Validate a key and determine userType
@@ -620,46 +628,154 @@ app.post('/task/api/batch-clear-tag', async (c) => {
 	);
 });
 
-// Get user preferences
-app.get('/task/api/preferences', async (c) => {
-	const { auth } = getContext(c);
-	const storageKey = auth.sessionId || 'public';
-	
-	// Use sessionId-based storage for preferences
-	const prefsKey = `prefs:${storageKey}`;
-	
+// ============================================================================
+// Session Management Endpoints
+// ============================================================================
+
+/**
+ * Session Handshake Endpoint
+ * 
+ * POST /task/api/session/handshake
+ * 
+ * Handles session initialization and migration:
+ * 1. Client provides oldSessionId (if they had one) and newSessionId
+ * 2. Server looks up preferences for oldSessionId
+ * 3. If found, copy preferences to newSessionId
+ * 4. If not found, check authKey mapping for last session
+ * 5. Update authKey → sessionId mapping
+ * 6. Return preferences for client
+ */
+app.post('/task/api/session/handshake', async (c) => {
 	try {
-		const prefs = await c.env.TASKS_KV.get(prefsKey, 'json');
-		if (prefs) {
-			return c.json(prefs);
+		const { auth } = getContext(c);
+		const body = await c.req.json() as HandshakeRequest;
+		
+		// Validate request
+		if (!body.newSessionId) {
+			return badRequest(c, 'newSessionId is required');
 		}
-		// Return default preferences
-		return c.json({ theme: 'light' });
+		
+		// Get authKey from context
+		const authKey = auth.key || auth.sessionId || 'public';
+		
+		logRequest('POST', '/task/api/session/handshake', {
+			userType: auth.userType,
+			authKey: authKey.substring(0, 8) + '...',
+			oldSessionId: body.oldSessionId ? body.oldSessionId.substring(0, 12) + '...' : null,
+			newSessionId: body.newSessionId.substring(0, 12) + '...'
+		});
+		
+		// Handle handshake
+		const response = await handleSessionHandshake(
+			c.env.TASKS_KV,
+			authKey,
+			auth.userType as 'admin' | 'friend' | 'public',
+			body
+		);
+		
+		return c.json(response);
 	} catch (error: any) {
-		logError('GET', '/task/api/preferences', error);
-		return c.json({ theme: 'light' });
+		logError('POST', '/task/api/session/handshake', error);
+		return badRequest(c, 'Handshake failed: ' + error.message);
 	}
 });
 
-// Save user preferences
-app.put('/task/api/preferences', async (c) => {
+/**
+ * Get User Preferences
+ * 
+ * GET /task/api/preferences
+ * 
+ * Fetches preferences by sessionId from X-Session-Id header
+ * Returns all preferences (theme, buttons, experimental flags, layout, etc.)
+ */
+app.get('/task/api/preferences', async (c) => {
 	const { auth } = getContext(c);
-	const storageKey = auth.sessionId || 'public';
-	const body = await c.req.json();
 	
-	// Use sessionId-based storage for preferences
-	const prefsKey = `prefs:${storageKey}`;
+	// Get sessionId from header or fallback to auth.sessionId
+	const sessionId = c.req.header('X-Session-Id') || auth.sessionId || 'public';
 	
-	logRequest('PUT', '/task/api/preferences', { userType: auth.userType, sessionId: auth.sessionId, prefs: body });
+	logRequest('GET', '/task/api/preferences', {
+		userType: auth.userType,
+		sessionId: sessionId.substring(0, 12) + '...'
+	});
 	
 	try {
-		await c.env.TASKS_KV.put(prefsKey, JSON.stringify(body));
-		return c.json({ ok: true, message: 'Preferences saved' });
+		const prefs = await getPreferencesBySessionId(c.env.TASKS_KV, sessionId);
+		
+		if (prefs) {
+			return c.json(prefs);
+		}
+		
+		// Return default preferences if none found
+		const defaultPrefs: UserPreferences = {
+			theme: 'system',
+			buttons: {},
+			experimentalFlags: {},
+			layout: {},
+			lastUpdated: new Date().toISOString()
+		};
+		
+		return c.json(defaultPrefs);
 	} catch (error: any) {
-		logError('PUT', '/task/api/preferences', error);
-		return badRequest(c, 'Failed to save preferences');
+		logError('GET', '/task/api/preferences', error);
+		
+		// Return defaults on error
+		return c.json({
+			theme: 'system',
+			buttons: {},
+			experimentalFlags: {},
+			layout: {}
+		});
 	}
 });
+
+/**
+ * Save User Preferences
+ * 
+ * PUT /task/api/preferences
+ * 
+ * Saves preferences by sessionId from X-Session-Id header
+ * Accepts ALL preference fields (theme, buttons, experimental flags, layout, etc.)
+ * Merges with existing preferences
+ */
+app.put('/task/api/preferences', async (c) => {
+	const { auth } = getContext(c);
+	
+	// Get sessionId from header or fallback to auth.sessionId
+	const sessionId = c.req.header('X-Session-Id') || auth.sessionId || 'public';
+	
+	try {
+		const body = await c.req.json();
+		
+		logRequest('PUT', '/task/api/preferences', {
+			userType: auth.userType,
+			sessionId: sessionId.substring(0, 12) + '...',
+			fields: Object.keys(body)
+		});
+		
+		// Get existing preferences
+		const existing = await getPreferencesBySessionId(c.env.TASKS_KV, sessionId) || {};
+		
+		// Merge with new preferences
+		const updated: UserPreferences = {
+			...existing,
+			...body,
+			lastUpdated: new Date().toISOString()
+		};
+		
+		// Save merged preferences
+		await savePreferencesBySessionId(c.env.TASKS_KV, sessionId, updated);
+		
+		return c.json({ ok: true, message: 'Preferences saved', preferences: updated });
+	} catch (error: any) {
+		logError('PUT', '/task/api/preferences', error);
+		return badRequest(c, 'Failed to save preferences: ' + error.message);
+	}
+});
+
+// ============================================================================
+// Deprecated Endpoints
+// ============================================================================
 
 // User ID Migration Endpoint
 // DEPRECATED: This endpoint is deprecated in v3.0.39+ as the API now only uses sessionId
