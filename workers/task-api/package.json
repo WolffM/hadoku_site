@@ -21,11 +21,11 @@
   "dependencies": {
     "@hadoku/worker-utils": "workspace:*",
     "@wolffm/task": "^3.1.11",
-    "hono": "^4.0.0"
+    "hono": "^4.10.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
-    "vitest": "^2.1.8",
+    "vitest": "^4.0.4",
     "wrangler": "^4.42.2"
   }
 }
