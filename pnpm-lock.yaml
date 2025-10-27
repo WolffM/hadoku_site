@@ -88,8 +88,8 @@ importers:
         specifier: workspace:*
         version: link:../util
       '@wolffm/task':
-        specifier: ^3.1.11
-        version: 3.1.11
+        specifier: ^3.1.14
+        version: 3.1.14
       hono:
         specifier: ^4.10.3
         version: 4.10.3
@@ -1081,9 +1081,6 @@ packages:
 
   '@vitest/utils@4.0.4':
     resolution: {integrity: sha512-4bJLmSvZLyVbNsYFRpPYdJViG9jZyRvMZ35IF4ymXbRZoS+ycYghmwTGiscTXduUg2lgKK7POWIyXJNute1hjw==}
-
-  '@wolffm/task@3.1.11':
-    resolution: {integrity: sha512-M8xpEkRZgEynGLS5dWCnbM2JQ6HRJbUjawOIm5GLq8Z7PfePeaMny2ClKniGazLwK+Es/i3vruyh30vMYQUvBQ==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.1.11/f7025ec8b53fa9f666b90b36cf489095fc3bbf00}
 
   '@wolffm/task@3.1.14':
     resolution: {integrity: sha512-8JswwVv7RnSLwn+Cfmijtjl26wa4VRzSAWJK1dLczDLdlcdty3jj3ipF3OVq5ORI/mWMQ9p3L6TT9nHyHYBi2g==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.1.14/53ac6d232a7df890122f9b63871582e1dd1012a9}
@@ -3819,11 +3816,6 @@ snapshots:
     dependencies:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
-
-  '@wolffm/task@3.1.11':
-    dependencies:
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   '@wolffm/task@3.1.14':
     dependencies:
