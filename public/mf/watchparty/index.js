@@ -6482,7 +6482,7 @@ function Rl({ videoRef: t, mediaId: e }) {
         s && /* @__PURE__ */ g.jsx("div", { className: "cluster flex-1 max-w-md", children: /* @__PURE__ */ g.jsx(xl, {}) }),
         /* @__PURE__ */ g.jsxs("div", { className: "cluster", children: [
           /* @__PURE__ */ g.jsx(wl, { videoRef: t }),
-          /* @__PURE__ */ g.jsx("div", { className: "w-px h-4 bg-slate-600 opacity-50" }),
+          /* @__PURE__ */ g.jsx("div", { className: "w-px h-4 bg-wp-border-accent opacity-50" }),
           /* @__PURE__ */ g.jsx(_l, { videoRef: t })
         ] }),
         /* @__PURE__ */ g.jsx("div", { className: "cluster-tight", children: /* @__PURE__ */ g.jsx(El, { videoRef: t }) })
@@ -6570,7 +6570,7 @@ function Tl({ mediaUrl: t, indexUrl: e, mediaId: r }) {
         /* @__PURE__ */ g.jsx("video", { ref: n, className: "w-full h-full", playsInline: !0 }),
         /* @__PURE__ */ g.jsx(Cl, { mediaId: r, visible: p }),
         /* @__PURE__ */ g.jsx(Rl, { videoRef: n, mediaId: r }),
-        !y.ready && /* @__PURE__ */ g.jsx("div", { className: "absolute inset-0 flex items-center justify-center pointer-events-none", children: /* @__PURE__ */ g.jsxs("div", { className: "px-4 py-2 rounded bg-slate-900/80 text-xs font-medium", children: [
+        !y.ready && /* @__PURE__ */ g.jsx("div", { className: "absolute inset-0 flex items-center justify-center pointer-events-none", children: /* @__PURE__ */ g.jsxs("div", { className: "px-4 py-2 rounded bg-wp-surface-2/80 text-xs font-medium", children: [
           "Syncing… (",
           y.readyCount,
           "/",

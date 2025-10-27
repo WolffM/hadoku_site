@@ -15,8 +15,8 @@ importers:
         specifier: ^3.1.11
         version: 3.1.11
       '@wolffm/watchparty-ui':
-        specifier: ^0.1.9
-        version: 0.1.9
+        specifier: ^0.1.10
+        version: 0.1.10
       astro:
         specifier: ^5.14.1
         version: 5.14.8(@types/node@24.9.1)(rollup@4.52.5)(typescript@5.9.3)
@@ -1348,8 +1348,8 @@ packages:
   '@wolffm/task@3.1.11':
     resolution: {integrity: sha512-M8xpEkRZgEynGLS5dWCnbM2JQ6HRJbUjawOIm5GLq8Z7PfePeaMny2ClKniGazLwK+Es/i3vruyh30vMYQUvBQ==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.1.11/f7025ec8b53fa9f666b90b36cf489095fc3bbf00}
 
-  '@wolffm/watchparty-ui@0.1.9':
-    resolution: {integrity: sha512-yj0NLqBiaB4CHzQPEvd9UlHPSTcCHzNPgf9syHekXt9WgjsdSOuguWPyHulFZonQpvt4MqjcE271dPRxpaMzSw==, tarball: https://npm.pkg.github.com/download/@wolffm/watchparty-ui/0.1.9/9a37eb183928b13d42337d7da69d06a521f56488}
+  '@wolffm/watchparty-ui@0.1.10':
+    resolution: {integrity: sha512-ZLk2IK4hdFQ7RqTcpuJ8EVMl8GSPnKXtDNikhvmvh0SSKX3Tmy10Ie9AQZqcuWbiodMohO6kfqeZvmyha10JyA==, tarball: https://npm.pkg.github.com/download/@wolffm/watchparty-ui/0.1.10/e554bfc43da40b7c23ff9cc665b18385481760e5}
 
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
@@ -4049,7 +4049,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@wolffm/watchparty-ui@0.1.9':
+  '@wolffm/watchparty-ui@0.1.10':
     dependencies:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)

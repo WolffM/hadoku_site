@@ -18,7 +18,7 @@
   "dependencies": {
     "@astrojs/node": "^9.4.6",
     "@wolffm/task": "^3.1.11",
-    "@wolffm/watchparty-ui": "^0.1.9",
+    "@wolffm/watchparty-ui": "^0.1.10",
     "astro": "^5.14.1",
     "chokidar": "^4.0.3",
     "compression": "^1.7.4",
