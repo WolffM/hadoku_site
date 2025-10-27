@@ -1,0 +1,121 @@
+name: Update Themes Package
+
+on:
+  repository_dispatch:
+    types: [themes_package_updated]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.HADOKU_SITE_TOKEN }}
+      
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Create .npmrc for GitHub Packages
+        run: |
+          echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
+      
+      - name: Update themes package
+        run: |
+          PACKAGE="${{ github.event.client_payload.package || '@wolffm/themes' }}"
+          echo "🎨 Updating $PACKAGE to latest version..."
+          
+          # Get current version
+          CURRENT_VERSION=$(node -p "try { require('./package.json').dependencies['@wolffm/themes'] } catch { 'none' }")
+          echo "Current version: $CURRENT_VERSION"
+          echo "current-version=$CURRENT_VERSION" >> $GITHUB_ENV
+          
+          # Update root package (workspace root)
+          pnpm add -w $PACKAGE@latest
+          echo "✅ Updated root package.json and pnpm-lock.yaml"
+          
+          # Regenerate registry (themes CSS is imported in global.css)
+          echo "🎨 Regenerating registry..."
+          pnpm run generate-registry
+          echo "✅ Updated public/mf/registry.json"
+      
+      - name: Commit and push if changed
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if package files changed
+          if git diff --quiet package.json pnpm-lock.yaml; then
+            echo "ℹ️  No package updates needed"
+            echo "updated=false" >> $GITHUB_OUTPUT
+          else
+            PACKAGE="${{ github.event.client_payload.package || '@wolffm/themes' }}"
+            NEW_VERSION=$(node -p "require('./package.json').dependencies['@wolffm/themes']")
+            echo "new-version=$NEW_VERSION" >> $GITHUB_ENV
+            
+            git add package.json pnpm-lock.yaml
+            git commit -m "chore: update $PACKAGE to $NEW_VERSION"
+            git push
+            echo "✅ Updated package and pushed changes"
+            echo "updated=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Comment with update info
+        if: steps.commit.outputs.updated == 'true'
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            // Get the latest commit (the one we just pushed)
+            const { data: commits } = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 1
+            });
+            const latestCommit = commits[0].sha;
+            
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: latestCommit,
+              body: `## 🎨 Themes Package Updated
+            
+            **Package Update**
+            - Package: \`@wolffm/themes\`
+            - Old version: \`${{ env.current-version }}\`
+            - New version: \`${{ env.new-version }}\`
+            
+            **Changes Applied**
+            - Updated \`package.json\` and \`pnpm-lock.yaml\`
+            - New theme CSS variables are now available
+            - All theme-aware components will use the latest styles
+            
+            **Available Themes**
+            The site now has access to all themes from the updated package:
+            - Light/Dark (default)
+            - Strawberry Light/Dark
+            - Ocean Light/Dark
+            - Cyberpunk Light/Dark
+            - Coffee Light/Dark
+            - Lavender Light/Dark
+            - Pink Light/Dark
+            
+            🚀 Deployment workflows will be triggered automatically.`
+            });
+      
+      - name: Trigger deployment
+        if: success()
+        run: |
+          echo "🚀 Themes package update complete. Deployment workflows will be triggered automatically."
