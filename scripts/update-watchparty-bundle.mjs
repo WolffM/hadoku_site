@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Copies the latest @wolffm/watchparty micro-frontend assets (index.js, style.css)
+ * Copies the latest @wolffm/watchparty-ui micro-frontend assets (index.js, style.css)
  * from node_modules into public/mf/watchparty so the static site deploy picks up
  * the current UI package.
  */
@@ -12,11 +12,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 function main() {
-  const sourceDir = join(__dirname, '..', 'node_modules', '@wolffm', 'watchparty', 'dist');
+  const sourceDir = join(__dirname, '..', 'node_modules', '@wolffm', 'watchparty-ui', 'dist');
   const targetDir = join(__dirname, '..', 'public', 'mf', 'watchparty');
 
   if (!existsSync(sourceDir)) {
-    console.error('✗ @wolffm/watchparty package not found at', sourceDir);
+    console.error('✗ @wolffm/watchparty-ui package not found at', sourceDir);
     console.error('  Did you run `pnpm install` with a token that has read:packages?');
     process.exit(1);
   }
@@ -35,7 +35,7 @@ function main() {
       process.exit(1);
     }
   }
-  console.log('✓ Watchparty bundle updated');
+  console.log('✅ Watchparty UI bundle updated successfully');
 }
 
 main();

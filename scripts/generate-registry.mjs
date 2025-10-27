@@ -10,7 +10,7 @@ const __dirname = dirname(__filename);
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const taskVersion = packageJson.dependencies['@wolffm/task']?.replace('^', '') || 'latest';
-const watchpartyVersion = packageJson.dependencies['@wolffm/watchparty']?.replace('^', '') || Date.now().toString();
+const watchpartyVersion = packageJson.dependencies['@wolffm/watchparty-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
 const timestamp = Date.now(); // Fallback for apps without versions
 
 // Load .env file if it exists (for local development)

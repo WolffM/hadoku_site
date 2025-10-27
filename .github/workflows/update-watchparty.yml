@@ -1,8 +1,8 @@
-name: Update Watchparty Package
+name: Update Watchparty UI Package
 
 on:
   repository_dispatch:
-    types: [watchparty_package_updated]
+    types: [watchparty_ui_updated]
   workflow_dispatch:
 
 permissions:
@@ -33,7 +33,7 @@ jobs:
       
       - name: Update watchparty package
         run: |
-          PACKAGE="${{ github.event.client_payload.package || '@wolffm/watchparty' }}"
+          PACKAGE="${{ github.event.client_payload.package || '@wolffm/watchparty-ui' }}"
           echo "📦 Updating $PACKAGE to latest version..."
           
           # Update root package (workspace root)
@@ -61,7 +61,7 @@ jobs:
             echo "ℹ️  No package updates needed"
             echo "updated=false" >> $GITHUB_OUTPUT
           else
-            PACKAGE="${{ github.event.client_payload.package || '@wolffm/watchparty' }}"
+            PACKAGE="${{ github.event.client_payload.package || '@wolffm/watchparty-ui' }}"
             git add package.json pnpm-lock.yaml public/mf/
             git commit -m "chore: update $PACKAGE to latest"
             git push
@@ -69,7 +69,7 @@ jobs:
             echo "updated=true" >> $GITHUB_OUTPUT
             
             # Save new version for summary
-            NEW_VERSION=$(node -p "require('./package.json').dependencies['@wolffm/watchparty']")
+            NEW_VERSION=$(node -p "require('./package.json').dependencies['@wolffm/watchparty-ui']")
             echo "new-version=$NEW_VERSION" >> $GITHUB_ENV
           fi
       
@@ -91,10 +91,10 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: latestCommit,
-              body: `## 🔄 Watchparty Package Updated
+              body: `## 🔄 Watchparty UI Package Updated
             
             **Package Update**
-            - Package: \`@wolffm/watchparty\`
+            - Package: \`@wolffm/watchparty-ui\`
             - New version: \`${{ env.new-version }}\`
             
             **Updated Files**

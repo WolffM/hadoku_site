@@ -1006,11 +1006,9 @@ Add to workflow:
 ### Parent Repository
 - **hadoku_site**: [WolffM/hadoku_site](https://github.com/WolffM/hadoku_site)
 - **ARCHITECTURE.md**: Complete system architecture documentation
-- **API_EXPORTS.md**: Child package exports reference
 
 ### Example Implementations
 - **Task app** (frontend): [WolffM/hadoku-task](https://github.com/WolffM/hadoku-task)
-- **Task API package**: [WolffM/task-api-task-component](https://github.com/WolffM/task-api-task-component)
 - **Parent worker**: `hadoku_site/workers/task-api/`
 
 ### Documentation
@@ -1030,4 +1028,4 @@ Add to workflow:
 ---
 
 **Template Version**: 2.0.0 (Universal Adapter Pattern)  
-**Last Updated**: January 2025
+**Last Updated**: Nov 2025
