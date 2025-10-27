@@ -9,7 +9,8 @@ const __dirname = dirname(__filename);
 // Read package.json to get versions for cache busting
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-const taskVersion = packageJson.dependencies['@wolffm/task'].replace('^', '');
+const taskVersion = packageJson.dependencies['@wolffm/task']?.replace('^', '') || 'latest';
+const watchpartyVersion = packageJson.dependencies['@wolffm/watchparty']?.replace('^', '') || Date.now().toString();
 const timestamp = Date.now(); // Fallback for apps without versions
 
 // Load .env file if it exists (for local development)
@@ -66,8 +67,8 @@ const registry = {
     }
   },
   watchparty: {
-    url: `/mf/watchparty/index.js?v=${timestamp}`,
-    css: `/mf/watchparty/style.css?v=${timestamp}`,
+    url: `/mf/watchparty/index.js?v=${watchpartyVersion}`,
+    css: `/mf/watchparty/style.css?v=${watchpartyVersion}`,
     basename: '/watchparty',
     props: watchpartyConfig
   },

@@ -9,7 +9,8 @@
     "preview": "astro preview",
     "generate-registry": "node scripts/generate-registry.mjs",
     "update-task-bundle": "node scripts/update-task-bundle.mjs",
-    "prebuild": "pnpm run update-task-bundle && pnpm run generate-registry"
+    "update-watchparty-bundle": "node scripts/update-watchparty-bundle.mjs",
+    "prebuild": "pnpm run update-task-bundle && pnpm run update-watchparty-bundle && pnpm run generate-registry"
   },
   "keywords": [],
   "author": "",
