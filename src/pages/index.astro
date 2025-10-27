@@ -37,9 +37,6 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     <header class="header">
       <h1>Hadoku</h1>
       <p class="subtitle">Your Personal Micro-Frontend Hub</p>
-      <div class="access-badge" data-type="public">
-        👤 Public Access
-      </div>
     </header>
 
     <div class="apps-grid" id="apps-grid">
@@ -74,18 +71,8 @@ const appInfo: Record<string, { title: string; description: string; icon: string
       userType = 'friend';
     }
     
-    // Update access badge
-    const badge = document.querySelector('.access-badge');
-    if (badge) {
-      badge.setAttribute('data-type', userType);
-      if (userType === 'admin') {
-        badge.textContent = '👑 Admin Access';
-      } else if (userType === 'friend') {
-        badge.textContent = '👥 Friend Access';
-      } else {
-        badge.textContent = '👤 Public Access';
-      }
-    }
+    // Apply visual theme based on user type (without exposing key)
+    document.body.setAttribute('data-user-type', userType);
     
     // Get accessible apps for this user type
     const accessibleApps = appVisibility[userType] || ['home'];
@@ -109,14 +96,10 @@ const appInfo: Record<string, { title: string; description: string; icon: string
       }).join('');
     }
     
-    // Show/hide access info based on user type
+    // Hide access info (everyone can see all basic apps now)
     const accessInfo = document.getElementById('access-info');
     if (accessInfo) {
-      if (userType === 'public') {
-        accessInfo.style.display = 'block';
-      } else {
-        accessInfo.style.display = 'none';
-      }
+      accessInfo.style.display = 'none';
     }
   </script>
 
@@ -141,35 +124,24 @@ const appInfo: Record<string, { title: string; description: string; icon: string
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      border-bottom: 4px solid transparent;
+      padding-bottom: 0.5rem;
+      display: inline-block;
+    }
+    
+    /* Visual indicators based on user type - no text exposed */
+    body[data-user-type="friend"] .header h1 {
+      border-bottom-color: #4facfe; /* Blue trim for friend */
+    }
+    
+    body[data-user-type="admin"] .header h1 {
+      border-bottom-color: #f093fb; /* Purple trim for admin */
     }
 
     .subtitle {
       font-size: 1.25rem;
       color: #666;
       margin-bottom: 1rem;
-    }
-
-    .access-badge {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      border-radius: 2rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
-
-    .access-badge[data-type="admin"] {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      color: white;
-    }
-
-    .access-badge[data-type="friend"] {
-      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      color: white;
-    }
-
-    .access-badge[data-type="public"] {
-      background: #f0f0f0;
-      color: #666;
     }
 
     .apps-grid {
@@ -197,6 +169,25 @@ const appInfo: Record<string, { title: string; description: string; icon: string
       transform: translateY(-4px);
       box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
       border-color: #667eea;
+    }
+    
+    /* Subtle card border colors based on user type */
+    body[data-user-type="friend"] .app-card {
+      border-color: #b3e0ff; /* Light blue for friend */
+    }
+    
+    body[data-user-type="friend"] .app-card:hover {
+      border-color: #4facfe;
+      box-shadow: 0 12px 24px rgba(79, 172, 254, 0.2);
+    }
+    
+    body[data-user-type="admin"] .app-card {
+      border-color: #f5c7ff; /* Light purple for admin */
+    }
+    
+    body[data-user-type="admin"] .app-card:hover {
+      border-color: #f093fb;
+      box-shadow: 0 12px 24px rgba(240, 147, 251, 0.2);
     }
 
     .app-icon {

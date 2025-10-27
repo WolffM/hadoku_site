@@ -10,9 +10,9 @@ export interface AccessConfig {
 
 // App visibility by user type
 export const appVisibility: Record<UserType, string[]> = {
-  public: ['home'],
-  friend: ['home', 'watchparty'],
-  admin: ['home', 'watchparty', 'task', 'contact', 'herodraft']
+  public: ['home', 'task', 'watchparty'],
+  friend: ['home', 'task', 'watchparty'],
+  admin: ['home', 'task', 'watchparty', 'contact', 'herodraft']
 };
 
 // Build-time validation for production
