@@ -14,6 +14,7 @@ Usage:
 
 Commands:
     verify-install              Verify and install latest packages
+    check-token [token]         Validate HADOKU_SITE_TOKEN or provided token
     kv-backup                   Backup Cloudflare KV to local file
     kv-restore <file>           Restore Cloudflare KV from backup file
     kv-flush [--force]          Flush (delete) all KV data
@@ -28,6 +29,8 @@ Commands:
 
 Examples:
     python administration.py verify-install
+    python administration.py check-token
+    python administration.py check-token ghp_xxxxxxxxxxxx
     python administration.py kv-backup
     python administration.py kv-restore backups/kv-2025-10-21.json
     python administration.py kv-inspect --key "boards:4355"
@@ -64,6 +67,15 @@ def run_command(args):
         if command == 'verify-install':
             from verify_and_install import main
             return main()
+        
+        elif command == 'check-token':
+            token = args[2] if len(args) > 2 else None
+            script_path = ADMIN_DIR / 'check_secret.py'
+            if token:
+                result = subprocess.run([sys.executable, str(script_path), token])
+            else:
+                result = subprocess.run([sys.executable, str(script_path)])
+            return result.returncode
         
         elif command == 'kv-backup':
             from kv_operations import backup_kv
