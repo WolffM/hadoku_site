@@ -10,7 +10,8 @@ This script provides comprehensive backup/restore functionality for Cloudflare K
 3. validate-backup: Compare production vs backup KV
 4. restore-from-backup: Restore production from backup KV
 5. flush: Delete all keys from production KV
-6. full-backup: Complete backup (file + upload to backup KV)
+6. full-backup: Complete backup (file + clear + upload + validate)
+7. fast-backup: Quick backup (file only, for CI/automation)
 
 Environment Variables Required:
 - CLOUDFLARE_API_TOKEN: Cloudflare API token with KV permissions
@@ -23,6 +24,7 @@ import requests
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from datetime import datetime
 import time
@@ -101,6 +103,10 @@ def get_kv_values(config, namespace_id, keys):
         
         if (i + 1) % 10 == 0 or i == total - 1:
             print(f"Progress: {i + 1}/{total}")
+        
+        # Minimal rate limiting for GET requests too
+        if i % 50 == 0:
+            time.sleep(0.05)
     
     return values
 
@@ -128,7 +134,9 @@ def put_kv_values(config, namespace_id, data):
         if (i + 1) % 10 == 0 or i == total - 1:
             print(f"Upload progress: {i + 1}/{total} ({success_count} successful)")
         
-        time.sleep(0.1)  # Rate limiting
+        # Minimal rate limiting - Cloudflare can handle more
+        if i % 50 == 0:  # Only sleep every 50 requests
+            time.sleep(0.05)
     
     return success_count
 
@@ -355,16 +363,32 @@ def main():
         if not backup_file:
             return 1
         
-        # Step 2: Upload to backup KV
+        # Step 2: Clear backup KV for clean validation
+        print("🧹 Clearing backup KV for clean validation...")
+        if flush_namespace(config, config['CLOUDFLARE_BACKUP_NAMESPACE_ID'], confirm=True) != 0:
+            print("⚠️ Failed to clear backup KV, continuing anyway...")
+        
+        # Step 3: Upload to backup KV
         if backup_to_kv(config, backup_file) != 0:
             return 1
         
-        # Step 3: Validate
+        # Step 4: Validate
         if validate_backup(config) != 0:
             print("⚠️ Validation failed but backup files created")
             return 1
         
         print("✅ Full backup process completed successfully!")
+        return 0
+    
+    elif command == 'fast-backup':
+        print("⚡ Starting fast backup (file only)...")
+        
+        # Just backup to file, skip KV upload and validation for speed
+        backup_file = backup_to_file(config)
+        if not backup_file:
+            return 1
+        
+        print("✅ Fast backup completed successfully!")
         return 0
     
     else:

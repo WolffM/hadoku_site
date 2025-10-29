@@ -15,7 +15,8 @@ Usage:
 Commands:
     verify-install              Verify and install latest packages
     check-token [token]         Validate HADOKU_SITE_TOKEN or provided token
-    kv-backup                   Complete backup (file + upload to backup KV + validate)
+    kv-backup                   Complete backup (file + clear + upload + validate)
+    kv-backup-fast              Fast backup (file only, for quick backups)
     kv-backup-file              Backup production KV to local JSON file only
     kv-backup-upload [file]     Upload backup to backup KV namespace
     kv-validate                 Validate backup KV against production
@@ -82,10 +83,17 @@ def run_command(args):
             return result.returncode
         
         elif command == 'kv-backup':
-            # Complete backup (file + upload + validate)
+            # Complete backup (file + clear + upload + validate)
             import subprocess
             script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'full-backup'])
+            return result.returncode
+        
+        elif command == 'kv-backup-fast':
+            # Fast backup (file only)
+            import subprocess
+            script_path = Path(__file__).parent / 'backup-kv.py'
+            result = subprocess.run([sys.executable, str(script_path), 'fast-backup'])
             return result.returncode
         
         elif command == 'kv-backup-file':

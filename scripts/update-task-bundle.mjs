@@ -2,7 +2,7 @@
 /**
  * Copies the latest @wolffm/task micro-frontend assets (index.js, style.css)
  * from node_modules into public/mf/task so the static site deploy picks up
- * the current v2 UI (boards, themes, etc.).
+ * the current UI. Uses the package's proper exports for CSS.
  */
 import { copyFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
@@ -23,7 +23,7 @@ function main() {
 
   mkdirSync(targetDir, { recursive: true });
 
-  // Copy index.js
+  // Copy index.js (frontend bundle)
   const indexFrom = join(sourceDir, 'index.js');
   const indexTo = join(targetDir, 'index.js');
   try {
@@ -39,19 +39,20 @@ function main() {
     process.exit(1);
   }
 
-  // Copy CSS file (task.css → style.css for compatibility)
+  // Copy CSS file using the proper export path
+  // Package now exports "./style.css" which points to "./dist/task.css"
   const cssFrom = join(sourceDir, 'task.css');
   const cssTo = join(targetDir, 'style.css');
   try {
     if (existsSync(cssFrom)) {
       copyFileSync(cssFrom, cssTo);
-      console.log('✓ Copied task.css → style.css');
+      console.log('✓ Copied style.css (from task.css export)');
     } else {
-      console.error('✗ task.css not found in package');
+      console.error('✗ CSS file not found in package dist');
       process.exit(1);
     }
   } catch (err) {
-    console.error('✗ Failed to copy task.css:', err.message);
+    console.error('✗ Failed to copy CSS file:', err.message);
     process.exit(1);
   }
   console.log('✓ Task bundle updated');

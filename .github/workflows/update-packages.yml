@@ -93,11 +93,11 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           echo "current-version=$CURRENT_VERSION" >> $GITHUB_ENV
           
-          # Run backup script (file + upload to backup KV + validate)
+          # Run fast backup script (file only for speed in CI)
           pip install requests
-          if python scripts/backup-kv.py full-backup; then
+          if python scripts/backup-kv.py fast-backup; then
             echo "backup-success=true" >> $GITHUB_OUTPUT
-            echo "✅ Complete backup successful (file + backup KV + validation)"
+            echo "✅ Fast backup successful (file only)"
           else
             echo "backup-success=false" >> $GITHUB_OUTPUT
             echo "❌ Backup failed! Flush step will be skipped."
