@@ -18,8 +18,8 @@
   "dependencies": {
     "@astrojs/node": "^9.5.0",
     "@astrojs/tailwind": "^6.0.2",
-    "@wolffm/task": "^3.2.11",
-    "@wolffm/themes": "1.0.5",
+    "@wolffm/task": "^3.2.12",
+    "@wolffm/themes": "1.0.6",
     "@wolffm/watchparty-ui": "^0.1.11",
     "astro": "^5.15.1",
     "chokidar": "^4.0.3",
