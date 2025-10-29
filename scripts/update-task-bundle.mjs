@@ -28,8 +28,12 @@ function main() {
     const from = join(sourceDir, f);
     const to = join(targetDir, f);
     try {
-      copyFileSync(from, to);
-      console.log(`✓ Copied ${f}`);
+      if (existsSync(from)) {
+        copyFileSync(from, to);
+        console.log(`✓ Copied ${f}`);
+      } else {
+        console.log(`⚠ Skipped ${f} (not found in package)`);
+      }
     } catch (err) {
       console.error(`✗ Failed to copy ${f}:`, err.message);
       process.exit(1);
