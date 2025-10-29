@@ -116,6 +116,8 @@ const appInfo: Record<string, { title: string; description: string; icon: string
       'coffee-dark': { name: 'Coffee Dark', icon: '☕', category: 'Coffee' },
       'lavender-light': { name: 'Lavender Light', icon: '💜', category: 'Lavender' },
       'lavender-dark': { name: 'Lavender Dark', icon: '💜', category: 'Lavender' },
+      'nature-light': { name: 'Nature Light', icon: '🌿', category: 'Nature' },
+      'nature-dark': { name: 'Nature Dark', icon: '🌿', category: 'Nature' },
       'pink-light': { name: 'Pink Light', icon: '💗', category: 'Pink' },
       'pink-dark': { name: 'Pink Dark', icon: '💗', category: 'Pink' }
     };
@@ -146,6 +148,10 @@ const appInfo: Record<string, { title: string; description: string; icon: string
       const grouped = {};
       THEMES.forEach(theme => {
         const meta = themeMetadata[theme];
+        if (!meta) {
+          console.warn('Missing theme metadata for:', theme);
+          return;
+        }
         if (!grouped[meta.category]) {
           grouped[meta.category] = [];
         }
@@ -163,6 +169,7 @@ const appInfo: Record<string, { title: string; description: string; icon: string
         // Add themes in category
         grouped[category].forEach(theme => {
           const meta = themeMetadata[theme];
+          if (!meta) return;
           const option = document.createElement('button');
           option.className = `w-full px-4 py-2 flex items-center gap-3 hover:bg-primary-hover transition-colors text-left ${theme === currentTheme ? 'bg-primary-hover' : ''}`;
           option.innerHTML = `
@@ -234,11 +241,13 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     
     // Get accessible apps for this user type
     const accessibleApps = appVisibility[userType] || ['home'];
+    console.log('User type:', userType, 'Accessible apps:', accessibleApps);
     
     // Populate apps grid
     const appsGrid = document.getElementById('apps-grid');
     if (appsGrid) {
       const appsToShow = accessibleApps.filter(app => app !== 'home');
+      console.log('Apps to show:', appsToShow);
       
       appsGrid.innerHTML = appsToShow.map(app => {
         const info = appInfo[app] || { title: app, description: 'No description', icon: '📦' };
