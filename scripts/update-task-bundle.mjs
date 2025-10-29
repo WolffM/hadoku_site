@@ -23,21 +23,36 @@ function main() {
 
   mkdirSync(targetDir, { recursive: true });
 
-  const files = ['index.js', 'style.css'];
-  for (const f of files) {
-    const from = join(sourceDir, f);
-    const to = join(targetDir, f);
-    try {
-      if (existsSync(from)) {
-        copyFileSync(from, to);
-        console.log(`✓ Copied ${f}`);
-      } else {
-        console.log(`⚠ Skipped ${f} (not found in package)`);
-      }
-    } catch (err) {
-      console.error(`✗ Failed to copy ${f}:`, err.message);
+  // Copy index.js
+  const indexFrom = join(sourceDir, 'index.js');
+  const indexTo = join(targetDir, 'index.js');
+  try {
+    if (existsSync(indexFrom)) {
+      copyFileSync(indexFrom, indexTo);
+      console.log('✓ Copied index.js');
+    } else {
+      console.error('✗ index.js not found in package');
       process.exit(1);
     }
+  } catch (err) {
+    console.error('✗ Failed to copy index.js:', err.message);
+    process.exit(1);
+  }
+
+  // Copy CSS file (task.css → style.css for compatibility)
+  const cssFrom = join(sourceDir, 'task.css');
+  const cssTo = join(targetDir, 'style.css');
+  try {
+    if (existsSync(cssFrom)) {
+      copyFileSync(cssFrom, cssTo);
+      console.log('✓ Copied task.css → style.css');
+    } else {
+      console.error('✗ task.css not found in package');
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error('✗ Failed to copy task.css:', err.message);
+    process.exit(1);
   }
   console.log('✓ Task bundle updated');
 }
