@@ -82,16 +82,16 @@ def run_command(args):
             return result.returncode
         
         elif command == 'kv-backup':
-            # Use enhanced backup system - full backup (file + upload + validate)
+            # Complete backup (file + upload + validate)
             import subprocess
-            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'full-backup'])
             return result.returncode
         
         elif command == 'kv-backup-file':
             # Backup to file only
             import subprocess
-            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'backup-to-file'])
             return result.returncode
         
@@ -99,7 +99,7 @@ def run_command(args):
             # Upload to backup KV
             backup_file = args[2] if len(args) > 2 else None
             import subprocess
-            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            script_path = Path(__file__).parent / 'backup-kv.py'
             cmd = [sys.executable, str(script_path), 'backup-to-kv']
             if backup_file:
                 cmd.append(backup_file)
@@ -109,22 +109,27 @@ def run_command(args):
         elif command == 'kv-validate':
             # Validate backup against production
             import subprocess
-            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'validate-backup'])
             return result.returncode
         
         elif command == 'kv-restore':
-            # Enhanced restore - can restore from backup KV or file
+            # Restore from backup KV or file
             source = args[2] if len(args) > 2 else 'kv'  # Default to backup KV
             import subprocess
-            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'restore-from-backup', source])
             return result.returncode
         
         elif command == 'kv-flush':
-            force = '--force' in args
-            from kv_operations import flush_kv
-            return flush_kv(force=force)
+            # Flush using backup-kv.py script
+            import subprocess
+            script_path = Path(__file__).parent / 'backup-kv.py'
+            cmd = [sys.executable, str(script_path), 'flush']
+            if '--force' in args:
+                cmd.append('--force')
+            result = subprocess.run(cmd)
+            return result.returncode
         
         elif command == 'kv-inspect':
             key = None

@@ -93,9 +93,9 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           echo "current-version=$CURRENT_VERSION" >> $GITHUB_ENV
           
-          # Run enhanced backup script (file + upload to backup KV + validate)
+          # Run backup script (file + upload to backup KV + validate)
           pip install requests
-          if python scripts/enhanced-kv-backup.py full-backup; then
+          if python scripts/backup-kv.py full-backup; then
             echo "backup-success=true" >> $GITHUB_OUTPUT
             echo "✅ Complete backup successful (file + backup KV + validation)"
           else
