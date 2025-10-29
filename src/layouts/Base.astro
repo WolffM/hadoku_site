@@ -41,51 +41,16 @@ import '../styles/global.css';
       "imports": {
         "react": "https://esm.sh/react@19",
         "react-dom/client": "https://esm.sh/react-dom@19/client",
-        "react/jsx-runtime": "https://esm.sh/react@19/jsx-runtime"
+        "react/jsx-runtime": "https://esm.sh/react@19/jsx-runtime",
+        "@wolffm/themes": "/mf/themes/index.js",
+        "@hadoku/theme-metadata": "/mf/themes/metadata.js"
       }
     }
   </script>
   
-  <!-- Theme system - inlined to avoid import issues -->
+  <!-- Theme system - now properly imported -->
   <script type="module">
-    // Theme constants and functions
-    const THEMES = [
-      'light', 'dark', 'coffee-light', 'coffee-dark', 'nature-light', 'nature-dark',
-      'lavender-light', 'lavender-dark', 'strawberry-light', 'strawberry-dark',
-      'ocean-light', 'ocean-dark', 'cyberpunk-light', 'cyberpunk-dark',
-      'pink-light', 'pink-dark'
-    ];
-    
-    function setTheme(theme) {
-      if (theme === 'light') {
-        document.documentElement.removeAttribute('data-theme');
-      } else {
-        document.documentElement.setAttribute('data-theme', theme);
-      }
-    }
-    
-    function getTheme() {
-      const attr = document.documentElement.getAttribute('data-theme');
-      return attr || 'light';
-    }
-    
-    function saveTheme(theme) {
-      sessionStorage.setItem('hadoku-theme', theme);
-      setTheme(theme);
-    }
-    
-    function loadTheme() {
-      const saved = sessionStorage.getItem('hadoku-theme');
-      if (saved && THEMES.includes(saved)) {
-        setTheme(saved);
-        return saved;
-      }
-      return 'light';
-    }
-    
-    function initTheme() {
-      return loadTheme();
-    }
+    import { THEMES, setTheme, getTheme, saveTheme, loadTheme, initTheme } from '@wolffm/themes';
     
     // Initialize theme on page load and make functions globally available
     document.addEventListener('DOMContentLoaded', () => {

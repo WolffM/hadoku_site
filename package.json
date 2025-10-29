@@ -10,7 +10,8 @@
     "generate-registry": "node scripts/generate-registry.mjs",
     "update-task-bundle": "node scripts/update-task-bundle.mjs",
     "update-watchparty-bundle": "node scripts/update-watchparty-bundle.mjs",
-    "prebuild": "pnpm run update-task-bundle && pnpm run update-watchparty-bundle && pnpm run generate-registry"
+    "update-themes-bundle": "node scripts/update-themes-bundle.mjs",
+    "prebuild": "pnpm run update-task-bundle && pnpm run update-watchparty-bundle && pnpm run update-themes-bundle && pnpm run generate-registry"
   },
   "keywords": [],
   "author": "",
