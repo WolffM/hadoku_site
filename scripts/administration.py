@@ -15,8 +15,12 @@ Usage:
 Commands:
     verify-install              Verify and install latest packages
     check-token [token]         Validate HADOKU_SITE_TOKEN or provided token
-    kv-backup                   Backup Cloudflare KV to local file
-    kv-restore <file>           Restore Cloudflare KV from backup file
+    kv-backup                   Complete backup (file + upload to backup KV + validate)
+    kv-backup-file              Backup production KV to local JSON file only
+    kv-backup-upload [file]     Upload backup to backup KV namespace
+    kv-validate                 Validate backup KV against production
+    kv-restore [source]         Restore production from backup (source: 'kv' or file path)
+    kv-restore <file>           Restore Cloudflare KV from backup file (legacy)
     kv-flush [--force]          Flush (delete) all KV data
     kv-inspect [--key KEY]      Inspect KV data (all or specific key)
     kv-summary                  Display summary of all boards and tasks
@@ -78,16 +82,44 @@ def run_command(args):
             return result.returncode
         
         elif command == 'kv-backup':
-            from kv_operations import backup_kv
-            return backup_kv()
+            # Use enhanced backup system - full backup (file + upload + validate)
+            import subprocess
+            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            result = subprocess.run([sys.executable, str(script_path), 'full-backup'])
+            return result.returncode
+        
+        elif command == 'kv-backup-file':
+            # Backup to file only
+            import subprocess
+            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            result = subprocess.run([sys.executable, str(script_path), 'backup-to-file'])
+            return result.returncode
+        
+        elif command == 'kv-backup-upload':
+            # Upload to backup KV
+            backup_file = args[2] if len(args) > 2 else None
+            import subprocess
+            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            cmd = [sys.executable, str(script_path), 'backup-to-kv']
+            if backup_file:
+                cmd.append(backup_file)
+            result = subprocess.run(cmd)
+            return result.returncode
+        
+        elif command == 'kv-validate':
+            # Validate backup against production
+            import subprocess
+            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            result = subprocess.run([sys.executable, str(script_path), 'validate-backup'])
+            return result.returncode
         
         elif command == 'kv-restore':
-            if len(args) < 3:
-                print("Error: kv-restore requires a backup file path")
-                print("Usage: python administration.py kv-restore <backup-file>")
-                return 1
-            from kv_operations import restore_kv
-            return restore_kv(args[2])
+            # Enhanced restore - can restore from backup KV or file
+            source = args[2] if len(args) > 2 else 'kv'  # Default to backup KV
+            import subprocess
+            script_path = Path(__file__).parent / 'enhanced-kv-backup.py'
+            result = subprocess.run([sys.executable, str(script_path), 'restore-from-backup', source])
+            return result.returncode
         
         elif command == 'kv-flush':
             force = '--force' in args

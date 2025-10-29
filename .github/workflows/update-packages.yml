@@ -93,11 +93,11 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           echo "current-version=$CURRENT_VERSION" >> $GITHUB_ENV
           
-          # Run backup script (using Python for reliable Cloudflare API access)
+          # Run enhanced backup script (file + upload to backup KV + validate)
           pip install requests
-          if python scripts/backup-kv.py; then
+          if python scripts/enhanced-kv-backup.py full-backup; then
             echo "backup-success=true" >> $GITHUB_OUTPUT
-            echo "✅ Backup completed successfully"
+            echo "✅ Complete backup successful (file + backup KV + validation)"
           else
             echo "backup-success=false" >> $GITHUB_OUTPUT
             echo "❌ Backup failed! Flush step will be skipped."
