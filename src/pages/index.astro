@@ -90,7 +90,17 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     adminKey: import.meta.env.PUBLIC_ADMIN_KEY || 'default-admin-key',
     friendKey: import.meta.env.PUBLIC_FRIEND_KEY || 'default-friend-key'
   }}>
-    import { THEMES, getTheme, setTheme, saveTheme } from '@wolffm/themes';
+    // Wait for theme system to be available
+    function waitForThemes(callback) {
+      if (window.hadokuThemes) {
+        callback();
+      } else {
+        setTimeout(() => waitForThemes(callback), 50);
+      }
+    }
+    
+    waitForThemes(() => {
+      const { THEMES, getTheme, setTheme, saveTheme } = window.hadokuThemes;
     
     // Theme metadata with icons
     const themeMetadata = {
@@ -249,6 +259,8 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     if (accessInfo) {
       accessInfo.style.display = 'none';
     }
+    
+    }); // End waitForThemes callback
   </script>
 
   <style>
