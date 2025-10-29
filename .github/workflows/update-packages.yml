@@ -40,10 +40,11 @@ jobs:
         id: parse
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            PACKAGES='${{ toJson(github.event.client_payload.packages) }}'
+            # Compact the JSON to remove newlines/spaces
+            PACKAGES=$(echo '${{ toJson(github.event.client_payload.packages) }}' | jq -c .)
           else
             IFS=',' read -ra PKG_ARRAY <<< "${{ github.event.inputs.packages }}"
-            PACKAGES=$(printf '%s\n' "${PKG_ARRAY[@]}" | jq -R . | jq -s .)
+            PACKAGES=$(printf '%s\n' "${PKG_ARRAY[@]}" | jq -R . | jq -s . | jq -c .)
           fi
           
           echo "📦 Packages to update: $PACKAGES"
