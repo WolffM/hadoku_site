@@ -1085,9 +1085,6 @@ packages:
   '@wolffm/task@3.2.14':
     resolution: {integrity: sha512-kTBHjGTMvfhJmqy/EcjqLHNTUptbXQUkKt/mMAM4ZeOEndPRrYaoUcyyJ68vdXaT3tWkSZ1JU3dxiwR8F5V2yQ==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.2.14/5e57d056ad4911e8f70b3e7dbdeac45274d7fdec}
 
-  '@wolffm/task@3.2.14':
-    resolution: {integrity: sha512-kTBHjGTMvfhJmqy/EcjqLHNTUptbXQUkKt/mMAM4ZeOEndPRrYaoUcyyJ68vdXaT3tWkSZ1JU3dxiwR8F5V2yQ==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.2.14/5e57d056ad4911e8f70b3e7dbdeac45274d7fdec}
-
   '@wolffm/themes@1.0.6':
     resolution: {integrity: sha512-rkixD6eYWoJ2CJxt4LxCSNepl0KvYNzBccDtC8AdeoAb1QulATTVrox46m35l9gOXfT+FZXMdckFvyGtOQ06Jg==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.0.6/24bb34a0f54d6c398dd747bf2e3acf15dcec8bb5}
 
@@ -3819,12 +3816,6 @@ snapshots:
     dependencies:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
-
-  '@wolffm/task@3.2.14':
-    dependencies:
-      '@wolffm/themes': 1.0.6
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   '@wolffm/task@3.2.14':
     dependencies:
