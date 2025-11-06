@@ -44,9 +44,8 @@ preview_id = "3fb96829c28b497a9101dd554c97fdec"
 # REPO_BRANCH = "main"
 
 # Secrets (set via: wrangler secret put <NAME>)
-# Authentication keys are JSON arrays (no userId mapping):
-# - ADMIN_KEYS: JSON array, e.g., '["key1", "key2"]'
-# - FRIEND_KEYS: JSON array, e.g., '["key1", "key2"]'
-# - GITHUB_PAT: GitHub Personal Access Token for API access
+# Authentication keys are JSON objects mapping keys to userIds:
+# - ADMIN_KEYS: JSON object, e.g., '{"key1": "user1", "key2": "user2"}'
+# - FRIEND_KEYS: JSON object, e.g., '{"key1": "user1", "key2": "user2"}'
 #
-# To update: cd workers/task-api && echo '["key1", "key2"]' | pnpm exec wrangler secret put ADMIN_KEYS
+# To update: cd workers/task-api && echo '{"key1": "user1"}' | pnpm exec wrangler secret put ADMIN_KEYS

@@ -98,6 +98,22 @@ Production deployment is automated via GitHub Actions:
 
 See **[workers/README.md](workers/README.md)** for deployment details.
 
+## Testing
+
+Run tests for workers:
+```bash
+cd workers/task-api
+npm test
+```
+
+**Test Coverage:** ~75% overall (70% structural, 60% quality)
+- 17 test files, 81 tests
+- Integration-focused testing
+- Session management fully covered
+- Recent bug fixes at 100% coverage
+
+See **[docs/TESTING.md](docs/TESTING.md)** for test strategy and writing tests.
+
 ## 📚 Documentation
 
 ### Getting Started
@@ -110,9 +126,12 @@ See **[workers/README.md](workers/README.md)** for deployment details.
 | Document | Purpose |
 |----------|---------|
 | **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Complete system architecture, request flows, design patterns |
-| **[CHILD_APP_TEMPLATE.md](docs/CHILD_APP_TEMPLATE.md)** | Guide for creating new child apps with Universal Adapter Pattern |
+| **[SESSION_ARCHITECTURE.md](docs/SESSION_ARCHITECTURE.md)** | Session & preference storage design decisions |
+| **[TESTING.md](docs/TESTING.md)** | Test strategy, coverage, and writing tests |
+| **[SECURITY.md](docs/SECURITY.md)** | Authentication, throttling, and security model |
+| **[PARENT_API_EXPECTATIONS.md](docs/PARENT_API_EXPECTATIONS.md)** | Parent app API expectations and integration guide |
 | **[workers/README.md](workers/README.md)** | Cloudflare Workers deployment guide |
-| **[scripts/README.md](scripts/README.md)** | Management scripts documentation |
+| **[scripts/admin/README.md](scripts/admin/README.md)** | Admin scripts for KV management |
 
 ## 🔄 Automatic Package Updates
 

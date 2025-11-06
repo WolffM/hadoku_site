@@ -31,6 +31,18 @@ import {
 	type UserPreferences
 } from './session';
 import {
+	USER_TYPES,
+	DEFAULT_SESSION_ID,
+	DEFAULT_BOARD_ID,
+	DEFAULT_BOARD_NAME,
+	DEFAULT_THEME
+} from './constants';
+import {
+	boardsKey,
+	tasksKey,
+	statsKey
+} from './kv-keys';
+import {
 	checkThrottle,
 	recordIncident,
 	blacklistSession,
@@ -67,23 +79,23 @@ function validateKeyAndGetType(
 	// Check admin keys
 	if (adminKeys instanceof Set) {
 		if (adminKeys.has(key)) {
-			return { valid: true, userType: 'admin' };
+			return { valid: true, userType: USER_TYPES.ADMIN as 'admin' };
 		}
 	} else if (key in adminKeys) {
-		return { valid: true, userType: 'admin' };
+		return { valid: true, userType: USER_TYPES.ADMIN as 'admin' };
 	}
-	
+
 	// Check friend keys
 	if (friendKeys instanceof Set) {
 		if (friendKeys.has(key)) {
-			return { valid: true, userType: 'friend' };
+			return { valid: true, userType: USER_TYPES.FRIEND as 'friend' };
 		}
 	} else if (key in friendKeys) {
-		return { valid: true, userType: 'friend' };
+		return { valid: true, userType: USER_TYPES.FRIEND as 'friend' };
 	}
-	
+
 	// Not found in either
-	return { valid: false, userType: 'public' };
+	return { valid: false, userType: USER_TYPES.PUBLIC as 'public' };
 }
 
 interface Env {
@@ -108,26 +120,26 @@ const app = new Hono<AppContext>();
 const boardLocks = new Map<string, Promise<any>>();
 
 async function withBoardLock<T>(
-	boardKey: string,
+	boardsKey: string,
 	operation: () => Promise<T>
 ): Promise<T> {
 	// Wait for any existing operation on this board to complete
-	const existingLock = boardLocks.get(boardKey);
+	const existingLock = boardLocks.get(boardsKey);
 	if (existingLock) {
 		await existingLock.catch(() => {}); // Ignore errors from previous operations
 	}
 	
 	// Create a new lock for this operation
 	const newLock = operation();
-	boardLocks.set(boardKey, newLock);
+	boardLocks.set(boardsKey, newLock);
 	
 	try {
 		const result = await newLock;
 		return result;
 	} finally {
 		// Clean up the lock if it's still ours
-		if (boardLocks.get(boardKey) === newLock) {
-			boardLocks.delete(boardKey);
+		if (boardLocks.get(boardsKey) === newLock) {
+			boardLocks.delete(boardsKey);
 		}
 	}
 }
@@ -142,23 +154,16 @@ app.use('*', createAuthMiddleware<Env>({
 		// Parse key mappings
 		const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS);
 		const friendKeys = parseKeysFromEnv(env.FRIEND_KEYS);
-		
-		// DEBUG: Log what we parsed (TEMPORARY - REMOVE AFTER DEBUGGING)
-		console.log('[AUTH DEBUG] ADMIN_KEYS type:', adminKeys instanceof Set ? 'Set' : 'Record', 'size:', adminKeys instanceof Set ? adminKeys.size : Object.keys(adminKeys).length);
-		console.log('[AUTH DEBUG] FRIEND_KEYS type:', friendKeys instanceof Set ? 'Set' : 'Record', 'size:', friendKeys instanceof Set ? friendKeys.size : Object.keys(friendKeys).length);
-		if (credential) {
-			console.log('[AUTH DEBUG] Checking key:', credential.substring(0, 8) + '...');
-		}
-		
+
 		// Validate key and determine userType
 		const { userType } = credential
 			? validateKeyAndGetType(credential, adminKeys, friendKeys)
-			: { userType: 'public' as const };
+			: { userType: USER_TYPES.PUBLIC as const };
 		
 		// Return auth context with sessionId and key for backward compatibility
 		return {
 			userType,
-			sessionId: credential || 'public',
+			sessionId: credential || DEFAULT_SESSION_ID,
 			key: credential // Preserve key for backward compatibility
 		};
 	}
@@ -228,33 +233,29 @@ app.use('*', async (c, next) => {
 // This is the parent's responsibility - adapt storage to the environment.
 function createKVStorage(env: Env): TaskStorage {
 	// Storage keys use sessionId for data isolation
-	// Format: {type}:{sessionId} where sessionId is the session identifier
-	
-	const boardKey = (sessionId?: string) => `boards:${sessionId || 'public'}`;
-	const tasksKey = (sessionId: string | undefined, boardId: string) => `tasks:${sessionId || 'public'}:${boardId}`;
-	const statsKey = (sessionId: string | undefined, boardId: string) => `stats:${sessionId || 'public'}:${boardId}`;
+	// KV key generators are imported from kv-keys.ts
 
 	return {
 		// --- Boards ---
 		async getBoards(userType: UserType, sessionId?: string) {
-			const kvKey = boardKey(sessionId);
+			const kvKey = boardsKey(sessionId);
 			const data = await env.TASKS_KV.get(kvKey, 'json') as any | null;
 			if (data) return data;
-			// Default with a single 'main' board
+			// Default with a single default board
 			return {
 				version: 1,
-				boards: [ { id: 'main', name: 'main', tags: [], tasks: [] } ],
+				boards: [ { id: DEFAULT_BOARD_ID, name: DEFAULT_BOARD_NAME, tags: [], tasks: [] } ],
 				updatedAt: new Date().toISOString(),
 			};
 		},
 		async saveBoards(userType: UserType, boards: any, sessionId?: string) {
-			const kvKey = boardKey(sessionId);
+			const kvKey = boardsKey(sessionId);
 			await env.TASKS_KV.put(kvKey, JSON.stringify(boards));
 		},
 		
 		// --- Tasks (board scoped) ---
 		async getTasks(userType: UserType, sessionId?: string, boardId?: string) {
-			if (!boardId) boardId = 'main';
+			if (!boardId) boardId = DEFAULT_BOARD_ID;
 			const kvKey = tasksKey(sessionId, boardId);
 			const data = await env.TASKS_KV.get(kvKey, 'json') as TasksFile | null;
 			if (data) return data;
@@ -265,14 +266,14 @@ function createKVStorage(env: Env): TaskStorage {
 			};
 		},
 		async saveTasks(userType: UserType, sessionId: string | undefined, boardId: string | undefined, tasks: TasksFile) {
-			if (!boardId) boardId = 'main';
+			if (!boardId) boardId = DEFAULT_BOARD_ID;
 			const kvKey = tasksKey(sessionId, boardId);
 			await env.TASKS_KV.put(kvKey, JSON.stringify(tasks));
 		},
 
 		// --- Stats (board scoped) ---
 		async getStats(userType: UserType, sessionId?: string, boardId?: string) {
-			if (!boardId) boardId = 'main';
+			if (!boardId) boardId = DEFAULT_BOARD_ID;
 			const kvKey = statsKey(sessionId, boardId);
 			const data = await env.TASKS_KV.get(kvKey, 'json') as StatsFile | null;
 			if (data) return data;
@@ -285,7 +286,7 @@ function createKVStorage(env: Env): TaskStorage {
 			};
 		},
 		async saveStats(userType: UserType, sessionId: string | undefined, boardId: string | undefined, stats: StatsFile) {
-			if (!boardId) boardId = 'main';
+			if (!boardId) boardId = DEFAULT_BOARD_ID;
 			const kvKey = statsKey(sessionId, boardId);
 			await env.TASKS_KV.put(kvKey, JSON.stringify(stats));
 		},
@@ -330,9 +331,9 @@ async function handleBoardOperation<T>(
 	operation: (storage: TaskStorage, auth: TaskAuthContext) => Promise<T>
 ): Promise<Response> {
 	const { storage, auth } = getContext(c);
-	const boardKey = `${auth.userType}:${auth.sessionId}:${boardId}`;
+	const boardsKey = `${auth.userType}:${auth.sessionId}:${boardId}`;
 	
-	const result = await withBoardLock(boardKey, async () => {
+	const result = await withBoardLock(boardsKey, async () => {
 		return await operation(storage, auth);
 	});
 	
@@ -362,18 +363,18 @@ async function handleBatchOperation<T>(
 	}
 	
 	// Get board keys and apply locks
-	const boardKeys = getBoardKeys(body, auth.userType, auth.sessionId || 'public');
+	const boardsKeys = getBoardKeys(body, auth.userType, auth.sessionId || 'public');
 	
 	// Single board lock
-	if (boardKeys.length === 1) {
-		const result = await withBoardLock(boardKeys[0], async () => {
+	if (boardsKeys.length === 1) {
+		const result = await withBoardLock(boardsKeys[0], async () => {
 			return await operation(storage, auth, body);
 		});
 		return c.json(result);
 	}
 	
 	// Multiple board locks (in consistent order to prevent deadlocks)
-	const sortedKeys = [...boardKeys].sort();
+	const sortedKeys = [...boardsKeys].sort();
 	const result = await withBoardLock(sortedKeys[0], async () => {
 		return await withBoardLock(sortedKeys[1], async () => {
 			return await operation(storage, auth, body);
@@ -466,7 +467,7 @@ app.get('/task/api/tasks', async (c) => {
 // Create task (boardId required)
 app.post('/task/api', async (c) => {
 	const body = await c.req.json();
-	const { boardId = 'main', ...input } = body;
+	const { boardId = DEFAULT_BOARD_ID, ...input } = body;
 	
 	// Validate required fields
 	const error = requireFields(input, ['id', 'title']);
@@ -474,10 +475,7 @@ app.post('/task/api', async (c) => {
 		logError('POST', '/task/api', error);
 		return badRequest(c, error);
 	}
-	
-	// Debug: log the raw body to see what we received
-	console.log('[DEBUG createTask] body:', body, 'boardId:', boardId);
-	
+
 	logRequest('POST', '/task/api', { 
 		userType: c.get('authContext').userType, 
 		boardId, 
@@ -514,9 +512,9 @@ const batchUpdateTagsHandler = async (c: any) => {
 	
 	// Handle with board lock
 	const { storage, auth } = getContext(c);
-	const boardKey = `${auth.userType}:${auth.sessionId}:${boardId}`;
+	const boardsKey = `${auth.userType}:${auth.sessionId}:${boardId}`;
 	
-	const result = await withBoardLock(boardKey, async () => {
+	const result = await withBoardLock(boardsKey, async () => {
 		return await TaskHandlers.batchUpdateTags(storage, auth, { ...body, boardId });
 	});
 	
@@ -722,35 +720,56 @@ app.post('/task/api/session/handshake', async (c) => {
 app.get('/task/api/preferences', async (c) => {
 	const { auth } = getContext(c);
 	const sessionId = getSessionIdFromRequest(c, auth);
-	
+
 	logRequest('GET', '/task/api/preferences', {
 		userType: auth.userType,
 		sessionId: maskSessionId(sessionId)
 	});
-	
+
 	try {
-		const prefs = await getPreferencesBySessionId(c.env.TASKS_KV, sessionId);
-		
+		// Try session-based prefs first
+		let prefs = await getPreferencesBySessionId(c.env.TASKS_KV, sessionId);
+
 		if (prefs) {
 			return c.json(prefs);
 		}
-		
+
+		// Fallback to legacy authKey-based prefs
+		// This provides an additional safety net for users with old format prefs
+		const authKey = auth.key || auth.sessionId;
+		if (authKey && authKey !== sessionId && authKey !== DEFAULT_SESSION_ID) {
+			const legacyKey = `prefs:${authKey}`;
+			const legacyPrefs = await c.env.TASKS_KV.get(legacyKey, 'json') as UserPreferences | null;
+
+			if (legacyPrefs) {
+				logRequest('GET', '/task/api/preferences', {
+					note: 'Found legacy prefs',
+					authKey: maskKey(authKey)
+				});
+
+				// Optionally: Migrate to sessionId immediately for future requests
+				await savePreferencesBySessionId(c.env.TASKS_KV, sessionId, legacyPrefs);
+
+				return c.json(legacyPrefs);
+			}
+		}
+
 		// Return default preferences if none found
 		const defaultPrefs: UserPreferences = {
-			theme: 'system',
+			theme: DEFAULT_THEME,
 			buttons: {},
 			experimentalFlags: {},
 			layout: {},
 			lastUpdated: new Date().toISOString()
 		};
-		
+
 		return c.json(defaultPrefs);
 	} catch (error: any) {
 		logError('GET', '/task/api/preferences', error);
-		
+
 		// Return defaults on error
 		return c.json({
-			theme: 'system',
+			theme: DEFAULT_THEME,
 			buttons: {},
 			experimentalFlags: {},
 			layout: {}
@@ -807,7 +826,7 @@ app.put('/task/api/preferences', async (c) => {
 // Get throttle status for a sessionId
 app.get('/task/api/admin/throttle/:sessionId', async (c) => {
 	const auth = c.get('authContext');
-	if (auth.userType !== 'admin') {
+	if (auth.userType !== USER_TYPES.ADMIN) {
 		return c.json({ error: 'Admin access required' }, 403);
 	}
 	
@@ -832,7 +851,7 @@ app.get('/task/api/admin/throttle/:sessionId', async (c) => {
 // Get all sessions for an authKey
 app.get('/task/api/admin/sessions/:authKey', async (c) => {
 	const auth = c.get('authContext');
-	if (auth.userType !== 'admin') {
+	if (auth.userType !== USER_TYPES.ADMIN) {
 		return c.json({ error: 'Admin access required' }, 403);
 	}
 	
@@ -867,7 +886,7 @@ app.get('/task/api/admin/sessions/:authKey', async (c) => {
 // Unblacklist a sessionId (admin action)
 app.post('/task/api/admin/unblacklist/:sessionId', async (c) => {
 	const auth = c.get('authContext');
-	if (auth.userType !== 'admin') {
+	if (auth.userType !== USER_TYPES.ADMIN) {
 		return c.json({ error: 'Admin access required' }, 403);
 	}
 	

@@ -1,9 +1,11 @@
 /**
  * Throttling System for Task API
- * 
+ *
  * Implements rate limiting per sessionId with configurable limits based on userType.
  * Tracks violations and enables blacklisting of abusive sessions.
  */
+
+import { throttleKey, incidentsKey, blacklistKey } from './kv-keys';
 
 export interface ThrottleConfig {
 	windowMs: number;  // Time window in milliseconds
@@ -66,13 +68,6 @@ export const THROTTLE_THRESHOLDS = {
 	// Max incidents to store per sessionId
 	MAX_INCIDENTS_PER_SESSION: 100
 };
-
-/**
- * KV keys for throttle data
- */
-const throttleKey = (sessionId: string) => `throttle:${sessionId}`;
-const incidentsKey = (sessionId: string) => `incidents:${sessionId}`;
-const blacklistKey = (sessionId: string) => `blacklist:${sessionId}`;
 
 /**
  * Check if a sessionId is allowed to make a request

@@ -78,5 +78,5 @@ jobs:
           pnpm --filter task-api exec wrangler deploy
           echo "✅ Worker deployed successfully"
           echo ""
-          echo "ℹ️  Note: Secrets (ADMIN_KEYS, FRIEND_KEYS, GITHUB_PAT) persist in Cloudflare"
+          echo "ℹ️  Note: Secrets (ADMIN_KEYS, FRIEND_KEYS) persist in Cloudflare"
           echo "ℹ️  To update secrets manually, run locally: pnpm --filter task-api exec wrangler secret put <SECRET_NAME>"

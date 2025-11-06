@@ -87,23 +87,34 @@ class CloudflareKVInspector:
         """Get the value for a specific key."""
         endpoint = f"/accounts/{self.account_id}/storage/kv/namespaces/{self.namespace_id}/values/{key}"
         url = f"{CLOUDFLARE_API_BASE}{endpoint}"
-        
+
         try:
             response = self.session.get(url)
-            
+
             if response.status_code == 404:
                 return None
-            
+
             if response.status_code != 200:
                 print(f"❌ API Error: {response.status_code}")
                 print(f"Response: {response.text}")
                 return None
-            
+
             # The values endpoint returns raw value, not JSON wrapped
             return response.text
         except Exception as e:
             print(f"❌ Could not retrieve value for key: {key} - {e}")
             return None
+
+    def delete_key(self, key: str) -> bool:
+        """Delete a specific key from the KV namespace."""
+        endpoint = f"/accounts/{self.account_id}/storage/kv/namespaces/{self.namespace_id}/values/{key}"
+
+        try:
+            data = self._make_request('DELETE', endpoint)
+            return True
+        except Exception as e:
+            print(f"❌ Could not delete key: {key} - {e}")
+            return False
     
     def inspect_key(self, key: str) -> None:
         """Inspect a specific key and its value."""

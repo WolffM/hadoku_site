@@ -1,6 +1,6 @@
 # Architecture Overview - Hadoku Site
 
-**Last Updated:** October 11, 2025
+**Last Updated:** November 6, 2025
 
 ## System Architecture
 
@@ -336,7 +336,6 @@ ROUTE_CONFIG='{"global_priority":"12","routes":{"task":{"priority":"12"}},"provi
 # Worker Secrets (set via wrangler secret put in deploy workflow)
 ADMIN_KEY=<production-uuid>
 FRIEND_KEY=<production-uuid>
-# GITHUB_PAT no longer needed - using Workers KV for storage
 ```
 
 ### Production Workers (Runtime)
@@ -354,7 +353,6 @@ binding = "ANALYTICS_ENGINE"
 **task-api** (wrangler secrets, set via CLI):
 - `ADMIN_KEY` - Admin authentication key
 - `FRIEND_KEY` - Friend authentication key
-- ~~`GITHUB_PAT`~~ - No longer needed (now using Workers KV)
 
 ### Local Development
 
@@ -408,8 +406,8 @@ User Action → React State → fetch('/task/api/tasks', { X-Admin-Key })
                                     ↓ (on error)
                                  → Try task-api.hadoku.me (worker)
                                     ↓ (success)
-                                 → GitHub API (WolffM/hadoku_site)
-                                    ↓ (commit to data/task/{userType})
+                                 → Workers KV (Cloudflare KV storage)
+                                    ↓ (read/write data by sessionId)
            ← JSON Response ← task-api Worker
            ← edge-router (adds X-Backend-Source header)
 ```
@@ -427,15 +425,19 @@ User Action → React State → fetch('/task/api/tasks', { X-Admin-Key })
 - ✅ All endpoints validate X-Admin-Key header
 - ✅ Keys compared against Worker secrets (ADMIN_KEY, FRIEND_KEY)
 - ✅ userType determined server-side only
-- ✅ GitHub PAT stored as Worker secret (never exposed)
 - ✅ CORS configured for hadoku.me origin
 - ✅ Public mode uses localStorage (zero API calls)
+- ✅ Throttling & rate limiting per sessionId
+- ✅ Incident tracking for security events
 
 ### Workers KV Storage
 - ✅ Globally distributed key-value store
-- ✅ Data separated by userType (admin:tasks, friend:tasks, etc.)
+- ✅ Data separated by sessionId (supports multi-device)
 - ✅ Eventually consistent (typically <60s propagation)
 - ✅ Free tier: 100K reads/day, 1K writes/day, 1GB storage
+- ✅ In-memory board locking per worker instance
+
+**See [SESSION_ARCHITECTURE.md](./SESSION_ARCHITECTURE.md) for detailed session & storage design decisions.**
 
 ## Performance Characteristics
 
@@ -525,7 +527,7 @@ git commit -m "feat: add new handler"
 git push
 
 # 2. Child publishes to GitHub Packages automatically
-# Workflow: .github/workflows/publish.yml
+# (Child repo workflow handles publishing)
 # Package: @wolffm/task@1.0.1
 
 # 3. Child triggers parent update (repository_dispatch)
@@ -704,10 +706,11 @@ hadoku_site/
 │
 ├── docs/                         # Documentation
 │   ├── ARCHITECTURE.md          # This file (system architecture)
-│   ├── API_EXPORTS.md           # Child package exports reference
-│   ├── CHILD_APP_TEMPLATE.md    # Guide for creating child apps
-│   ├── GITHUB_ACTIONS_LOGS.md   # Log retrieval procedures
-│   └── DOC_UPDATE_NOTES.md      # Documentation update tracking
+│   ├── SESSION_ARCHITECTURE.md  # Session & preference storage design
+│   ├── TESTING.md               # Test strategy and coverage
+│   ├── SECURITY.md              # Security model and throttling
+│   ├── PARENT_API_EXPECTATIONS.md  # Parent app API integration
+│   └── archive/                 # Historical analysis documents
 │
 ├── astro.config.mjs              # Astro config (static build)
 ├── package.json                  # Root dependencies (Astro, scripts)
@@ -835,24 +838,73 @@ Browser → edge-router Worker
 
 ---
 
+## Storage Evolution
+
+### Phase 1: GitHub-Backed Storage (Pre-October 2025)
+**Architecture:**
+- Task data stored in GitHub repository (`data/task/admin/`, `data/task/friend/`)
+- task-api Worker made commits to GitHub via GitHub API
+- Required GITHUB_PAT (Personal Access Token) secret
+- Data persisted as JSON files in git history
+
+**Limitations:**
+- External API dependency (GitHub API)
+- Higher latency (network requests to GitHub)
+- Rate limiting concerns
+- Operational complexity (managing PAT)
+
+### Phase 2: Workers KV Storage (October 2025 - Present)
+**Architecture:**
+- All data stored in Cloudflare Workers KV
+- No external dependencies
+- Direct KV read/write operations
+- No GitHub PAT required
+
+**Benefits:**
+- ✅ Faster operations (no external API calls)
+- ✅ Lower operational complexity
+- ✅ Better Cloudflare Workers integration
+- ✅ Globally distributed with edge caching
+- ✅ Free tier sufficient for personal use
+
+**Migration:**
+Completed October 2025. No data loss, seamless transition for users.
+
+### Phase 3: SessionId-Based Storage (October 2025 - Present)
+**Architecture:**
+- Storage keyed by `sessionId` instead of `authKey`
+- Multi-device support with separate preferences per device
+- Session mapping: `authKey` → list of `sessionIds`
+
+**Benefits:**
+- ✅ Device-specific preferences (layout, theme)
+- ✅ Better UX for desktop + mobile users
+- ✅ Preserves preferences when switching devices
+
+**Migration:**
+- Legacy `prefs:{authKey}` entries automatically migrated on next login
+- Three-tier fallback ensures no data loss
+- Gradual migration as users log in
+
+**See [SESSION_ARCHITECTURE.md](./SESSION_ARCHITECTURE.md) for detailed design decisions.**
+
+---
+
 ## Related Documentation
 
 ### Core Documentation
 - **`README.md`** - Project overview and quick start
 - **`ARCHITECTURE.md`** - This file (complete system architecture)
-- **`API_EXPORTS.md`** - Child package exports reference
+- **`SESSION_ARCHITECTURE.md`** - Session & preference storage design decisions
+- **`TESTING.md`** - Test strategy and coverage
+- **`SECURITY.md`** - Security model and throttling system
 
 ### Child App Development
-- **`CHILD_APP_TEMPLATE.md`** - Guide for creating new child apps
-- **`TASK_APP_PUBLIC_MODE.md`** - Public mode localStorage implementation
+- **`PARENT_API_EXPECTATIONS.md`** - Parent app API expectations and integration guide
 
 ### Operations & Deployment
-- **`GITHUB_ACTIONS_LOGS.md`** - Log retrieval procedures
 - **`workers/README.md`** - Worker-specific documentation
-- **`workers/edge-router/src/logging/README.md`** - Analytics Engine logging guide
+- **`scripts/admin/README.md`** - Admin scripts for KV management
 - **`.github/workflows/deploy-workers.yml`** - CI/CD workflow for Workers
 - **`.github/workflows/deploy.yml`** - CI/CD workflow for GitHub Pages
 - **`.github/workflows/update-packages.yml`** - Auto-update child packages
-
-### Scripts & Tools
-- **`scripts/README.md`** - Build and deployment scripts documentation

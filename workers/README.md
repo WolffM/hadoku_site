@@ -101,7 +101,6 @@ Workers are automatically deployed via `.github/workflows/deploy-workers.yml` wh
 - `ROUTE_CONFIG`: JSON string with routing configuration
 - `ADMIN_KEY`: Admin access key for task API
 - `FRIEND_KEY`: Friend access key for task API
-- `GITHUB_PAT`: GitHub Personal Access Token for task API storage
 
 ### Manual Deployment
 
@@ -183,8 +182,9 @@ curl -X POST \
 ### Task API returning 500 errors
 
 - Check Worker logs: `wrangler tail task-api`
-- Verify GitHub PAT has `repo` scope
-- Ensure `data/task/admin/` and `data/task/friend/` directories exist in repo
+- Verify ADMIN_KEY and FRIEND_KEY secrets are set
+- Check Workers KV binding is configured correctly
+- Test KV access: Try reading/writing a test key
 
 ### Fallback not working
 

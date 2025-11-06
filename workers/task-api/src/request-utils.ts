@@ -1,10 +1,11 @@
 /**
  * Request Utilities for Task API
- * 
+ *
  * Common utilities for extracting and validating request parameters.
  */
 import type { Context } from 'hono';
 import { extractField } from '../../util';
+import { MASKING, DEFAULT_SESSION_ID, DEFAULT_BOARD_ID } from './constants';
 
 /**
  * Get board ID from request (body or query parameter)
@@ -15,7 +16,7 @@ import { extractField } from '../../util';
  */
 export async function getBoardIdFromRequest(
 	c: Context,
-	defaultId: string = 'main'
+	defaultId: string = DEFAULT_BOARD_ID
 ): Promise<string> {
 	// Try to get from body first
 	const body = await c.req.json().catch(() => ({}));
@@ -38,7 +39,7 @@ export async function getBoardIdFromRequest(
 export function getBoardIdFromContext(
 	c: Context,
 	body: any = {},
-	defaultId: string = 'main'
+	defaultId: string = DEFAULT_BOARD_ID
 ): string {
 	return body.boardId || extractField(c, ['query:boardId'], defaultId);
 }
@@ -69,7 +70,7 @@ export function getSessionIdFromRequest(
 	c: Context,
 	auth: { sessionId?: string }
 ): string {
-	return c.req.header('X-Session-Id') || auth.sessionId || 'public';
+	return c.req.header('X-Session-Id') || auth.sessionId || DEFAULT_SESSION_ID;
 }
 
 /**
@@ -100,26 +101,26 @@ export function validateBoardId(id: string | null): string | null {
 
 /**
  * Mask a key for logging (show first N characters)
- * 
+ *
  * @param key - Key to mask
- * @param length - Number of characters to show (default: 8)
+ * @param length - Number of characters to show (default from MASKING.KEY_PREFIX_LENGTH)
  * @returns Masked key (e.g., "12345678...")
  */
-export function maskKey(key: string, length: number = 8): string {
+export function maskKey(key: string, length: number = MASKING.KEY_PREFIX_LENGTH): string {
 	if (!key || key.length <= length) {
 		return key;
 	}
-	return key.substring(0, length) + '...';
+	return key.substring(0, length) + MASKING.KEY_SUFFIX;
 }
 
 /**
- * Mask a session ID for logging (show first 12 characters)
- * 
+ * Mask a session ID for logging (show first N characters)
+ *
  * @param id - Session ID to mask
  * @returns Masked session ID
  */
 export function maskSessionId(id: string): string {
-	return maskKey(id, 12);
+	return maskKey(id, MASKING.SESSION_ID_PREFIX_LENGTH);
 }
 
 /**
@@ -159,7 +160,7 @@ export function createTaskOperationHandler<T>(
 		}
 		
 		const body = await parseBodySafely(c);
-		const boardId = getBoardIdFromContext(c, body, 'main');
+		const boardId = getBoardIdFromContext(c, body, DEFAULT_BOARD_ID);
 		
 		logRequest(method, path.replace(':id', id!), { 
 			userType: c.get('authContext').userType, 

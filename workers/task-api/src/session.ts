@@ -12,6 +12,8 @@
  */
 
 import type { KVNamespace } from '@cloudflare/workers-types';
+import { DEFAULT_PREFERENCES as CONSTANTS_DEFAULT_PREFERENCES } from './constants';
+import { preferencesKey, sessionInfoKey, sessionMappingKey } from './kv-keys';
 
 // ============================================================================
 // Types
@@ -41,31 +43,6 @@ export interface SessionInfo {
 	userType: 'admin' | 'friend' | 'public';
 	createdAt: string;
 	lastAccessedAt: string;
-}
-
-// ============================================================================
-// KV Key Formats
-// ============================================================================
-
-/**
- * Generate KV key for preferences by sessionId
- */
-function preferencesKey(sessionId: string): string {
-	return `prefs:${sessionId}`;
-}
-
-/**
- * Generate KV key for session info by sessionId
- */
-function sessionInfoKey(sessionId: string): string {
-	return `session-info:${sessionId}`;
-}
-
-/**
- * Generate KV key for session mapping by authKey
- */
-function sessionMappingKey(authKey: string): string {
-	return `session-map:${authKey}`;
 }
 
 // ============================================================================
@@ -152,17 +129,28 @@ export async function getSessionMapping(
 /**
  * Update session mapping for authKey
  * Adds new sessionId to the list if not present
+ *
+ * Note: This should only be called AFTER session-info has been successfully saved
+ * to prevent orphaned session references (mystery sessions)
  */
 export async function updateSessionMapping(
 	kv: KVNamespace,
 	authKey: string,
 	sessionId: string
 ): Promise<void> {
+	// Verify session-info exists before adding to mapping
+	// This prevents "mystery sessions" that have no session data
+	const sessionInfo = await getSessionInfo(kv, sessionId);
+	if (!sessionInfo) {
+		console.warn(`[SessionMapping] Cannot add session ${sessionId.substring(0, 16)}... - no session-info exists`);
+		return;
+	}
+
 	const key = sessionMappingKey(authKey);
 	const existing = await getSessionMapping(kv, authKey);
-	
+
 	const now = new Date().toISOString();
-	
+
 	if (existing) {
 		// Add sessionId if not already in list
 		if (!existing.sessionIds.includes(sessionId)) {
@@ -203,10 +191,7 @@ export async function getSessionIdsForAuthKey(
  * Default preferences for new sessions
  */
 const DEFAULT_PREFERENCES: UserPreferences = {
-	theme: 'system',
-	buttons: {},
-	experimentalFlags: {},
-	layout: {},
+	...CONSTANTS_DEFAULT_PREFERENCES,
 	lastUpdated: new Date().toISOString()
 };
 
@@ -270,6 +255,21 @@ export async function handleSessionHandshake(
 			}
 		}
 	}
+
+	// Check for legacy authKey-based preferences
+	// This handles migration from old storage format (prefs:authKey) to new format (prefs:sessionId)
+	if (!preferences) {
+		const legacyKey = preferencesKey(authKey);
+		const legacyPrefs = await kv.get(legacyKey, 'json') as UserPreferences | null;
+		if (legacyPrefs) {
+			preferences = legacyPrefs;
+			migratedFrom = authKey;
+			isNewSession = false;
+			console.log(`[Migration] Found legacy prefs for authKey: ${authKey.substring(0, 8)}...`);
+			// Note: We keep the legacy prefs in place for safety
+			// They can be cleaned up later once migration is verified
+		}
+	}
 	
 	// Use defaults if nothing found
 	if (!preferences) {
@@ -292,10 +292,8 @@ export async function handleSessionHandshake(
 		}
 	}
 	
-	// Add new sessionId to mapping
-	await updateSessionMapping(kv, authKey, newSessionId);
-	
-	// Create session info for newSessionId
+	// Create session info for newSessionId FIRST (before updating mapping)
+	// This ensures session-info exists when updateSessionMapping checks for it
 	const now = new Date().toISOString();
 	const sessionInfo: SessionInfo = {
 		sessionId: newSessionId,
@@ -305,6 +303,10 @@ export async function handleSessionHandshake(
 		lastAccessedAt: now
 	};
 	await saveSessionInfo(kv, sessionInfo);
+
+	// Add new sessionId to mapping (AFTER session-info is created)
+	// This prevents "mystery sessions" in the mapping without session-info
+	await updateSessionMapping(kv, authKey, newSessionId);
 	
 	return {
 		sessionId: newSessionId,
