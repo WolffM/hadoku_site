@@ -203,6 +203,13 @@ jobs:
                        -m "Auto-updated from repository dispatch" \
                        -m "Packages: $PACKAGE_LIST" \
                        -m "Triggered by: ${{ github.event.client_payload.sha || 'manual' }}"
+
+            # Pull with rebase to handle concurrent pushes
+            git pull --rebase origin main || {
+              echo "❌ Rebase failed - manual intervention needed"
+              exit 1
+            }
+
             git push
             echo "✅ Updated packages and pushed changes"
             echo "updated=true" >> $GITHUB_OUTPUT
