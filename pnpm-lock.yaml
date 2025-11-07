@@ -18,8 +18,8 @@ importers:
         specifier: ^3.2.15
         version: 3.2.15
       '@wolffm/themes':
-        specifier: 1.0.12
-        version: 1.0.12
+        specifier: 1.0.14
+        version: 1.0.14
       '@wolffm/watchparty-ui':
         specifier: ^0.1.11
         version: 0.1.11
@@ -1087,6 +1087,9 @@ packages:
 
   '@wolffm/themes@1.0.12':
     resolution: {integrity: sha512-DH7JLkXys5LRFdA39yhPh1MWpixyhUEBIr+UWYa+o5MuMOfLteVGiQ/7LOIMyA8jlXjP74k8CxOVG9VSwmX7AQ==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.0.12/21ae1172c7ac488a87dd15cf46a8a005ad05bd8e}
+
+  '@wolffm/themes@1.0.14':
+    resolution: {integrity: sha512-kD50SqqAmL1i5mpBUjqNrk1FmZfWCo03xqLmQCsRN7r3JEzUMg/u7s4PrxHYOOmG/UeMm7ZS5J/QmExvShsTWA==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.0.14/7e197472f3a176c89653db37f97f16f1512f8134}
 
   '@wolffm/watchparty-ui@0.1.11':
     resolution: {integrity: sha512-vaC28th0dogsjGvPThHjOZ+CIrZQHe+VuopHcZPGCU4Lc5Sebd5dnSeU7wM+UEMkhk/8FmIQhngCQpcRnsVHsA==, tarball: https://npm.pkg.github.com/download/@wolffm/watchparty-ui/0.1.11/59ef70be8045fb217ab883418914a564fad8f9e2}
@@ -3825,9 +3828,11 @@ snapshots:
 
   '@wolffm/themes@1.0.12': {}
 
+  '@wolffm/themes@1.0.14': {}
+
   '@wolffm/watchparty-ui@0.1.11':
     dependencies:
-      '@wolffm/themes': 1.0.12
+      '@wolffm/themes': 1.0.14
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       react-router-dom: 6.30.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
