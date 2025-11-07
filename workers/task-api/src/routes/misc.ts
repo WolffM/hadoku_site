@@ -8,43 +8,13 @@ import type { Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
 import { healthCheck, logRequest, parseKeysFromEnv } from '../../../util';
 import { handleOperation } from './route-utils';
+import { validateKeyAndGetType } from '../request-utils';
 
 type Env = {
 	TASKS_KV: KVNamespace;
 	ADMIN_KEYS?: string;
 	FRIEND_KEYS?: string;
 };
-
-/**
- * Validate a key and determine userType
- * Used by validate-key endpoint
- */
-function validateKeyAndGetType(
-	key: string,
-	adminKeys: Record<string, string> | Set<string>,
-	friendKeys: Record<string, string> | Set<string>
-): { valid: boolean; userType: 'admin' | 'friend' | 'public' } {
-	// Check admin keys
-	if (adminKeys instanceof Set) {
-		if (adminKeys.has(key)) {
-			return { valid: true, userType: 'admin' };
-		}
-	} else if (key in adminKeys) {
-		return { valid: true, userType: 'admin' };
-	}
-
-	// Check friend keys
-	if (friendKeys instanceof Set) {
-		if (friendKeys.has(key)) {
-			return { valid: true, userType: 'friend' };
-		}
-	} else if (key in friendKeys) {
-		return { valid: true, userType: 'friend' };
-	}
-
-	// Not found in either
-	return { valid: false, userType: 'public' };
-}
 
 export function createMiscRoutes() {
 	const app = new Hono<{ Bindings: Env }>();

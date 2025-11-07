@@ -8,29 +8,8 @@ import { extractField } from '../../util';
 import { MASKING, DEFAULT_SESSION_ID, DEFAULT_BOARD_ID } from './constants';
 
 /**
- * Get board ID from request (body or query parameter)
- * 
- * @param c - Hono context
- * @param defaultId - Default board ID if not found
- * @returns Board ID
- */
-export async function getBoardIdFromRequest(
-	c: Context,
-	defaultId: string = DEFAULT_BOARD_ID
-): Promise<string> {
-	// Try to get from body first
-	const body = await c.req.json().catch(() => ({}));
-	if (body.boardId) {
-		return body.boardId;
-	}
-	
-	// Fall back to query parameter
-	return extractField(c, ['query:boardId'], defaultId);
-}
-
-/**
  * Get board ID from request synchronously (assumes body already parsed)
- * 
+ *
  * @param c - Hono context
  * @param body - Parsed body object
  * @param defaultId - Default board ID if not found
@@ -168,8 +147,44 @@ export function createTaskOperationHandler<T>(
 			taskId: id 
 		});
 		
-		return handleBoardOperation(c, boardId, (storage: any, auth: any) => 
+		return handleBoardOperation(c, boardId, (storage: any, auth: any) =>
 			operation(storage, auth, id!, boardId, body)
 		);
 	};
+}
+
+/**
+ * Validate a key and determine userType
+ * Shared utility used by auth middleware and validate-key endpoint
+ *
+ * @param key - The key to validate
+ * @param adminKeys - Admin keys (Set or Record)
+ * @param friendKeys - Friend keys (Set or Record)
+ * @returns Validation result with userType
+ */
+export function validateKeyAndGetType(
+	key: string,
+	adminKeys: Record<string, string> | Set<string>,
+	friendKeys: Record<string, string> | Set<string>
+): { valid: boolean; userType: 'admin' | 'friend' | 'public' } {
+	// Check admin keys
+	if (adminKeys instanceof Set) {
+		if (adminKeys.has(key)) {
+			return { valid: true, userType: 'admin' };
+		}
+	} else if (key in adminKeys) {
+		return { valid: true, userType: 'admin' };
+	}
+
+	// Check friend keys
+	if (friendKeys instanceof Set) {
+		if (friendKeys.has(key)) {
+			return { valid: true, userType: 'friend' };
+		}
+	} else if (key in friendKeys) {
+		return { valid: true, userType: 'friend' };
+	}
+
+	// Not found in either
+	return { valid: false, userType: 'public' };
 }

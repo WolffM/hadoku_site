@@ -101,20 +101,6 @@ export async function saveSessionInfo(
 }
 
 /**
- * Update session last accessed time
- */
-export async function updateSessionAccess(
-	kv: KVNamespace,
-	sessionId: string
-): Promise<void> {
-	const info = await getSessionInfo(kv, sessionId);
-	if (info) {
-		info.lastAccessedAt = new Date().toISOString();
-		await saveSessionInfo(kv, info);
-	}
-}
-
-/**
  * Get session mapping for authKey
  */
 export async function getSessionMapping(
@@ -170,17 +156,6 @@ export async function updateSessionMapping(
 		};
 		await kv.put(key, JSON.stringify(mapping));
 	}
-}
-
-/**
- * Get all sessionIds for an authKey
- */
-export async function getSessionIdsForAuthKey(
-	kv: KVNamespace,
-	authKey: string
-): Promise<string[]> {
-	const mapping = await getSessionMapping(kv, authKey);
-	return mapping ? mapping.sessionIds : [];
 }
 
 // ============================================================================
@@ -266,8 +241,10 @@ export async function handleSessionHandshake(
 			migratedFrom = authKey;
 			isNewSession = false;
 			console.log(`[Migration] Found legacy prefs for authKey: ${authKey.substring(0, 8)}...`);
-			// Note: We keep the legacy prefs in place for safety
-			// They can be cleaned up later once migration is verified
+
+			// Delete legacy prefs after migration (standardized migration strategy)
+			// The data is now saved to the new sessionId-based key
+			await kv.delete(legacyKey);
 		}
 	}
 	
@@ -316,49 +293,3 @@ export async function handleSessionHandshake(
 	};
 }
 
-// ============================================================================
-// Cleanup Utilities (for future use)
-// ============================================================================
-
-/**
- * Delete session and its preferences
- * Note: Only use this for security/blacklist scenarios
- */
-export async function deleteSession(
-	kv: KVNamespace,
-	sessionId: string
-): Promise<void> {
-	// Delete preferences
-	await kv.delete(preferencesKey(sessionId));
-	
-	// Delete session info
-	await kv.delete(sessionInfoKey(sessionId));
-	
-	// Note: Session mapping is NOT updated here
-	// The sessionId will remain in the authKey's list
-	// This is intentional - we want to track that it existed
-}
-
-/**
- * Remove sessionId from authKey mapping
- * Note: Only use this for security/blacklist scenarios
- */
-export async function removeSessionFromMapping(
-	kv: KVNamespace,
-	authKey: string,
-	sessionId: string
-): Promise<void> {
-	const mapping = await getSessionMapping(kv, authKey);
-	if (mapping) {
-		mapping.sessionIds = mapping.sessionIds.filter(id => id !== sessionId);
-		
-		// Update lastSessionId if it was removed
-		if (mapping.lastSessionId === sessionId) {
-			mapping.lastSessionId = mapping.sessionIds[mapping.sessionIds.length - 1] || '';
-		}
-		
-		mapping.updatedAt = new Date().toISOString();
-		
-		await kv.put(sessionMappingKey(authKey), JSON.stringify(mapping));
-	}
-}

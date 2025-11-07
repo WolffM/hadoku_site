@@ -23,6 +23,7 @@ import {
 	type IncidentRecord
 } from './throttle';
 import { USER_TYPES, DEFAULT_SESSION_ID } from './constants';
+import { validateKeyAndGetType } from './request-utils';
 
 // Import route modules
 import { createSessionRoutes } from './routes/session';
@@ -44,40 +45,8 @@ type AppContext = {
 	Bindings: Env;
 	Variables: {
 		authContext: TaskAuthContext & { key?: string };
-		context: { auth: TaskAuthContext };
 	};
 };
-
-/**
- * Validate a key and determine userType
- * Used by auth middleware resolver
- */
-function validateKeyAndGetType(
-	key: string,
-	adminKeys: Record<string, string> | Set<string>,
-	friendKeys: Record<string, string> | Set<string>
-): { valid: boolean; userType: 'admin' | 'friend' | 'public' } {
-	// Check admin keys
-	if (adminKeys instanceof Set) {
-		if (adminKeys.has(key)) {
-			return { valid: true, userType: USER_TYPES.ADMIN as 'admin' };
-		}
-	} else if (key in adminKeys) {
-		return { valid: true, userType: USER_TYPES.ADMIN as 'admin' };
-	}
-
-	// Check friend keys
-	if (friendKeys instanceof Set) {
-		if (friendKeys.has(key)) {
-			return { valid: true, userType: USER_TYPES.FRIEND as 'friend' };
-		}
-	} else if (key in friendKeys) {
-		return { valid: true, userType: USER_TYPES.FRIEND as 'friend' };
-	}
-
-	// Not found in either
-	return { valid: false, userType: USER_TYPES.PUBLIC as 'public' };
-}
 
 const app = new Hono<AppContext>();
 
@@ -110,14 +79,7 @@ app.use('*', createAuthMiddleware<Env>({
 	}
 }));
 
-// 3. Context enhancement middleware - add 'context' to variables
-app.use('*', async (c, next) => {
-	const auth = c.get('authContext');
-	c.set('context', { auth });
-	return next();
-});
-
-// 4. Throttle Middleware - Rate limiting per sessionId
+// 3. Throttle Middleware - Rate limiting per sessionId
 app.use('*', async (c, next) => {
 	const auth = c.get('authContext');
 	const sessionId = auth.sessionId || 'public';

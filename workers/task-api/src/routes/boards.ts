@@ -7,8 +7,9 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
 import { badRequest, logRequest, logError, requireFields } from '../../../util';
-import { getContext, handleOperation } from './route-utils';
+import { getContext, handleOperation, withBoardLock } from './route-utils';
 import { validateBoardId } from '../request-utils';
+import { boardsKey } from '../kv-keys';
 
 type Env = {
 	TASKS_KV: KVNamespace;
@@ -65,9 +66,15 @@ export function createBoardRoutes() {
 			boardId: body.id
 		});
 
-		return handleOperation(c, (storage, auth) =>
-			TaskHandlers.createBoard(storage, auth, body)
-		);
+		// Lock the boards list to prevent concurrent modifications
+		const { storage, auth } = getContext(c);
+		const lockKey = boardsKey(auth.sessionId);
+
+		const result = await withBoardLock(lockKey, async () => {
+			return await TaskHandlers.createBoard(storage, auth, body);
+		});
+
+		return c.json(result);
 	});
 
 	/**
@@ -90,9 +97,15 @@ export function createBoardRoutes() {
 			boardId
 		});
 
-		return handleOperation(c, (storage, auth) =>
-			TaskHandlers.deleteBoard(storage, auth, boardId!)
-		);
+		// Lock the boards list to prevent concurrent modifications
+		const { storage, auth } = getContext(c);
+		const lockKey = boardsKey(auth.sessionId);
+
+		const result = await withBoardLock(lockKey, async () => {
+			return await TaskHandlers.deleteBoard(storage, auth, boardId!);
+		});
+
+		return c.json(result);
 	});
 
 	return app;

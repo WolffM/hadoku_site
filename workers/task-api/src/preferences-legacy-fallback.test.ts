@@ -37,23 +37,11 @@ describe('GET /preferences Legacy Fallback', () => {
 		};
 		await env.TASKS_KV.put(`prefs:${authKey}`, JSON.stringify(legacyPrefs));
 
-		// 2. Perform handshake to create a session
+		// 2. Use a sessionId WITHOUT performing handshake
+		// This simulates a user with legacy prefs but no session prefs yet
 		const sessionId = `session-legacy-${Date.now()}`;
-		await app.request('/task/api/session/handshake', {
-			method: 'POST',
-			headers: adminHeaders,
-			body: JSON.stringify({
-				oldSessionId: null,
-				newSessionId: sessionId
-			})
-		}, env);
 
-		// Note: Handshake should have migrated prefs, but for this test we're testing
-		// the GET endpoint fallback specifically. Let's delete the session prefs to
-		// simulate a scenario where they weren't migrated.
-		await env.TASKS_KV.delete(`prefs:${sessionId}`);
-
-		// 3. GET preferences with X-Session-Id header
+		// 3. GET preferences with X-Session-Id header (should trigger legacy fallback)
 		const response = await app.request('/task/api/preferences', {
 			method: 'GET',
 			headers: {
@@ -76,9 +64,9 @@ describe('GET /preferences Legacy Fallback', () => {
 		expect(migratedPrefs.theme).toBe('legacy-dark');
 		expect(migratedPrefs.buttons.showCompleted).toBe(true);
 
-		// 6. Verify legacy prefs still exist (not deleted)
+		// 6. Verify legacy prefs were DELETED after migration (standardized migration strategy)
 		const legacyPrefsCheck = await env.TASKS_KV.get(`prefs:${authKey}`, 'json') as any;
-		expect(legacyPrefsCheck).toBeDefined();
+		expect(legacyPrefsCheck).toBeNull(); // Should be deleted after successful migration
 	});
 
 	it('should prioritize session-based prefs over legacy authKey prefs', async () => {
@@ -295,8 +283,8 @@ describe('GET /preferences Legacy Fallback', () => {
 
 		const sessionId = `session-auto-migrate-${Date.now()}`;
 
-		// Perform handshake
-		await app.request('/task/api/session/handshake', {
+		// Perform handshake (this will auto-migrate and delete legacy prefs)
+		const handshakeRes = await app.request('/task/api/session/handshake', {
 			method: 'POST',
 			headers: adminHeaders,
 			body: JSON.stringify({
@@ -305,14 +293,21 @@ describe('GET /preferences Legacy Fallback', () => {
 			})
 		}, env);
 
-		// Delete session prefs to force fallback
-		await env.TASKS_KV.delete(`prefs:${sessionId}`);
+		expect(handshakeRes.status).toBe(200);
+		const handshakeData: any = await handshakeRes.json();
+		expect(handshakeData.migratedFrom).toBe(authKey); // Confirms migration happened
 
-		// Verify no session prefs exist yet
-		let sessionPrefs = await env.TASKS_KV.get(`prefs:${sessionId}`, 'json');
-		expect(sessionPrefs).toBeNull();
+		// Verify session prefs now exist (migrated from legacy)
+		let sessionPrefs = await env.TASKS_KV.get(`prefs:${sessionId}`, 'json') as any;
+		expect(sessionPrefs).toBeDefined();
+		expect(sessionPrefs.theme).toBe('auto-migrate-theme');
+		expect(sessionPrefs.customData).toBe('important');
 
-		// GET preferences (should trigger auto-migration)
+		// Verify legacy prefs were deleted after migration
+		const legacyPrefsCheck = await env.TASKS_KV.get(`prefs:${authKey}`, 'json');
+		expect(legacyPrefsCheck).toBeNull();
+
+		// GET preferences (should return migrated session prefs)
 		const response = await app.request('/task/api/preferences', {
 			method: 'GET',
 			headers: {
@@ -326,12 +321,6 @@ describe('GET /preferences Legacy Fallback', () => {
 
 		expect(data.theme).toBe('auto-migrate-theme');
 		expect(data.customData).toBe('important');
-
-		// Verify preferences were auto-migrated to sessionId
-		sessionPrefs = await env.TASKS_KV.get(`prefs:${sessionId}`, 'json') as any;
-		expect(sessionPrefs).toBeDefined();
-		expect(sessionPrefs.theme).toBe('auto-migrate-theme');
-		expect(sessionPrefs.customData).toBe('important');
 
 		// Second GET should now use session prefs (no fallback needed)
 		const response2 = await app.request('/task/api/preferences', {

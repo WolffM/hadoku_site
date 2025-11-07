@@ -31,7 +31,7 @@ export function createPreferencesRoutes() {
 	 * Falls back to legacy authKey-based prefs if session-based prefs not found
 	 */
 	app.get('/preferences', async (c: Context) => {
-		const { auth } = c.get('context');
+		const auth = c.get('authContext');
 		const sessionId = getSessionIdFromRequest(c, auth);
 
 		logRequest('GET', '/task/api/preferences', {
@@ -56,12 +56,13 @@ export function createPreferencesRoutes() {
 
 				if (legacyPrefs) {
 					logRequest('GET', '/task/api/preferences', {
-						note: 'Found legacy prefs',
+						note: 'Found legacy prefs, migrating',
 						authKey: maskKey(authKey)
 					});
 
-					// Optionally: Migrate to sessionId immediately for future requests
+					// Migrate to sessionId-based storage and delete legacy key
 					await savePreferencesBySessionId(c.env.TASKS_KV, sessionId, legacyPrefs);
+					await c.env.TASKS_KV.delete(legacyKey);
 
 					return c.json(legacyPrefs);
 				}
@@ -100,7 +101,7 @@ export function createPreferencesRoutes() {
 	 * Merges with existing preferences
 	 */
 	app.put('/preferences', async (c: Context) => {
-		const { auth } = c.get('context');
+		const auth = c.get('authContext');
 		const sessionId = getSessionIdFromRequest(c, auth);
 
 		try {

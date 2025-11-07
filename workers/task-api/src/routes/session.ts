@@ -32,7 +32,7 @@ export function createSessionRoutes() {
 	 */
 	app.post('/session/handshake', async (c: Context) => {
 		try {
-			const { auth } = c.get('context');
+			const auth = c.get('authContext');
 			const body = await c.req.json() as HandshakeRequest;
 
 			// Validate request

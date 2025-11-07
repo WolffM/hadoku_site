@@ -57,13 +57,13 @@ export const KV_PREFIXES = {
 
 /**
  * Default preferences for new users/sessions
+ * Note: lastUpdated should be added at usage time, not here
  */
 export const DEFAULT_PREFERENCES = {
 	theme: DEFAULT_THEME,
 	buttons: {},
 	experimentalFlags: {},
-	layout: {},
-	lastUpdated: new Date().toISOString()
+	layout: {}
 } as const;
 
 /**

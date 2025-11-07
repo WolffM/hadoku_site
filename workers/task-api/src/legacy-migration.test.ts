@@ -71,10 +71,9 @@ describe('Legacy Preference Migration', () => {
 		expect(newPrefs.theme).toBe('strawberry-dark');
 		expect(newPrefs.experimentalFlags.experimentalThemes).toBe(true);
 
-		// 5. Verify legacy prefs still exist (safety - we don't delete them)
+		// 5. Verify legacy prefs were DELETED after migration (standardized migration strategy)
 		const legacyPrefs = await env.TASKS_KV.get(`prefs:${authKey}`, 'json') as any;
-		expect(legacyPrefs).toBeDefined();
-		expect(legacyPrefs.theme).toBe('strawberry-dark');
+		expect(legacyPrefs).toBeNull(); // Should be deleted after successful migration
 
 		// 6. Verify session info was created
 		const sessionInfo = await env.TASKS_KV.get(`session-info:${newSessionId}`, 'json') as any;
