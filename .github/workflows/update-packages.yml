@@ -211,10 +211,16 @@ jobs:
             # Add task-api package.json if it exists and changed
             git add workers/task-api/package.json 2>/dev/null || true
 
+            echo "📋 Git status before commit:"
+            git status --short
+
             git commit -m "chore: update packages - $PACKAGE_LIST" \
                        -m "Auto-updated from repository dispatch" \
                        -m "Packages: $PACKAGE_LIST" \
                        -m "Triggered by: ${{ github.event.client_payload.sha || 'manual' }}"
+
+            echo "📋 Git status after commit:"
+            git status --short
 
             # Pull with rebase to handle concurrent pushes
             git pull --rebase origin main || {
