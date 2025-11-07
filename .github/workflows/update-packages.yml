@@ -195,7 +195,17 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
+          # Safety check: ensure .npmrc files are never tracked (prevent secret leakage)
+          if git ls-files | grep -q "\.npmrc$"; then
+            echo "⚠️  WARNING: .npmrc files are tracked in git! Removing to prevent secret leakage..."
+            git ls-files | grep "\.npmrc$" | while read -r file; do
+              echo "  Removing: $file"
+              git rm --cached "$file"
+            done
+            git commit -m "fix: remove .npmrc files from git tracking [automated safety check]" || true
+          fi
+
           # Check if any package files or bundle files changed
           if git diff --quiet package.json pnpm-lock.yaml workers/task-api/package.json public/mf/; then
             echo "ℹ️  No package updates needed"
