@@ -204,11 +204,12 @@ jobs:
             PACKAGES='${{ steps.parse.outputs.packages }}'
             PACKAGE_LIST=$(echo "$PACKAGES" | jq -r '.[]' | paste -sd ", " -)
 
-            # Add changes but exclude .npmrc files (contain secrets)
-            git add package.json pnpm-lock.yaml workers/task-api/package.json workers/task-api/pnpm-lock.yaml public/mf/
+            # Add only the files that actually change (excluding .npmrc which contains secrets)
+            # Note: pnpm workspace uses single root lockfile, not per-package lockfiles
+            git add package.json pnpm-lock.yaml public/mf/
 
-            # Ensure .npmrc is not staged (it contains secrets and will be blocked by GitHub)
-            git reset workers/task-api/.npmrc 2>/dev/null || true
+            # Add task-api package.json if it exists and changed
+            git add workers/task-api/package.json 2>/dev/null || true
 
             git commit -m "chore: update packages - $PACKAGE_LIST" \
                        -m "Auto-updated from repository dispatch" \
