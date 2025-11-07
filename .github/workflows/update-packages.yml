@@ -204,12 +204,12 @@ jobs:
             PACKAGES='${{ steps.parse.outputs.packages }}'
             PACKAGE_LIST=$(echo "$PACKAGES" | jq -r '.[]' | paste -sd ", " -)
 
-            # Add only the files that actually change (excluding .npmrc which contains secrets)
-            # Note: pnpm workspace uses single root lockfile, not per-package lockfiles
-            git add package.json pnpm-lock.yaml public/mf/
+            # Stage all tracked files that changed (git add -u stages modified/deleted tracked files only)
+            # This is safer than git add -A which would also stage new untracked files like .npmrc
+            git add -u package.json pnpm-lock.yaml workers/task-api/
 
-            # Add task-api package.json if it exists and changed
-            git add workers/task-api/package.json 2>/dev/null || true
+            # Stage new/modified files in public/mf/ (bundle outputs)
+            git add public/mf/
 
             echo "📋 Git status before commit:"
             git status --short
