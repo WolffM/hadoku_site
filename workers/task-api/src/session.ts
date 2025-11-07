@@ -284,12 +284,92 @@ export async function handleSessionHandshake(
 	// Add new sessionId to mapping (AFTER session-info is created)
 	// This prevents "mystery sessions" in the mapping without session-info
 	await updateSessionMapping(kv, authKey, newSessionId);
-	
+
+	// Clean up stale sessions (30+ days old) in the background
+	// This runs asynchronously and won't block the handshake response
+	cleanupStaleSessions(kv, authKey).catch(err => {
+		console.error('[SessionCleanup] Failed to cleanup stale sessions:', err);
+	});
+
 	return {
 		sessionId: newSessionId,
 		preferences,
 		isNewSession,
 		migratedFrom
 	};
+}
+
+// ============================================================================
+// Session Cleanup
+// ============================================================================
+
+/**
+ * Clean up stale sessions (30+ days since last access)
+ *
+ * This runs asynchronously during handshake to avoid blocking the response.
+ * Checks all sessions for the given authKey and removes:
+ * - Sessions not accessed in 30+ days
+ * - Orphaned session-info entries (in mapping but no session-info exists)
+ */
+async function cleanupStaleSessions(kv: KVNamespace, authKey: string): Promise<void> {
+	const STALE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+	const now = Date.now();
+
+	try {
+		// Get session mapping for this user
+		const mapping = await getSessionMapping(kv, authKey);
+		if (!mapping || !mapping.sessionIds || mapping.sessionIds.length === 0) {
+			return;
+		}
+
+		const sessionsToDelete: string[] = [];
+		let validSessions: string[] = [];
+
+		// Check each session
+		for (const sessionId of mapping.sessionIds) {
+			const sessionInfo = await getSessionInfo(kv, sessionId);
+
+			if (!sessionInfo) {
+				// Orphaned session - no session-info exists
+				console.log(`[SessionCleanup] Removing orphaned session: ${sessionId.substring(0, 16)}...`);
+				sessionsToDelete.push(sessionId);
+				continue;
+			}
+
+			// Check if session is stale (30+ days)
+			const lastAccessed = new Date(sessionInfo.lastAccessedAt).getTime();
+			const age = now - lastAccessed;
+
+			if (age > STALE_THRESHOLD_MS) {
+				console.log(`[SessionCleanup] Removing stale session: ${sessionId.substring(0, 16)}... (${Math.floor(age / (24 * 60 * 60 * 1000))} days old)`);
+				sessionsToDelete.push(sessionId);
+			} else {
+				validSessions.push(sessionId);
+			}
+		}
+
+		// Delete stale sessions
+		if (sessionsToDelete.length > 0) {
+			console.log(`[SessionCleanup] Deleting ${sessionsToDelete.length} stale sessions for authKey: ${authKey.substring(0, 8)}...`);
+
+			// Delete preferences and session-info for each stale session
+			const deletePromises = sessionsToDelete.flatMap(sessionId => [
+				kv.delete(preferencesKey(sessionId)),
+				kv.delete(sessionInfoKey(sessionId))
+			]);
+
+			await Promise.all(deletePromises);
+
+			// Update session mapping to remove deleted sessions
+			mapping.sessionIds = validSessions;
+			mapping.updatedAt = new Date().toISOString();
+			await kv.put(sessionMappingKey(authKey), JSON.stringify(mapping));
+
+			console.log(`[SessionCleanup] Cleanup complete. ${validSessions.length} sessions remaining.`);
+		}
+	} catch (error) {
+		console.error('[SessionCleanup] Error during cleanup:', error);
+		// Don't throw - cleanup is best-effort and shouldn't fail handshake
+	}
 }
 
