@@ -204,23 +204,11 @@ jobs:
             PACKAGES='${{ steps.parse.outputs.packages }}'
             PACKAGE_LIST=$(echo "$PACKAGES" | jq -r '.[]' | paste -sd ", " -)
 
-            # Stage all tracked files that changed (git add -u stages modified/deleted tracked files only)
-            # This is safer than git add -A which would also stage new untracked files like .npmrc
-            git add -u package.json pnpm-lock.yaml workers/task-api/
-
-            # Stage new/modified files in public/mf/ (bundle outputs)
-            git add public/mf/
-
-            echo "📋 Git status before commit:"
-            git status --short
-
+            git add package.json pnpm-lock.yaml workers/task-api/package.json public/mf/
             git commit -m "chore: update packages - $PACKAGE_LIST" \
                        -m "Auto-updated from repository dispatch" \
                        -m "Packages: $PACKAGE_LIST" \
                        -m "Triggered by: ${{ github.event.client_payload.sha || 'manual' }}"
-
-            echo "📋 Git status after commit:"
-            git status --short
 
             # Pull with rebase to handle concurrent pushes
             git pull --rebase origin main || {
