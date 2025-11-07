@@ -67,46 +67,46 @@ def update_user_id(user_key, new_user_id):
     boards_key = f'boards:{user_key}'
     
     # Get current boards data
-    print(f"📋 Fetching boards data: {boards_key}")
+    print(f"[INFO] Fetching boards data: {boards_key}")
     boards_data = get_value(boards_key)
-    
+
     if not boards_data:
-        print(f"❌ No boards data found for key: {user_key}")
+        print(f"[ERROR] No boards data found for key: {user_key}")
         return 1
-    
+
     if not isinstance(boards_data, dict):
-        print(f"❌ Invalid boards data format")
+        print(f"[ERROR] Invalid boards data format")
         return 1
-    
+
     # Check current userId
     current_user_id = boards_data.get('userId', 'N/A')
     print(f"Current userId: {current_user_id}")
     print(f"New userId: {new_user_id}")
     print()
-    
+
     if current_user_id == new_user_id:
-        print(f"✅ userId is already set to '{new_user_id}' - no update needed")
+        print(f"[SUCCESS] userId is already set to '{new_user_id}' - no update needed")
         return 0
-    
+
     # Confirm update
-    print(f"⚠️  This will update the userId in boards data")
+    print(f"[WARNING] This will update the userId in boards data")
     confirm = input(f"Type 'UPDATE' to confirm: ")
-    
+
     if confirm != 'UPDATE':
-        print("❌ Operation cancelled")
+        print("[ERROR] Operation cancelled")
         return 1
-    
+
     # Update userId
     boards_data['userId'] = new_user_id
-    
+
     # Save back to KV
-    print(f"\n💾 Saving updated boards data...")
+    print(f"\n[INFO] Saving updated boards data...")
     try:
         put_value(boards_key, boards_data)
-        print(f"✅ Successfully updated userId from '{current_user_id}' to '{new_user_id}'")
+        print(f"[SUCCESS] Successfully updated userId from '{current_user_id}' to '{new_user_id}'")
         return 0
     except Exception as e:
-        print(f"❌ Failed to save: {e}")
+        print(f"[ERROR] Failed to save: {e}")
         return 1
 
 def main(user_key, new_user_id):

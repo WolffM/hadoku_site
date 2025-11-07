@@ -45,7 +45,6 @@ export const DEFAULT_THEME = THEMES.SYSTEM;
 export const KV_PREFIXES = {
 	BOARDS: 'boards',
 	TASKS: 'tasks',
-	STATS: 'stats',
 	PREFS: 'prefs',
 	SESSION_INFO: 'session-info',
 	SESSION_MAP: 'session-map'

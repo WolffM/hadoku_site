@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 """
-Enhanced KV Backup and Restore System
-=====================================
+Enhanced KV + D1 Backup and Restore System
+===========================================
 
-This script provides comprehensive backup/restore functionality for Cloudflare KV:
+This script provides comprehensive backup/restore functionality for Cloudflare KV and D1:
 
 1. backup-to-file: Download production KV to local JSON file
-2. backup-to-kv: Upload local backup to backup KV namespace  
+2. backup-to-kv: Upload local backup to backup KV namespace
 3. validate-backup: Compare production vs backup KV
 4. restore-from-backup: Restore production from backup KV
 5. flush: Delete all keys from production KV
-6. full-backup: Complete backup (file + clear + upload + validate)
-7. fast-backup: Quick backup (file only, for CI/automation)
+6. full-backup: Complete backup (KV + D1 to files, KV upload + validate)
+7. fast-backup: Quick backup (KV + D1 to files only, for CI/automation)
 
 Environment Variables Required:
-- CLOUDFLARE_API_TOKEN: Cloudflare API token with KV permissions
+- CLOUDFLARE_API_TOKEN: Cloudflare API token with KV and D1 permissions
 - CLOUDFLARE_ACCOUNT_ID: Cloudflare account ID
 - CLOUDFLARE_NAMESPACE_ID: Production KV namespace ID
 - CLOUDFLARE_BACKUP_NAMESPACE_ID: Backup KV namespace ID (optional, defaults to preview)
+- D1_DATABASE_ID: D1 database ID for stats (optional, defaults to task-events production)
 """
 
 import requests
@@ -37,7 +38,8 @@ def load_config():
         'CLOUDFLARE_API_TOKEN': os.environ.get('CLOUDFLARE_API_TOKEN'),
         'CLOUDFLARE_ACCOUNT_ID': os.environ.get('CLOUDFLARE_ACCOUNT_ID'),
         'CLOUDFLARE_NAMESPACE_ID': os.environ.get('CLOUDFLARE_NAMESPACE_ID'),
-        'CLOUDFLARE_BACKUP_NAMESPACE_ID': os.environ.get('CLOUDFLARE_BACKUP_NAMESPACE_ID', '3fb96829c28b497a9101dd554c97fdec')  # Default to preview
+        'CLOUDFLARE_BACKUP_NAMESPACE_ID': os.environ.get('CLOUDFLARE_BACKUP_NAMESPACE_ID', '3fb96829c28b497a9101dd554c97fdec'),  # Default to preview
+        'D1_DATABASE_ID': os.environ.get('D1_DATABASE_ID', '17f9ea29-8035-40a5-bab0-defdfd32d7d4')  # task-events production database
     }
     
     # Load from .env file if environment variables are missing
@@ -67,7 +69,7 @@ def get_kv_keys(config, namespace_id):
         
         response = requests.get(url, headers=headers, params=params)
         if response.status_code != 200:
-            print(f"❌ Error fetching keys: {response.status_code} {response.text}")
+            print(f"[ERROR] Error fetching keys: {response.status_code} {response.text}")
             return None
         
         data = response.json()
@@ -98,7 +100,7 @@ def get_kv_values(config, namespace_id, keys):
             except:
                 values[key] = response.text
         else:
-            print(f"⚠️ Failed to get value for key {key}: {response.status_code}")
+            print(f"[WARNING] Failed to get value for key {key}: {response.status_code}")
             values[key] = None
         
         if (i + 1) % 10 == 0 or i == total - 1:
@@ -129,7 +131,7 @@ def put_kv_values(config, namespace_id, data):
         if response.status_code in [200, 201]:
             success_count += 1
         else:
-            print(f"⚠️ Failed to put key {key}: {response.status_code}")
+            print(f"[WARNING] Failed to put key {key}: {response.status_code}")
         
         if (i + 1) % 10 == 0 or i == total - 1:
             print(f"Upload progress: {i + 1}/{total} ({success_count} successful)")
@@ -142,14 +144,14 @@ def put_kv_values(config, namespace_id, data):
 
 def backup_to_file(config):
     """Backup production KV to local JSON file."""
-    print("📦 Starting KV backup to file...")
-    
+    print("[INFO] Starting KV backup to file...")
+
     # Get all keys
     keys = get_kv_keys(config, config['CLOUDFLARE_NAMESPACE_ID'])
     if keys is None:
         return 1
-    
-    print(f"✅ Found {len(keys)} keys")
+
+    print(f"[SUCCESS] Found {len(keys)} keys")
     
     # Get all values
     values = get_kv_values(config, config['CLOUDFLARE_NAMESPACE_ID'], keys)
@@ -171,87 +173,87 @@ def backup_to_file(config):
     
     with open(backup_file, 'w') as f:
         json.dump(backup_data, f, indent=2)
-    
-    print(f"✅ Backup saved: {backup_file}")
-    print(f"📊 Total keys: {len(keys)}")
+
+    print(f"[SUCCESS] Backup saved: {backup_file}")
+    print(f"[INFO] Total keys: {len(keys)}")
     return str(backup_file)
 
 def backup_to_kv(config, backup_file=None):
     """Upload backup to backup KV namespace."""
     if backup_file:
-        print(f"📤 Uploading backup file {backup_file} to backup KV...")
+        print(f"[INFO] Uploading backup file {backup_file} to backup KV...")
         with open(backup_file) as f:
             backup_data = json.load(f)
         data_to_upload = backup_data['keys']
     else:
-        print("📤 Creating fresh backup and uploading to backup KV...")
+        print("[INFO] Creating fresh backup and uploading to backup KV...")
         # Get fresh data from production
         keys = get_kv_keys(config, config['CLOUDFLARE_NAMESPACE_ID'])
         if keys is None:
             return 1
         data_to_upload = get_kv_values(config, config['CLOUDFLARE_NAMESPACE_ID'], keys)
-    
+
     # Upload to backup namespace
     success_count = put_kv_values(config, config['CLOUDFLARE_BACKUP_NAMESPACE_ID'], data_to_upload)
-    
-    print(f"✅ Uploaded {success_count}/{len(data_to_upload)} keys to backup KV")
+
+    print(f"[SUCCESS] Uploaded {success_count}/{len(data_to_upload)} keys to backup KV")
     return 0 if success_count == len(data_to_upload) else 1
 
 def validate_backup(config):
     """Compare production vs backup KV."""
-    print("🔍 Validating backup against production...")
-    
+    print("[INFO] Validating backup against production...")
+
     # Get production keys
     prod_keys = get_kv_keys(config, config['CLOUDFLARE_NAMESPACE_ID'])
     if prod_keys is None:
         return 1
-    
-    # Get backup keys  
+
+    # Get backup keys
     backup_keys = get_kv_keys(config, config['CLOUDFLARE_BACKUP_NAMESPACE_ID'])
     if backup_keys is None:
         return 1
-    
+
     prod_set = set(prod_keys)
     backup_set = set(backup_keys)
-    
-    print(f"📊 Production keys: {len(prod_keys)}")
-    print(f"📊 Backup keys: {len(backup_keys)}")
+
+    print(f"[INFO] Production keys: {len(prod_keys)}")
+    print(f"[INFO] Backup keys: {len(backup_keys)}")
     
     missing_in_backup = prod_set - backup_set
     extra_in_backup = backup_set - prod_set
-    
+
     if missing_in_backup:
-        print(f"⚠️ Keys missing in backup: {len(missing_in_backup)}")
+        print(f"[WARNING] Keys missing in backup: {len(missing_in_backup)}")
         for key in list(missing_in_backup)[:5]:
             print(f"  - {key}")
         if len(missing_in_backup) > 5:
             print(f"  ... and {len(missing_in_backup) - 5} more")
-    
+
     if extra_in_backup:
-        print(f"ℹ️ Extra keys in backup: {len(extra_in_backup)}")
+        print(f"[INFO] Extra keys in backup: {len(extra_in_backup)}")
         for key in list(extra_in_backup)[:5]:
             print(f"  - {key}")
         if len(extra_in_backup) > 5:
             print(f"  ... and {len(extra_in_backup) - 5} more")
-    
+
     if not missing_in_backup and not extra_in_backup:
-        print("✅ Backup validation successful - all keys match!")
+        print("[SUCCESS] Backup validation successful - all keys match!")
         return 0
     else:
-        print("⚠️ Backup validation found differences")
+        print("[WARNING] Backup validation found differences")
         return 1
 
 def flush_namespace(config, namespace_id, confirm=False):
     """Delete all keys from a namespace."""
     if not confirm:
-        print("⚠️ This will delete ALL data from the namespace!")
+        print("[WARNING] This will delete ALL data from the namespace!")
         print(f"Namespace ID: {namespace_id}")
         response = input("Type 'DELETE' to confirm: ")
         if response != 'DELETE':
-            print("❌ Operation cancelled")
+            print("[ERROR] Operation cancelled")
             return 1
-    
-    print(f"🗑️ Flushing namespace {namespace_id}...")
+
+    print(f"[INFO] Flushing namespace {namespace_id}...")
     
     # Get all keys
     keys = get_kv_keys(config, namespace_id)
@@ -275,46 +277,46 @@ def flush_namespace(config, namespace_id, confirm=False):
             deleted_count += len(batch)
             print(f"Deleted batch: {deleted_count}/{len(keys)}")
         else:
-            print(f"❌ Failed to delete batch: {response.status_code}")
+            print(f"[ERROR] Failed to delete batch: {response.status_code}")
             return 1
-    
-    print(f"✅ Deleted {deleted_count} keys")
+
+    print(f"[SUCCESS] Deleted {deleted_count} keys")
     return 0
 
 def restore_from_backup(config, source='kv'):
     """Restore production from backup."""
-    print("🔄 Starting restore process...")
-    
+    print("[INFO] Starting restore process...")
+
     if source == 'kv':
-        print("📥 Loading data from backup KV...")
+        print("[INFO] Loading data from backup KV...")
         keys = get_kv_keys(config, config['CLOUDFLARE_BACKUP_NAMESPACE_ID'])
         if keys is None:
             return 1
         data_to_restore = get_kv_values(config, config['CLOUDFLARE_BACKUP_NAMESPACE_ID'], keys)
     else:
-        print(f"📥 Loading data from backup file: {source}")
+        print(f"[INFO] Loading data from backup file: {source}")
         with open(source) as f:
             backup_data = json.load(f)
         data_to_restore = backup_data['keys']
-    
+
     print(f"Found {len(data_to_restore)} keys to restore")
-    
+
     # Confirm before flushing production
-    print("⚠️ This will FLUSH production KV and restore from backup!")
+    print("[WARNING] This will FLUSH production KV and restore from backup!")
     response = input("Type 'RESTORE' to confirm: ")
     if response != 'RESTORE':
-        print("❌ Operation cancelled")
+        print("[ERROR] Operation cancelled")
         return 1
-    
+
     # Flush production
     if flush_namespace(config, config['CLOUDFLARE_NAMESPACE_ID'], confirm=True) != 0:
-        print("❌ Failed to flush production namespace")
+        print("[ERROR] Failed to flush production namespace")
         return 1
-    
+
     # Upload backup data to production
     success_count = put_kv_values(config, config['CLOUDFLARE_NAMESPACE_ID'], data_to_restore)
-    
-    print(f"✅ Restored {success_count}/{len(data_to_restore)} keys to production")
+
+    print(f"[SUCCESS] Restored {success_count}/{len(data_to_restore)} keys to production")
     return 0 if success_count == len(data_to_restore) else 1
 
 def main():
@@ -329,11 +331,11 @@ def main():
     required_keys = ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_NAMESPACE_ID']
     missing = [k for k in required_keys if not config[k]]
     if missing:
-        print(f"❌ Missing required configuration: {', '.join(missing)}")
+        print(f"[ERROR] Missing required configuration: {', '.join(missing)}")
         return 1
-    
-    print(f"🎯 Production Namespace: {config['CLOUDFLARE_NAMESPACE_ID']}")
-    print(f"🎯 Backup Namespace: {config['CLOUDFLARE_BACKUP_NAMESPACE_ID']}")
+
+    print(f"[INFO] Production Namespace: {config['CLOUDFLARE_NAMESPACE_ID']}")
+    print(f"[INFO] Backup Namespace: {config['CLOUDFLARE_BACKUP_NAMESPACE_ID']}")
     print()
     
     if command == 'backup-to-file':
@@ -356,45 +358,111 @@ def main():
         return flush_namespace(config, config['CLOUDFLARE_NAMESPACE_ID'], confirm=force)
     
     elif command == 'full-backup':
-        print("🚀 Starting full backup process...")
-        
-        # Step 1: Backup to file
-        backup_file = backup_to_file(config)
-        if not backup_file:
+        print("[INFO] Starting full backup process (KV + D1)...")
+
+        # Step 1: Backup KV to file
+        kv_backup_file = backup_to_file(config)
+        if not kv_backup_file:
             return 1
-        
+
+        # Step 1b: Backup D1 to file
+        d1_backup_file = backup_d1_to_file(config)
+        if d1_backup_file is None:
+            print("[WARNING] D1 backup failed, but KV backup succeeded")
+
         # Step 2: Clear backup KV for clean validation
-        print("🧹 Clearing backup KV for clean validation...")
+        print("[INFO] Clearing backup KV for clean validation...")
         if flush_namespace(config, config['CLOUDFLARE_BACKUP_NAMESPACE_ID'], confirm=True) != 0:
-            print("⚠️ Failed to clear backup KV, continuing anyway...")
-        
+            print("[WARNING] Failed to clear backup KV, continuing anyway...")
+
         # Step 3: Upload to backup KV
-        if backup_to_kv(config, backup_file) != 0:
+        if backup_to_kv(config, kv_backup_file) != 0:
             return 1
-        
+
         # Step 4: Validate
         if validate_backup(config) != 0:
-            print("⚠️ Validation failed but backup files created")
+            print("[WARNING] Validation failed but backup files created")
             return 1
-        
-        print("✅ Full backup process completed successfully!")
+
+        print("[SUCCESS] Full backup process completed successfully!")
+        print(f"[INFO] KV backup: {kv_backup_file}")
+        if d1_backup_file:
+            print(f"[INFO] D1 backup: {d1_backup_file}")
         return 0
-    
+
     elif command == 'fast-backup':
-        print("⚡ Starting fast backup (file only)...")
-        
-        # Just backup to file, skip KV upload and validation for speed
-        backup_file = backup_to_file(config)
-        if not backup_file:
+        print("[INFO] Starting fast backup (file only, KV + D1)...")
+
+        # Backup KV to file
+        kv_backup_file = backup_to_file(config)
+        if not kv_backup_file:
             return 1
-        
-        print("✅ Fast backup completed successfully!")
+
+        # Backup D1 to file
+        d1_backup_file = backup_d1_to_file(config)
+        if d1_backup_file is None:
+            print("[WARNING] D1 backup failed, but KV backup succeeded")
+
+        print("[SUCCESS] Fast backup completed successfully!")
+        print(f"[INFO] KV backup: {kv_backup_file}")
+        if d1_backup_file:
+            print(f"[INFO] D1 backup: {d1_backup_file}")
         return 0
-    
+
     else:
-        print(f"❌ Unknown command: {command}")
+        print(f"[ERROR] Unknown command: {command}")
         print(__doc__)
         return 1
+
+def backup_d1_to_file(config):
+    """Export D1 database to local JSON file."""
+    print("\n[INFO] Exporting D1 database...")
+
+    database_id = config['D1_DATABASE_ID']
+
+    # Query all events from D1
+    url = f"https://api.cloudflare.com/client/v4/accounts/{config['CLOUDFLARE_ACCOUNT_ID']}/d1/database/{database_id}/query"
+    headers = {
+        'Authorization': f'Bearer {config["CLOUDFLARE_API_TOKEN"]}',
+        'Content-Type': 'application/json'
+    }
+
+    query_payload = {
+        "sql": "SELECT * FROM task_events ORDER BY timestamp ASC"
+    }
+
+    response = requests.post(url, headers=headers, json=query_payload)
+
+    if response.status_code != 200:
+        print(f"[ERROR] Failed to query D1: {response.status_code} {response.text}")
+        return None
+
+    result = response.json()
+
+    if not result.get('success'):
+        print(f"[ERROR] D1 query failed: {result.get('errors')}")
+        return None
+
+    events = result['result'][0]['results']
+
+    # Save to file
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_file = Path(__file__).parent.parent / f'backups/d1_backup_{timestamp}.json'
+    backup_file.parent.mkdir(parents=True, exist_ok=True)
+
+    backup_data = {
+        'timestamp': timestamp,
+        'database_id': database_id,
+        'event_count': len(events),
+        'events': events
+    }
+
+    with open(backup_file, 'w') as f:
+        json.dump(backup_data, f, indent=2)
+
+    print(f"[SUCCESS] Backed up {len(events)} events to {backup_file}")
+    return backup_file
+
 
 if __name__ == '__main__':
     sys.exit(main())

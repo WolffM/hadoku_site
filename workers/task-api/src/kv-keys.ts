@@ -27,14 +27,6 @@ export function tasksKey(sessionId: string | undefined, boardId: string): string
 	return `${KV_PREFIXES.TASKS}:${sessionId || DEFAULT_SESSION_ID}:${boardId}`;
 }
 
-/**
- * Generate KV key for stats storage
- * Format: stats:{sessionId}:{boardId}
- */
-export function statsKey(sessionId: string | undefined, boardId: string): string {
-	return `${KV_PREFIXES.STATS}:${sessionId || DEFAULT_SESSION_ID}:${boardId}`;
-}
-
 // ============================================================================
 // Preferences Keys
 // ============================================================================

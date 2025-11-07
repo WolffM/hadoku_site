@@ -109,7 +109,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kv-backup-${{ github.sha }}
-          path: backups/*.json
+          path: scripts/backups/*.json
           retention-days: 90
           if-no-files-found: error
       
@@ -223,7 +223,7 @@ jobs:
             const fs = require('fs');
             let backupFile = 'unknown';
             try {
-              const backupFiles = fs.readdirSync('backups');
+              const backupFiles = fs.readdirSync('scripts/backups');
               backupFile = backupFiles.find(f => f.startsWith('tasks-kv-backup-')) || 'unknown';
             } catch (e) {
               console.log('No backup files found');
@@ -261,7 +261,7 @@ jobs:
               
               body += `**To restore from backup:**\n`;
               body += `\`\`\`bash\n`;
-              body += `python scripts/administration.py kv-restore backups/${backupFile}\n`;
+              body += `python scripts/administration.py kv-restore scripts/backups/${backupFile}\n`;
               body += `\`\`\`\n\n`;
               
               body += `⚠️ **Note:** If the new package uses a different storage structure, you may need to flush KV:\n`;

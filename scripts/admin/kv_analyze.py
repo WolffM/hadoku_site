@@ -5,12 +5,13 @@ Analyze KV keys and identify outdated/invalid patterns
 Current schema (v3.0+):
 - boards:{userId}                 # All boards for a user
 - tasks:{userId}:{boardId}        # All tasks for a specific board
-- stats:{userId}:{boardId}        # Statistics for a board
 - prefs:{userId}                  # User preferences
+- session-info:{sessionId}        # Session metadata
+- session-map:{authKey}           # Auth key to session mapping
 
 Invalid patterns to identify:
 - boards with nested user types (boards:admin:userId, boards:public:userId)
-- tasks/stats/prefs with nested user types
+- tasks/prefs with nested user types
 - Any other non-conforming patterns
 """
 
@@ -99,17 +100,7 @@ def analyze_keys(keys):
                 analysis['invalid']['tasks_nested'].append(key)
             else:
                 analysis['invalid']['tasks_unknown'].append(key)
-        
-        elif key.startswith('stats:'):
-            if len(parts) == 3:
-                # Valid: stats:{userId}:{boardId}
-                analysis['valid']['stats'].append(key)
-            elif len(parts) == 4:
-                # Potentially invalid: stats:{userType}:{userId}:{boardId}
-                analysis['invalid']['stats_nested'].append(key)
-            else:
-                analysis['invalid']['stats_unknown'].append(key)
-        
+
         elif key.startswith('prefs:'):
             if len(parts) == 2:
                 # Valid: prefs:{userId}
@@ -119,7 +110,21 @@ def analyze_keys(keys):
                 analysis['invalid']['prefs_nested'].append(key)
             else:
                 analysis['invalid']['prefs_unknown'].append(key)
-        
+
+        elif key.startswith('session-info:'):
+            if len(parts) == 2:
+                # Valid: session-info:{sessionId}
+                analysis['valid']['session-info'].append(key)
+            else:
+                analysis['invalid']['session-info_unknown'].append(key)
+
+        elif key.startswith('session-map:'):
+            if len(parts) == 2:
+                # Valid: session-map:{authKey}
+                analysis['valid']['session-map'].append(key)
+            else:
+                analysis['invalid']['session-map_unknown'].append(key)
+
         else:
             # Unknown/test keys
             analysis['invalid']['other'].append(key)
@@ -133,16 +138,16 @@ def print_analysis(analysis):
     print("=" * 80)
     print()
     
-    print(f"📊 Total Keys: {analysis['total']}")
+    print(f"[INFO] Total Keys: {analysis['total']}")
     print()
     
-    print("📈 Key Pattern Distribution:")
+    print("[INFO] Key Pattern Distribution:")
     for pattern, count in sorted(analysis['patterns'].items()):
         print(f"   {pattern}: {count} keys")
     print()
     
     # Valid keys
-    print("✅ VALID KEYS (Current Schema)")
+    print("[SUCCESS] VALID KEYS (Current Schema)")
     print("-" * 80)
     valid_total = 0
     for category, keys in sorted(analysis['valid'].items()):
@@ -155,7 +160,7 @@ def print_analysis(analysis):
     print()
     
     # Invalid keys
-    print("❌ INVALID/OUTDATED KEYS (Should be cleaned)")
+    print("[ERROR] INVALID/OUTDATED KEYS (Should be cleaned)")
     print("-" * 80)
     invalid_total = 0
     for category, keys in sorted(analysis['invalid'].items()):
@@ -171,24 +176,24 @@ def print_analysis(analysis):
     print("=" * 80)
     print("SUMMARY")
     print("=" * 80)
-    print(f"✅ Valid keys: {valid_total} ({valid_total/analysis['total']*100:.1f}%)")
-    print(f"❌ Invalid/outdated keys: {invalid_total} ({invalid_total/analysis['total']*100:.1f}%)")
+    print(f"[SUCCESS] Valid keys: {valid_total} ({valid_total/analysis['total']*100:.1f}%)")
+    print(f"[ERROR] Invalid/outdated keys: {invalid_total} ({invalid_total/analysis['total']*100:.1f}%)")
     print()
-    
+
     if invalid_total > 0:
-        print("⚠️  RECOMMENDATION:")
+        print("[WARNING] RECOMMENDATION:")
         print("   Run cleanup script to remove invalid keys")
         print("   Command: python scripts/admin/kv_cleanup.py --execute")
     else:
-        print("🎉 All keys are valid! No cleanup needed.")
+        print("[SUCCESS] All keys are valid! No cleanup needed.")
     print()
 
 def main():
-    print('🔍 Analyzing KV key structure...\n')
-    
+    print('[INFO] Analyzing KV key structure...\n')
+
     api_token = os.environ.get('CLOUDFLARE_API_TOKEN') or load_env()
     if not api_token:
-        print('❌ Error: CLOUDFLARE_API_TOKEN not found')
+        print('[ERROR] Error: CLOUDFLARE_API_TOKEN not found')
         return 1
     
     try:
@@ -200,12 +205,12 @@ def main():
         report_file = Path('kv-analysis-report.json')
         with open(report_file, 'w') as f:
             json.dump(analysis, f, indent=2)
-        print(f"📄 Detailed report saved to: {report_file}")
+        print(f"[INFO] Detailed report saved to: {report_file}")
         
         return 0
         
     except Exception as e:
-        print(f'❌ Analysis failed: {e}')
+        print(f'[ERROR] Analysis failed: {e}')
         import traceback
         traceback.print_exc()
         return 1

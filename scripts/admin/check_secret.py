@@ -53,9 +53,10 @@ def check_token(token):
         'Authorization': f'token {token}',
         'Accept': 'application/vnd.github.v3+json'
     }
-    
-    print("🔍 Validating token...")
-    
+
+
+    print("[INFO] Validating token...")
+
     # 1. Check if token is valid and get user info
     response = requests.get('https://api.github.com/user', headers=headers)
     
@@ -67,11 +68,11 @@ def check_token(token):
     
     user_data = response.json()
     username = user_data.get('login', 'unknown')
-    print(f"✅ Token is valid for user: {username}")
-    
+    print(f"[SUCCESS] Token is valid for user: {username}")
+
     # 2. Check token scopes
     scopes = response.headers.get('X-OAuth-Scopes', '')
-    print(f"📋 Token scopes: {scopes}")
+    print(f"[INFO] Token scopes: {scopes}")
     
     required_scopes = ['repo']
     missing_scopes = []
@@ -82,11 +83,11 @@ def check_token(token):
     
     if missing_scopes:
         return False, f"Token is missing required scopes: {', '.join(missing_scopes)}\nCurrent scopes: {scopes}"
-    
-    print("✅ Token has required 'repo' scope")
-    
+
+    print("[SUCCESS] Token has required 'repo' scope")
+
     # 3. Check access to hadoku_site repository
-    print("\n🔍 Checking access to WolffM/hadoku_site...")
+    print("\n[INFO] Checking access to WolffM/hadoku_site...")
     response = requests.get('https://api.github.com/repos/WolffM/hadoku_site', headers=headers)
     
     if response.status_code == 404:
@@ -97,19 +98,19 @@ def check_token(token):
     
     repo_data = response.json()
     permissions = repo_data.get('permissions', {})
-    
-    print(f"✅ Repository access confirmed")
+
+    print(f"[SUCCESS] Repository access confirmed")
     print(f"   - Can read: {permissions.get('pull', False)}")
     print(f"   - Can write: {permissions.get('push', False)}")
     print(f"   - Is admin: {permissions.get('admin', False)}")
-    
+
     if not permissions.get('push', False):
         return False, "Token does not have write (push) access to the repository"
-    
-    print("✅ Token has write access to repository")
-    
+
+    print("[SUCCESS] Token has write access to repository")
+
     # 4. Check rate limit
-    print("\n📊 Checking rate limits...")
+    print("\n[INFO] Checking rate limits...")
     response = requests.get('https://api.github.com/rate_limit', headers=headers)
     
     if response.status_code == 200:
@@ -132,29 +133,29 @@ def main():
     else:
         token = os.environ.get('HADOKU_SITE_TOKEN')
         if not token:
-            print("❌ Error: No token provided")
+            print("[ERROR] Error: No token provided")
             print("\nUsage:")
             print("  python check_secret.py <token>")
             print("  OR set HADOKU_SITE_TOKEN environment variable")
             return 1
         print("Using token from HADOKU_SITE_TOKEN environment variable")
-    
+
     # Validate token
     success, message = check_token(token)
-    
+
     print("\n" + "="*60)
     if success:
-        print("✅ VALIDATION SUCCESSFUL")
+        print("[SUCCESS] VALIDATION SUCCESSFUL")
         print(message)
-        print("\n✨ This token can be used for:")
+        print("\n[INFO] This token can be used for:")
         print("   - Pushing commits to hadoku_site")
         print("   - Triggering workflows")
         print("   - Creating/updating files")
         return 0
     else:
-        print("❌ VALIDATION FAILED")
+        print("[ERROR] VALIDATION FAILED")
         print(message)
-        print("\n💡 To fix:")
+        print("\n[INFO] To fix:")
         print("   1. Go to https://github.com/settings/tokens")
         print("   2. Generate a new token with 'repo' scope")
         print("   3. Update HADOKU_SITE_TOKEN in .env file")

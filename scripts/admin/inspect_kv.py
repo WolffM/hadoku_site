@@ -41,15 +41,15 @@ class CloudflareKVInspector:
         """Make a request to the Cloudflare API."""
         url = f"{CLOUDFLARE_API_BASE}{endpoint}"
         response = self.session.request(method, url, **kwargs)
-        
+
         if response.status_code != 200:
-            print(f"❌ API Error: {response.status_code}")
+            print(f"[ERROR] API Error: {response.status_code}")
             print(f"Response: {response.text}")
             sys.exit(1)
-        
+
         data = response.json()
         if not data.get('success'):
-            print(f"❌ API Error: {data.get('errors', 'Unknown error')}")
+            print(f"[ERROR] API Error: {data.get('errors', 'Unknown error')}")
             sys.exit(1)
         
         return data
@@ -61,8 +61,8 @@ class CloudflareKVInspector:
         
         if prefix:
             params['prefix'] = prefix
-        
-        print(f"🔍 Listing KV keys{f' with prefix: {prefix}' if prefix else ''}...")
+
+        print(f"[INFO] Listing KV keys{f' with prefix: {prefix}' if prefix else ''}...")
         
         all_keys = []
         cursor = None
@@ -79,8 +79,8 @@ class CloudflareKVInspector:
             cursor = data.get('result_info', {}).get('cursor')
             if not cursor:
                 break
-        
-        print(f"✅ Found {len(all_keys)} keys")
+
+        print(f"[SUCCESS] Found {len(all_keys)} keys")
         return all_keys
     
     def get_key_value(self, key: str) -> Optional[str]:
@@ -95,14 +95,14 @@ class CloudflareKVInspector:
                 return None
 
             if response.status_code != 200:
-                print(f"❌ API Error: {response.status_code}")
+                print(f"[ERROR] API Error: {response.status_code}")
                 print(f"Response: {response.text}")
                 return None
 
             # The values endpoint returns raw value, not JSON wrapped
             return response.text
         except Exception as e:
-            print(f"❌ Could not retrieve value for key: {key} - {e}")
+            print(f"[ERROR] Could not retrieve value for key: {key} - {e}")
             return None
 
     def delete_key(self, key: str) -> bool:
@@ -113,50 +113,51 @@ class CloudflareKVInspector:
             data = self._make_request('DELETE', endpoint)
             return True
         except Exception as e:
-            print(f"❌ Could not delete key: {key} - {e}")
+            print(f"[ERROR] Could not delete key: {key} - {e}")
             return False
     
     def inspect_key(self, key: str) -> None:
         """Inspect a specific key and its value."""
-        print(f"\n🔍 Inspecting key: {key}")
+        print(f"\n[INFO] Inspecting key: {key}")
         print("=" * 60)
-        
+
         value = self.get_key_value(key)
         if value is None:
-            print("❌ Key not found or could not retrieve value")
+            print("[ERROR] Key not found or could not retrieve value")
             return
-        
+
         # Try to parse as JSON for pretty printing
         try:
             json_data = json.loads(value)
-            print("📄 Value (JSON):")
+            print("[INFO] Value (JSON):")
             print(json.dumps(json_data, indent=2))
-            
+
             # Show some stats if it's a known structure
             if isinstance(json_data, dict):
                 if 'boards' in json_data:
                     boards = json_data['boards']
-                    print(f"\n📊 Boards Summary: {len(boards)} boards")
+                    print(f"\n[INFO] Boards Summary: {len(boards)} boards")
                     for board in boards:
                         task_count = len(board.get('tasks', []))
                         print(f"  • {board.get('name', board.get('id', 'Unknown'))}: {task_count} tasks")
-                
+
+
                 elif 'tasks' in json_data:
                     tasks = json_data['tasks']
-                    print(f"\n📊 Tasks Summary: {len(tasks)} tasks")
+                    print(f"\n[INFO] Tasks Summary: {len(tasks)} tasks")
                     active = sum(1 for t in tasks if t.get('state') == 'Active')
                     completed = sum(1 for t in tasks if t.get('state') == 'Completed')
                     print(f"  • Active: {active}")
                     print(f"  • Completed: {completed}")
-                
+
                 elif 'counters' in json_data:
                     counters = json_data['counters']
-                    print(f"\n📊 Stats Summary:")
+                    print(f"\n[INFO] Stats Summary:")
                     for key, value in counters.items():
                         print(f"  • {key}: {value}")
-        
+
         except json.JSONDecodeError:
-            print("📄 Value (Raw):")
+            print("[INFO] Value (Raw):")
             print(value)
         
         print("\n" + "=" * 60)
@@ -166,9 +167,9 @@ class CloudflareKVInspector:
         if not output_file:
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             output_file = f"kv-export-{timestamp}.json"
-        
-        print(f"📦 Exporting all KV data to: {output_file}")
-        
+
+        print(f"[INFO] Exporting all KV data to: {output_file}")
+
         keys = self.list_keys()
         export_data = {
             'metadata': {
@@ -178,8 +179,8 @@ class CloudflareKVInspector:
             },
             'data': {}
         }
-        
-        print("🔄 Fetching values for all keys...")
+
+        print("[INFO] Fetching values for all keys...")
         for i, key_info in enumerate(keys):
             key_name = key_info['name']
             print(f"  [{i+1}/{len(keys)}] {key_name}")
@@ -196,58 +197,58 @@ class CloudflareKVInspector:
         # Write to file
         with open(output_file, 'w') as f:
             json.dump(export_data, f, indent=2)
-        
-        print(f"✅ Export complete: {output_file}")
-        print(f"📊 Exported {len(export_data['data'])} keys")
+
+        print(f"[SUCCESS] Export complete: {output_file}")
+        print(f"[INFO] Exported {len(export_data['data'])} keys")
     
     def show_summary(self) -> None:
         """Show a summary of the KV namespace."""
-        print("🏠 Cloudflare KV Namespace Summary")
+        print("[INFO] Cloudflare KV Namespace Summary")
         print("=" * 50)
-        
+
         keys = self.list_keys()
-        
+
         # Categorize keys
         categories = {
             'boards': [],
             'tasks': [],
-            'stats': [],
             'prefs': [],
-            'session': [],
+            'session-info': [],
+            'session-map': [],
             'other': []
         }
-        
+
         for key_info in keys:
             key_name = key_info['name']
-            
+
             if key_name.startswith('boards:'):
                 categories['boards'].append(key_name)
             elif key_name.startswith('tasks:'):
                 categories['tasks'].append(key_name)
-            elif key_name.startswith('stats:'):
-                categories['stats'].append(key_name)
             elif key_name.startswith('prefs:'):
                 categories['prefs'].append(key_name)
-            elif key_name.startswith('session:'):
-                categories['session'].append(key_name)
+            elif key_name.startswith('session-info:'):
+                categories['session-info'].append(key_name)
+            elif key_name.startswith('session-map:'):
+                categories['session-map'].append(key_name)
             else:
                 categories['other'].append(key_name)
-        
+
         # Display summary
-        print(f"📊 Total Keys: {len(keys)}")
+        print(f"[INFO] Total Keys: {len(keys)}")
         print()
-        
+
         for category, key_list in categories.items():
             if key_list:
-                print(f"📁 {category.upper()}: {len(key_list)} keys")
-                if category in ['boards', 'tasks', 'stats', 'prefs']:
+                print(f"[INFO] {category.upper()}: {len(key_list)} keys")
+                if category in ['boards', 'tasks', 'prefs']:
                     # Show unique users/keys
                     users = set()
                     for key in key_list:
                         parts = key.split(':')
                         if len(parts) >= 2:
                             users.add(parts[1])  # The user key/identifier
-                    print(f"   👥 Unique users: {len(users)}")
+                    print(f"   [INFO] Unique users: {len(users)}")
                     if len(users) <= 10:  # Only show if not too many
                         for user in sorted(users):
                             user_keys = [k for k in key_list if f':{user}:' in k or k.endswith(f':{user}')]
@@ -289,19 +290,19 @@ def main():
     api_token = args.api_token or config.get('CLOUDFLARE_API_TOKEN')
     account_id = args.account_id or config.get('CLOUDFLARE_ACCOUNT_ID')
     namespace_id = args.namespace_id or config.get('CLOUDFLARE_NAMESPACE_ID')
-    
+
     if not api_token:
-        print("❌ Error: CLOUDFLARE_API_TOKEN not found")
+        print("[ERROR] Error: CLOUDFLARE_API_TOKEN not found")
         print("Set it in .env file or use --api-token parameter")
         sys.exit(1)
-    
+
     if not account_id:
-        print("❌ Error: CLOUDFLARE_ACCOUNT_ID not found")
+        print("[ERROR] Error: CLOUDFLARE_ACCOUNT_ID not found")
         print("You can find it in your Cloudflare dashboard")
         sys.exit(1)
-    
+
     if not namespace_id:
-        print("❌ Error: CLOUDFLARE_NAMESPACE_ID not found")
+        print("[ERROR] Error: CLOUDFLARE_NAMESPACE_ID not found")
         print("You can find it in your Workers KV dashboard")
         sys.exit(1)
     
@@ -318,18 +319,18 @@ def main():
         elif args.prefix:
             # List keys with prefix
             keys = inspector.list_keys(prefix=args.prefix)
-            print(f"\n📋 Keys with prefix '{args.prefix}':")
+            print(f"\n[INFO] Keys with prefix '{args.prefix}':")
             for key_info in keys:
                 print(f"  • {key_info['name']}")
         else:
             # Show summary
             inspector.show_summary()
-    
+
     except KeyboardInterrupt:
-        print("\n⚠️ Operation cancelled by user")
+        print("\n[WARNING] Operation cancelled by user")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[ERROR] Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

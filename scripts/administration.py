@@ -84,54 +84,47 @@ def run_command(args):
         
         elif command == 'kv-backup':
             # Complete backup (file + clear + upload + validate)
-            import subprocess
             script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'full-backup'])
             return result.returncode
-        
+
         elif command == 'kv-backup-fast':
             # Fast backup (file only)
-            import subprocess
             script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'fast-backup'])
             return result.returncode
-        
+
         elif command == 'kv-backup-file':
             # Backup to file only
-            import subprocess
             script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'backup-to-file'])
             return result.returncode
-        
+
         elif command == 'kv-backup-upload':
             # Upload to backup KV
             backup_file = args[2] if len(args) > 2 else None
-            import subprocess
             script_path = Path(__file__).parent / 'backup-kv.py'
             cmd = [sys.executable, str(script_path), 'backup-to-kv']
             if backup_file:
                 cmd.append(backup_file)
             result = subprocess.run(cmd)
             return result.returncode
-        
+
         elif command == 'kv-validate':
             # Validate backup against production
-            import subprocess
             script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'validate-backup'])
             return result.returncode
-        
+
         elif command == 'kv-restore':
             # Restore from backup KV or file
             source = args[2] if len(args) > 2 else 'kv'  # Default to backup KV
-            import subprocess
             script_path = Path(__file__).parent / 'backup-kv.py'
             result = subprocess.run([sys.executable, str(script_path), 'restore-from-backup', source])
             return result.returncode
-        
+
         elif command == 'kv-flush':
             # Flush using backup-kv.py script
-            import subprocess
             script_path = Path(__file__).parent / 'backup-kv.py'
             cmd = [sys.executable, str(script_path), 'flush']
             if '--force' in args:
@@ -145,12 +138,27 @@ def run_command(args):
                 key_index = args.index('--key')
                 if key_index + 1 < len(args):
                     key = args[key_index + 1]
-            from kv_operations import inspect_kv
-            return inspect_kv(key=key)
-        
+            from inspect_kv import CloudflareKVInspector, load_config
+
+            config = load_config()
+            api_token = config.get('CLOUDFLARE_API_TOKEN')
+            account_id = config.get('CLOUDFLARE_ACCOUNT_ID')
+            namespace_id = config.get('CLOUDFLARE_NAMESPACE_ID')
+
+            if not all([api_token, account_id, namespace_id]):
+                print("[ERROR] Error: Missing Cloudflare credentials in .env")
+                return 1
+
+            inspector = CloudflareKVInspector(api_token, account_id, namespace_id)
+            if key:
+                inspector.inspect_key(key)
+            else:
+                inspector.show_summary()
+            return 0
+
         elif command == 'kv-summary':
-            from kv_operations import kv_summary
-            return kv_summary()
+            from kv_summary import main as summary_main
+            return summary_main()
         
         elif command == 'kv-fetch':
             if len(args) < 3:
@@ -207,14 +215,14 @@ def run_command(args):
                 print(f"Valid modes: {', '.join(valid_modes)}")
                 return 1
             
-            print(f"🔄 Updating GitHub secrets (mode: {mode})...")
+            print(f"[INFO] Updating GitHub secrets (mode: {mode})...")
             script_path = ADMIN_DIR / 'manage_github_token.py'
             result = subprocess.run([sys.executable, str(script_path), f'--mode={mode}'])
-            
+
             if result.returncode == 0:
-                print("✅ GitHub secrets updated successfully")
+                print("[SUCCESS] GitHub secrets updated successfully")
             else:
-                print("❌ Failed to update GitHub secrets")
+                print("[ERROR] Failed to update GitHub secrets")
             
             return result.returncode
         

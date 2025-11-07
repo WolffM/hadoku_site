@@ -200,71 +200,7 @@ describe('Storage Format Tests', () => {
 		});
 	});
 
-	describe('Stats Storage', () => {
-		it('should store stats with correct KV key format', async () => {
-			const boardId = `test-${uniqueId()}`;
-
-			// Create board and task (stats are created when tasks exist)
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId, name: 'Stats Board' })
-			}, env);
-
-			await app.request('/task/api', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({
-					id: `task-${uniqueId()}`,
-					title: 'Task for stats',
-					boardId
-				})
-			}, env);
-
-			// Verify KV key format: stats:{sessionId}:{boardId}
-			const kvKey = `stats:test-admin-key:${boardId}`;
-			const statsData = await env.TASKS_KV.get(kvKey, 'json') as any;
-
-			expect(statsData).toBeDefined();
-			expect(statsData).toHaveProperty('version');
-			expect(statsData).toHaveProperty('counters');
-			expect(statsData).toHaveProperty('timeline');
-			expect(statsData).toHaveProperty('tasks');
-			expect(statsData).toHaveProperty('updatedAt');
-		});
-
-		it('should store stats with correct structure', async () => {
-			const boardId = `test-${uniqueId()}`;
-
-			// Create board and task
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId, name: 'Board' })
-			}, env);
-
-			await app.request('/task/api', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({
-					id: `task-${uniqueId()}`,
-					title: 'Task',
-					boardId
-				})
-			}, env);
-
-			// Check stats structure
-			const statsData = await env.TASKS_KV.get(`stats:test-admin-key:${boardId}`, 'json') as any;
-
-			expect(statsData.version).toBe(2);
-			expect(statsData.counters).toHaveProperty('created');
-			expect(statsData.counters).toHaveProperty('completed');
-			expect(statsData.counters).toHaveProperty('edited');
-			expect(statsData.counters).toHaveProperty('deleted');
-			expect(Array.isArray(statsData.timeline)).toBe(true);
-			expect(typeof statsData.tasks).toBe('object');
-		});
-	});
+	// Stats Storage tests removed - stats migrated to D1 database
 
 	describe('Preferences Storage', () => {
 		it('should store preferences with correct KV key format', async () => {

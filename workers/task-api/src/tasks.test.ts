@@ -62,9 +62,8 @@ describe('Task CRUD Operations', () => {
 		// Task should be removed from tasks array when completed
 		const task = board.tasks.find((t: any) => t.id === taskId);
 		expect(task).toBeUndefined();
-		
-		// Verify stats show the completion
-		expect(board.stats.counters.completed).toBe(1);
+
+		// Stats are now in D1 (tested separately)
 
 		// No cleanup needed - task is already removed
 		await deleteBoard(app, env, adminHeaders, boardId);

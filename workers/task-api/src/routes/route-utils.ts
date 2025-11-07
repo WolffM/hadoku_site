@@ -5,11 +5,13 @@
  */
 import type { Context } from 'hono';
 import type { TaskStorage, AuthContext as TaskAuthContext, UserType, TasksFile, StatsFile } from '@wolffm/task/api';
-import { boardsKey, tasksKey, statsKey } from '../kv-keys';
+import { boardsKey, tasksKey } from '../kv-keys';
 import { DEFAULT_BOARD_ID, DEFAULT_BOARD_NAME } from '../constants';
+import { getBoardStats as getD1BoardStats, getBoardTimeline, deleteBoardEvents, logTaskEvent } from '../events';
 
 type Env = {
 	TASKS_KV: KVNamespace;
+	DB: D1Database;
 };
 
 type AppContext = {
@@ -60,34 +62,51 @@ export function createKVStorage(env: Env): TaskStorage {
 			await env.TASKS_KV.put(kvKey, JSON.stringify(tasks));
 		},
 
-		// --- Stats (board scoped) ---
+		// --- Stats (board scoped) - NOW USING D1 ---
 		async getStats(userType: UserType, sessionId?: string, boardId?: string) {
 			if (!boardId) boardId = DEFAULT_BOARD_ID;
-			const kvKey = statsKey(sessionId, boardId);
-			const data = await env.TASKS_KV.get(kvKey, 'json') as StatsFile | null;
-			if (data) return data;
+			const userKey = sessionId || 'public';
+
+			// Query D1 for real-time stats
+			const counters = await getD1BoardStats(env.DB, userKey, boardId);
+			const timeline = await getBoardTimeline(env.DB, userKey, boardId, 100);
+
 			return {
 				version: 2,
-				counters: { created: 0, completed: 0, edited: 0, deleted: 0 },
-				timeline: [],
-				tasks: {},
+				counters,
+				timeline,
+				tasks: {},  // Deprecated - no longer storing full task history
 				updatedAt: new Date().toISOString(),
 			};
 		},
 		async saveStats(userType: UserType, sessionId: string | undefined, boardId: string | undefined, stats: StatsFile) {
+			// Extract new events from stats.timeline and log to D1
+			// The @wolffm/task package passes stats with timeline, we extract the latest event
 			if (!boardId) boardId = DEFAULT_BOARD_ID;
-			const kvKey = statsKey(sessionId, boardId);
-			await env.TASKS_KV.put(kvKey, JSON.stringify(stats));
+			const userKey = sessionId || 'public';
+
+			// Get the most recent event from timeline (last one added)
+			if (stats.timeline && stats.timeline.length > 0) {
+				const latestEvent = stats.timeline[stats.timeline.length - 1];
+
+				// Log to D1
+				await logTaskEvent(env.DB, {
+					userKey,
+					boardId,
+					taskId: latestEvent.id,
+					eventType: latestEvent.event as any,
+					metadata: latestEvent.metadata
+				});
+			}
 		},
 
 		// --- Delete board data ---
 		async deleteBoardData(userType: UserType, sessionId: string, boardId: string) {
-			// Delete tasks and stats for the board
+			// Delete tasks from KV and events from D1
 			const taskKey = tasksKey(sessionId, boardId);
-			const statKey = statsKey(sessionId, boardId);
 			await Promise.all([
 				env.TASKS_KV.delete(taskKey),
-				env.TASKS_KV.delete(statKey)
+				deleteBoardEvents(env.DB, sessionId, boardId)
 			]);
 		}
 	};

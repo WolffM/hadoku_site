@@ -70,16 +70,72 @@ export function createMockKV(): KVNamespace {
  * @param overrides - Optional environment overrides
  * @returns Test environment with mocked KV and keys
  */
+/**
+ * Create a mock D1 database for testing
+ */
+function createMockD1(): D1Database {
+	const store = new Map<string, any[]>();
+
+	return {
+		prepare(query: string) {
+			return {
+				bind(...values: any[]) {
+					return {
+						async run() {
+							// Mock INSERT/UPDATE/DELETE
+							return { success: true, meta: {} };
+						},
+						async all() {
+							// Mock SELECT with GROUP BY (for stats)
+							if (query.includes('GROUP BY event_type')) {
+								return { results: [], success: true };
+							}
+							// Mock SELECT for timeline
+							if (query.includes('ORDER BY timestamp DESC')) {
+								return { results: [], success: true };
+							}
+							return { results: [], success: true };
+						},
+						async first() {
+							return null;
+						},
+					};
+				},
+				async run() {
+					return { success: true, meta: {} };
+				},
+				async all() {
+					return { results: [], success: true };
+				},
+				async first() {
+					return null;
+				},
+			};
+		},
+		async dump() {
+			return new ArrayBuffer(0);
+		},
+		async batch(statements: any[]) {
+			return [];
+		},
+		async exec(query: string) {
+			return { count: 0, duration: 0 };
+		},
+	} as any;
+}
+
 export function createTestEnv(overrides: Partial<{
 	ADMIN_KEYS: string;
 	FRIEND_KEYS: string;
 	TASKS_KV: KVNamespace;
+	DB: D1Database;
 }> = {}) {
 	return {
 		// JSON key objects for testing
 		ADMIN_KEYS: JSON.stringify({ 'test-admin-key': 'admin' }),
 		FRIEND_KEYS: JSON.stringify({ 'test-friend-key': 'friend' }),
 		TASKS_KV: createMockKV(),
+		DB: createMockD1(),
 		...overrides,
 	};
 }

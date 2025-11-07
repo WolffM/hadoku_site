@@ -35,9 +35,9 @@ def bootstrap():
     
     # Check if venv exists
     if not venv_dir.exists():
-        print("📦 Virtual environment not found. Creating...")
+        print("[INFO] Virtual environment not found. Creating...")
         subprocess.run([sys.executable, '-m', 'venv', str(venv_dir)], check=True)
-        print("✅ Virtual environment created")
+        print("[SUCCESS] Virtual environment created")
     
     # Determine the python executable in venv
     if os.name == 'nt':  # Windows
@@ -49,20 +49,20 @@ def bootstrap():
     
     # If not in venv, restart script with venv python
     if not is_venv():
-        print(f"🔄 Restarting in virtual environment...")
+        print(f"[INFO] Restarting in virtual environment...")
         subprocess.run([str(venv_python), __file__] + sys.argv[1:], check=True)
         sys.exit(0)
-    
+
     # Check if dependencies are installed
     try:
         import requests
         import nacl
-        print("✅ Dependencies already installed")
+        print("[SUCCESS] Dependencies already installed")
     except ImportError:
-        print("📦 Installing dependencies...")
+        print("[INFO] Installing dependencies...")
         subprocess.run([str(venv_pip), 'install', 'requests', 'PyNaCl'], check=True)
-        print("✅ Dependencies installed")
-        print("🔄 Restarting to load new dependencies...")
+        print("[SUCCESS] Dependencies installed")
+        print("[INFO] Restarting to load new dependencies...")
         subprocess.run([str(venv_python), __file__] + sys.argv[1:], check=True)
         sys.exit(0)
 
@@ -146,105 +146,105 @@ class GitHubTokenManager:
     
     def step1_check_token(self) -> bool:
         """Step 1: Check if secrets exist in .env file."""
-        print(f"🔍 Step 1: Checking for secrets in .env file...")
+        print(f"[INFO] Step 1: Checking for secrets in .env file...")
         print(f"  Mode: {self.mode} ({self.config['description']})")
-        
+
         env = self.load_env()
         missing_secrets = []
         secret_mapping = self.config.get('secret_mapping', {})
-        
+
         for secret_name in self.config['secrets']:
             # Check if there's a mapping (e.g., ADMIN_KEY -> PUBLIC_ADMIN_KEY in .env)
             env_name = secret_mapping.get(secret_name, secret_name)
             secret_value = env.get(env_name, '')
-            
+
             if not secret_value:
                 missing_secrets.append(f"{secret_name} (looking for {env_name} in .env)")
             else:
                 self.secret_values[secret_name] = secret_value
                 if env_name != secret_name:
-                    print(f"  ✅ Found {secret_name} (from {env_name}): {secret_value[:20]}...")
+                    print(f"  [SUCCESS] Found {secret_name} (from {env_name}): {secret_value[:20]}...")
                 else:
-                    print(f"  ✅ Found {secret_name}: {secret_value[:20]}...")
-        
+                    print(f"  [SUCCESS] Found {secret_name}: {secret_value[:20]}...")
+
         if missing_secrets:
-            print(f"❌ Missing secrets: {', '.join(missing_secrets)}")
+            print(f"[ERROR] Missing secrets: {', '.join(missing_secrets)}")
             print(f"Please add them to your .env file")
             return False
-        
-        print(f"✅ All {len(self.config['secrets'])} secrets found")
+
+        print(f"[SUCCESS] All {len(self.config['secrets'])} secrets found")
         return True
     
     def step2_validate_token(self) -> bool:
         """Step 2: Validate the secrets."""
-        print("\n🔐 Step 2: Validating secrets...")
-        
+        print("\n[INFO] Step 2: Validating secrets...")
+
         # For child-repos mode, validate HADOKU_SITE_TOKEN
         if self.mode == 'child-repos' and 'HADOKU_SITE_TOKEN' in self.secret_values:
             token = self.secret_values['HADOKU_SITE_TOKEN']
-            
+
             # Test 1: Token validity (get user info)
-            print("  🧪 Testing HADOKU_SITE_TOKEN validity...")
+            print("  [INFO] Testing HADOKU_SITE_TOKEN validity...")
             response = requests.get(
                 "https://api.github.com/user",
                 headers={"Authorization": f"Bearer {token}"}
             )
-            
+
             if response.status_code != 200:
-                print(f"❌ Token validation failed: {response.status_code}")
+                print(f"[ERROR] Token validation failed: {response.status_code}")
                 print(f"Response: {response.text}")
                 return False
-            
+
             user_info = response.json()
-            print(f"✅ Token valid for user: {user_info.get('login', 'Unknown')}")
-            
+            print(f"[SUCCESS] Token valid for user: {user_info.get('login', 'Unknown')}")
+
             # Check token scopes
             scopes = response.headers.get('X-OAuth-Scopes', '')
             if scopes:
-                print(f"  📋 Token scopes: {scopes}")
-            
+                print(f"  [INFO] Token scopes: {scopes}")
+
             # Test 2: Check repository access
-            print("  🧪 Testing repository access...")
+            print("  [INFO] Testing repository access...")
             test_repo = self.config['repos'][0]
             response = requests.get(
                 f"https://api.github.com/repos/{test_repo}",
                 headers={"Authorization": f"Bearer {token}"}
             )
-            
+
             if response.status_code != 200:
-                print(f"❌ Repository access failed for {test_repo}: {response.status_code}")
+                print(f"[ERROR] Repository access failed for {test_repo}: {response.status_code}")
                 return False
-            
-            print(f"✅ Repository access confirmed for {test_repo}")
+
+            print(f"[SUCCESS] Repository access confirmed for {test_repo}")
         
         # For cloudflare mode, validate structure
         elif self.mode == 'cloudflare':
             if 'CLOUDFLARE_API_TOKEN' in self.secret_values:
                 token = self.secret_values['CLOUDFLARE_API_TOKEN']
-                print(f"  ✅ CLOUDFLARE_API_TOKEN present (length: {len(token)})")
-            
+                print(f"  [SUCCESS] CLOUDFLARE_API_TOKEN present (length: {len(token)})")
+
             if 'ROUTE_CONFIG' in self.secret_values:
                 route_config = self.secret_values['ROUTE_CONFIG']
-                print(f"  🧪 Validating ROUTE_CONFIG JSON structure...")
+                print(f"  [INFO] Validating ROUTE_CONFIG JSON structure...")
                 try:
                     import json
                     config_data = json.loads(route_config)
-                    print(f"  ✅ ROUTE_CONFIG is valid JSON with keys: {list(config_data.keys())}")
+                    print(f"  [SUCCESS] ROUTE_CONFIG is valid JSON with keys: {list(config_data.keys())}")
                 except json.JSONDecodeError as e:
-                    print(f"  ❌ ROUTE_CONFIG is not valid JSON: {e}")
+                    print(f"  [ERROR] ROUTE_CONFIG is not valid JSON: {e}")
                     return False
-            
+
             # Note: ADMIN_KEYS and FRIEND_KEYS are now managed directly in Cloudflare
             # via: pnpm --filter task-api exec wrangler secret put <SECRET_NAME>
-            print(f"  ℹ️  Note: ADMIN_KEYS and FRIEND_KEYS are managed directly in Cloudflare")
-        
-        print(f"✅ Validation complete")
+            print(f"  [INFO] Note: ADMIN_KEYS and FRIEND_KEYS are managed directly in Cloudflare")
+
+        print(f"[SUCCESS] Validation complete")
         return True
     
     def authenticate_github(self) -> bool:
         """Get GitHub token via OAuth Device Flow for API operations."""
-        print("\n🔐 Step 3: Getting GitHub API token for secret management...")
-        
+        print("\n[INFO] Step 3: Getting GitHub API token for secret management...")
+
         # Step 1: Request device code
         device_url = "https://github.com/login/device/code"
         response = requests.post(
@@ -252,26 +252,26 @@ class GitHubTokenManager:
             headers={"Accept": "application/json"},
             data={"client_id": CLIENT_ID, "scope": "repo"}
         )
-        
+
         if response.status_code != 200:
-            print(f"❌ Failed to get device code: {response.status_code}")
+            print(f"[ERROR] Failed to get device code: {response.status_code}")
             return False
-        
+
         data = response.json()
         device_code = data["device_code"]
         user_code = data["user_code"]
         verification_uri = data["verification_uri"]
         interval = data["interval"]
-        
-        print(f"\n📋 Please visit: {verification_uri}")
-        print(f"🔑 Enter code: {user_code}")
+
+        print(f"\n[INFO] Please visit: {verification_uri}")
+        print(f"[INFO] Enter code: {user_code}")
         print("\nWaiting for authorization (press Ctrl+C to cancel)...")
-        
+
         # Step 2: Poll for access token
         token_url = "https://github.com/login/oauth/access_token"
         while True:
             time.sleep(interval)
-            
+
             response = requests.post(
                 token_url,
                 headers={"Accept": "application/json"},
@@ -281,22 +281,22 @@ class GitHubTokenManager:
                     "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
                 }
             )
-            
+
             result = response.json()
-            
+
             if "access_token" in result:
-                print("✅ GitHub API authentication successful!")
+                print("[SUCCESS] GitHub API authentication successful!")
                 self.token = result["access_token"]
                 self.setup_session()
                 return True
             elif result.get("error") == "authorization_pending":
-                print("⏳ Still waiting...")
+                print("[INFO] Still waiting...")
                 continue
             elif result.get("error") == "slow_down":
                 interval += 5
                 continue
             else:
-                print(f"❌ Authentication failed: {result.get('error_description', result.get('error'))}")
+                print(f"[ERROR] Authentication failed: {result.get('error_description', result.get('error'))}")
                 return None
     
     def setup_session(self):
@@ -320,122 +320,122 @@ class GitHubTokenManager:
         """Step 4: Update secrets in all target repositories."""
         target_repos = self.config['repos']
         secret_names = self.config['secrets']
-        
-        print(f"\n📝 Step 4: Updating {len(secret_names)} secret(s) in {len(target_repos)} repository(ies)...")
-        
+
+        print(f"\n[INFO] Step 4: Updating {len(secret_names)} secret(s) in {len(target_repos)} repository(ies)...")
+
         total_operations = len(target_repos) * len(secret_names)
         success_count = 0
-        
+
         for repo in target_repos:
-            print(f"\n  📋 Processing {repo}...")
-            
+            print(f"\n  [INFO] Processing {repo}...")
+
             try:
                 # Get public key for this repo
-                print(f"    📥 Getting public key...")
+                print(f"    [INFO] Getting public key...")
                 url = f"https://api.github.com/repos/{repo}/actions/secrets/public-key"
                 response = self.session.get(url)
                 response.raise_for_status()
                 key_data = response.json()
-                
+
                 # Update each secret
                 for secret_name in secret_names:
                     secret_value = self.secret_values[secret_name]
-                    
-                    print(f"    🔐 Encrypting {secret_name}...")
+
+                    print(f"    [INFO] Encrypting {secret_name}...")
                     encrypted_value = self.encrypt_secret(key_data["key"], secret_value)
-                    
-                    print(f"    📤 Updating {secret_name}...")
+
+                    print(f"    [INFO] Updating {secret_name}...")
                     url = f"https://api.github.com/repos/{repo}/actions/secrets/{secret_name}"
                     payload = {
                         "encrypted_value": encrypted_value,
                         "key_id": key_data["key_id"]
                     }
-                    
+
                     response = self.session.put(url, json=payload)
                     response.raise_for_status()
-                    
-                    print(f"    ✅ Successfully updated {secret_name} in {repo}")
+
+                    print(f"    [SUCCESS] Successfully updated {secret_name} in {repo}")
                     success_count += 1
-                
+
             except requests.exceptions.RequestException as e:
-                print(f"    ❌ Failed to update {repo}: {e}")
+                print(f"    [ERROR] Failed to update {repo}: {e}")
                 if hasattr(e, 'response') and e.response is not None:
                     print(f"    Response: {e.response.text}")
             except Exception as e:
-                print(f"    ❌ Unexpected error for {repo}: {e}")
-        
-        print(f"\n📊 Update Summary: {success_count}/{total_operations} successful")
+                print(f"    [ERROR] Unexpected error for {repo}: {e}")
+
+        print(f"\n[INFO] Update Summary: {success_count}/{total_operations} successful")
         return success_count == total_operations
     
     def step4_verify_secrets(self) -> bool:
         """Step 5: Verify that secrets were updated successfully."""
         target_repos = self.config['repos']
         secret_names = self.config['secrets']
-        
-        print(f"\n🔍 Step 5: Verifying secret updates...")
-        
+
+        print(f"\n[INFO] Step 5: Verifying secret updates...")
+
         total_operations = len(target_repos) * len(secret_names)
         verified_count = 0
-        
+
         for repo in target_repos:
-            print(f"\n  📋 Verifying {repo}...")
-            
+            print(f"\n  [INFO] Verifying {repo}...")
+
             for secret_name in secret_names:
                 try:
                     url = f"https://api.github.com/repos/{repo}/actions/secrets/{secret_name}"
                     response = self.session.get(url)
-                    
+
                     if response.status_code == 200:
                         secret_info = response.json()
-                        print(f"    ✅ Secret {secret_name} exists")
-                        print(f"       📅 Updated: {secret_info.get('updated_at', 'Unknown')}")
+                        print(f"    [SUCCESS] Secret {secret_name} exists")
+                        print(f"       [INFO] Updated: {secret_info.get('updated_at', 'Unknown')}")
                         verified_count += 1
                     elif response.status_code == 404:
-                        print(f"    ❌ Secret {secret_name} not found")
+                        print(f"    [ERROR] Secret {secret_name} not found")
                     else:
-                        print(f"    ⚠️  Unexpected response for {secret_name}: {response.status_code}")
-                        
+                        print(f"    [WARNING] Unexpected response for {secret_name}: {response.status_code}")
+
                 except requests.exceptions.RequestException as e:
-                    print(f"    ❌ Failed to verify {secret_name}: {e}")
+                    print(f"    [ERROR] Failed to verify {secret_name}: {e}")
                 except Exception as e:
-                    print(f"    ❌ Unexpected error for {secret_name}: {e}")
-        
-        print(f"\n📊 Verification Summary: {verified_count}/{total_operations} verified")
+                    print(f"    [ERROR] Unexpected error for {secret_name}: {e}")
+
+        print(f"\n[INFO] Verification Summary: {verified_count}/{total_operations} verified")
         return verified_count == total_operations
     
     def run_complete_flow(self) -> bool:
         """Run the complete secret management flow."""
-        print("🚀 GitHub Secrets Management - Complete Flow")
-        print(f"📋 Mode: {self.mode}")
-        print(f"📝 Secrets: {', '.join(self.config['secrets'])}")
-        print(f"🎯 Target Repos: {', '.join(self.config['repos'])}")
+        print("[INFO] GitHub Secrets Management - Complete Flow")
+        print(f"[INFO] Mode: {self.mode}")
+        print(f"[INFO] Secrets: {', '.join(self.config['secrets'])}")
+        print(f"[INFO] Target Repos: {', '.join(self.config['repos'])}")
         print("=" * 60)
-        
+
         # Step 1: Check for token
         if not self.step1_check_token():
             return False
-        
+
         # Step 2: Validate token
         if not self.step2_validate_token():
             return False
-        
+
         # Step 3: Get GitHub API token for secret management
         if not self.authenticate_github():
             return False
-        
+
         # Step 4: Update secrets
         if not self.step3_update_secrets():
-            print("⚠️  Some updates failed, but continuing with verification...")
-        
+            print("[WARNING] Some updates failed, but continuing with verification...")
+
         # Step 5: Verify secrets
         verification_success = self.step4_verify_secrets()
-        
+
         print("\n" + "=" * 60)
         if verification_success:
-            print("🎉 Complete flow successful! All secrets updated and verified.")
+            print("[SUCCESS] Complete flow successful! All secrets updated and verified.")
         else:
-            print("⚠️  Flow completed with some issues. Check the logs above.")
-        
+            print("[WARNING] Flow completed with some issues. Check the logs above.")
+
         return verification_success
 
 # ============================================================================
@@ -490,16 +490,16 @@ Note:
                 all_success = False
         
         if all_success:
-            print("\n✨ All done! Your GitHub secrets are up to date.")
+            print("\n[SUCCESS] All done! Your GitHub secrets are up to date.")
             sys.exit(0)
         else:
-            print("\n❌ There were some issues. Please review the output above.")
+            print("\n[ERROR] There were some issues. Please review the output above.")
             sys.exit(1)
     except KeyboardInterrupt:
-        print("\n\n⚠️  Operation cancelled by user.")
+        print("\n\n[WARNING] Operation cancelled by user.")
         sys.exit(1)
     except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
+        print(f"\n[ERROR] Unexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

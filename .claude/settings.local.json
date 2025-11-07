@@ -16,7 +16,20 @@
       "Bash(cmd /c \"chcp 65001 > nul && cd scripts && python administration.py verify-install\")",
       "Bash(cmd.exe /c \"cd scripts && python administration.py kv-summary\")",
       "Bash(pnpm exec tsc:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh workflow:*)",
+      "Bash(gh run view:*)",
+      "Bash(powershell -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; python scripts/administration.py kv-summary\")",
+      "Bash(cmd /c \"set HADOKU_SITE_TOKEN= && python scripts/administration.py check-token\")",
+      "Bash(powershell -Command \"$env:HADOKU_SITE_TOKEN=''''; python scripts/administration.py check-token\")",
+      "Bash(powershell -Command \"$env:PYTHONIOENCODING=''utf-8''; $env:HADOKU_SITE_TOKEN=''''; python scripts/administration.py check-token\")",
+      "Bash(powershell -Command \"Remove-Item Env:HADOKU_SITE_TOKEN -ErrorAction SilentlyContinue; python scripts/administration.py check-token\")",
+      "Bash(pnpm list:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm exec wrangler:*)",
+      "Bash(export CLOUDFLARE_API_TOKEN=oM9Rn4-IZz2AWvwDawJvB6mRgqK6e1y5dmk2XtTO)",
+      "Bash(export PYTHONIOENCODING=utf-8)"
     ],
     "deny": [],
     "ask": []

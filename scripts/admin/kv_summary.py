@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Export and display current KV state in a readable format.
 Shows boards and their tasks for each user key.
@@ -7,9 +8,15 @@ Shows boards and their tasks for each user key.
 import requests
 import json
 import os
+import sys
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+
+# Ensure UTF-8 encoding for output (fixes emoji display issues)
+if sys.stdout.encoding != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4"
 
@@ -150,7 +157,7 @@ def main():
                 board_name = board['name']
                 tags = board.get('tags', [])
                 
-                print(f"  📋 Board: {board_name} (id: {board_id})")
+                print(f"  [INFO] Board: {board_name} (id: {board_id})")
                 if tags:
                     print(f"     Tags: {', '.join(tags)}")
                 
@@ -172,13 +179,13 @@ def main():
                         else:
                             print(f"     Active Tasks: 0")
                     else:
-                        print(f"     ⚠️  Could not load tasks")
+                        print(f"     [WARNING] Could not load tasks")
                 else:
                     print(f"     Active Tasks: 0 (no task key)")
                 
                 print()
         else:
-            print(f"⚠️  Could not load boards data")
+            print(f"[WARNING] Could not load boards data")
         
         print()
     

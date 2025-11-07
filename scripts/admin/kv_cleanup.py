@@ -3,7 +3,7 @@
 KV Cleanup Script - Remove outdated/invalid keys
 
 This script removes keys that don't match the current schema:
-- Valid: boards:{userId}, tasks:{userId}:{boardId}, stats:{userId}:{boardId}, prefs:{userId}
+- Valid: boards:{userId}, tasks:{userId}:{boardId}, prefs:{userId}, session-info:{sessionId}, session-map:{authKey}
 - Invalid: nested user types (boards:admin:userId, tasks:public:userId:boardId, etc.)
 
 Usage:
@@ -76,11 +76,7 @@ def identify_invalid_keys(keys):
         elif key.startswith('tasks:'):
             if len(parts) != 3:
                 invalid_keys.append(key)
-        
-        elif key.startswith('stats:'):
-            if len(parts) != 3:
-                invalid_keys.append(key)
-        
+
         elif key.startswith('prefs:'):
             if len(parts) != 2:
                 invalid_keys.append(key)
@@ -109,31 +105,31 @@ def main():
     args = parser.parse_args()
     
     if not args.dry_run and not args.execute:
-        print("❌ Error: Must specify either --dry-run or --execute")
+        print("[ERROR] Error: Must specify either --dry-run or --execute")
         print("Usage:")
         print("  python kv_cleanup.py --dry-run    # Preview deletions")
         print("  python kv_cleanup.py --execute    # Actually delete")
         return 1
-    
-    print('🔍 KV Cleanup Script\n')
+
+    print('[INFO] KV Cleanup Script\n')
     
     api_token = os.environ.get('CLOUDFLARE_API_TOKEN') or load_env()
     if not api_token:
-        print('❌ Error: CLOUDFLARE_API_TOKEN not found')
+        print('[ERROR] Error: CLOUDFLARE_API_TOKEN not found')
         return 1
-    
+
     try:
         # Get all keys
-        print('📋 Fetching all keys...')
+        print('[INFO] Fetching all keys...')
         all_keys = list_all_keys(api_token)
-        print(f'✅ Found {len(all_keys)} total keys\n')
-        
+        print(f'[SUCCESS] Found {len(all_keys)} total keys\n')
+
         # Identify invalid keys
         invalid_keys = identify_invalid_keys(all_keys)
-        print(f'❌ Found {len(invalid_keys)} invalid/outdated keys:\n')
-        
+        print(f'[ERROR] Found {len(invalid_keys)} invalid/outdated keys:\n')
+
         if not invalid_keys:
-            print('🎉 No invalid keys found! KV is clean.')
+            print('[SUCCESS] No invalid keys found! KV is clean.')
             return 0
         
         # Group by category for display
@@ -155,7 +151,7 @@ def main():
         # Dry run or execute
         if args.dry_run:
             print('=' * 80)
-            print('🔍 DRY RUN MODE - No keys will be deleted')
+            print('[INFO] DRY RUN MODE - No keys will be deleted')
             print('=' * 80)
             print(f'\nWould delete {len(invalid_keys)} keys')
             print('\nTo actually delete these keys, run:')
@@ -164,15 +160,15 @@ def main():
         
         # Execute deletion
         print('=' * 80)
-        print('⚠️  DELETION MODE - Keys will be permanently deleted!')
+        print('[WARNING] DELETION MODE - Keys will be permanently deleted!')
         print('=' * 80)
         confirm = input(f'\nType "DELETE" to confirm deletion of {len(invalid_keys)} keys: ')
-        
+
         if confirm != 'DELETE':
-            print('❌ Deletion cancelled')
+            print('[ERROR] Deletion cancelled')
             return 1
-        
-        print('\n🗑️  Deleting invalid keys...')
+
+        print('\n[INFO] Deleting invalid keys...')
         success_count = 0
         failed_count = 0
         
@@ -183,9 +179,9 @@ def main():
                 print(f'\r  Progress: {i}/{len(invalid_keys)} ({success_count} deleted)', end='', flush=True)
             except Exception as e:
                 failed_count += 1
-                print(f'\n  ❌ Failed to delete {key}: {e}')
-        
-        print(f'\n\n✅ Cleanup complete!')
+                print(f'\n  [ERROR] Failed to delete {key}: {e}')
+
+        print(f'\n\n[SUCCESS] Cleanup complete!')
         print(f'   Deleted: {success_count}')
         print(f'   Failed: {failed_count}')
         print(f'   Remaining keys: {len(all_keys) - success_count}')
@@ -193,7 +189,7 @@ def main():
         return 0 if failed_count == 0 else 1
         
     except Exception as e:
-        print(f'❌ Cleanup failed: {e}')
+        print(f'[ERROR] Cleanup failed: {e}')
         import traceback
         traceback.print_exc()
         return 1

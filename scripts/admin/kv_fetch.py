@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Fetch all KV data for a specific user key in a compact view.
-Shows boards, tasks, stats, and preferences for the user.
+Shows boards, tasks, and preferences for the user.
+Note: Stats have been migrated to D1 database and are no longer in KV.
 """
 
 import requests
@@ -107,20 +108,19 @@ def fetch_user_data(user_key):
     user_keys = [k for k in all_keys if f':{user_key}' in k or k.endswith(f':{user_key}')]
     
     if not user_keys:
-        print(f"❌ No keys found for user: {user_key}")
+        print(f"[ERROR] No keys found for user: {user_key}")
         return 1
-    
+
     print(f"Found {len(user_keys)} keys")
     print()
-    
+
     # Organize by type
     boards_key = f'boards:{user_key}'
     prefs_key = f'prefs:{user_key}'
     tasks_keys = [k for k in user_keys if k.startswith(f'tasks:{user_key}:')]
-    stats_keys = [k for k in user_keys if k.startswith(f'stats:{user_key}:')]
-    
+
     # Boards
-    print("📋 BOARDS")
+    print("[INFO] BOARDS")
     print("-" * 80)
     boards_data = get_value(boards_key)
     if boards_data:
@@ -135,7 +135,7 @@ def fetch_user_data(user_key):
     print()
     
     # Tasks (for each board)
-    print("✓ TASKS")
+    print("[INFO] TASKS")
     print("-" * 80)
     if tasks_keys:
         for task_key in sorted(tasks_keys):
@@ -155,27 +155,9 @@ def fetch_user_data(user_key):
     else:
         print("  No tasks data")
     print()
-    
-    # Stats
-    print("📊 STATS")
-    print("-" * 80)
-    if stats_keys:
-        for stats_key in sorted(stats_keys):
-            board_id = stats_key.split(':')[2]
-            stats_data = get_value(stats_key)
-            if stats_data and isinstance(stats_data, dict):
-                counters = stats_data.get('counters', {})
-                print(f"  Board: {board_id}")
-                print(f"    Created: {counters.get('created', 0)}, " +
-                      f"Completed: {counters.get('completed', 0)}, " +
-                      f"Edited: {counters.get('edited', 0)}, " +
-                      f"Deleted: {counters.get('deleted', 0)}")
-    else:
-        print("  No stats data")
-    print()
-    
+
     # Preferences
-    print("⚙️  PREFERENCES")
+    print("[INFO] PREFERENCES")
     print("-" * 80)
     prefs_data = get_value(prefs_key)
     if prefs_data:
