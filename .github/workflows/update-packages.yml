@@ -177,10 +177,16 @@ jobs:
           pnpm run generate-registry
           echo "✅ Updated public/mf/registry.json with new versions"
       
-      - name: Regenerate registry for themes
+      - name: Update themes bundle
         if: steps.parse.outputs.update_themes == 'true'
         run: |
-          echo "📦 Regenerating registry for themes update..."
+          echo "🔨 Rebuilding themes bundle..."
+          echo "📦 Updating themes micro-frontend bundle..."
+          pnpm run update-themes-bundle
+          echo "✅ Updated public/mf/themes/ bundle files"
+
+          # Regenerate registry with new version numbers for cache busting
+          echo "📦 Regenerating registry with cache-busting version..."
           pnpm run generate-registry
           echo "✅ Updated public/mf/registry.json with new versions"
       
