@@ -203,8 +203,9 @@ jobs:
           else
             PACKAGES='${{ steps.parse.outputs.packages }}'
             PACKAGE_LIST=$(echo "$PACKAGES" | jq -r '.[]' | paste -sd ", " -)
-            
-            git add package.json pnpm-lock.yaml workers/task-api/package.json public/mf/
+
+            # Add any changes that occurred during package updates
+            git add -A
             git commit -m "chore: update packages - $PACKAGE_LIST" \
                        -m "Auto-updated from repository dispatch" \
                        -m "Packages: $PACKAGE_LIST" \
