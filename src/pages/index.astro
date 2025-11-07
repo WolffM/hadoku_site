@@ -158,12 +158,12 @@ const appInfo: Record<string, { title: string; description: string; icon: string
             <span class="text-sm font-medium text-text">${meta.name}</span>
             ${theme === currentTheme ? '<span class="ml-auto text-primary text-xl">✓</span>' : ''}
           `;
-          option.addEventListener('click', () => {
+          option.addEventListener('click', async () => {
             setTheme(theme);
             saveTheme(theme);
             updateButton(theme);
             menu.classList.add('hidden');
-            
+
             // Update all options to remove/add checkmark
             optionsContainer.querySelectorAll('button').forEach(btn => {
               btn.classList.remove('bg-primary-hover');
@@ -175,6 +175,29 @@ const appInfo: Record<string, { title: string; description: string; icon: string
             checkmark.className = 'ml-auto text-primary text-xl';
             checkmark.textContent = '✓';
             option.appendChild(checkmark);
+
+            // Sync theme to API for cross-device persistence
+            try {
+              const sessionId = localStorage.getItem('sessionId');
+              if (sessionId) {
+                const response = await fetch('/task/api/preferences', {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-Id': sessionId
+                  },
+                  body: JSON.stringify({ theme })
+                });
+
+                if (response.ok) {
+                  console.log('[Theme] Synced to API:', theme);
+                } else {
+                  console.warn('[Theme] Failed to sync to API:', response.status);
+                }
+              }
+            } catch (err) {
+              console.error('[Theme] Error syncing to API:', err);
+            }
           });
           optionsContainer.appendChild(option);
         });
