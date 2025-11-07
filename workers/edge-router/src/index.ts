@@ -169,19 +169,42 @@ async function handleApiRoute(
  */
 async function proxyToGitHubPages(request: Request, path: string, env: Env): Promise<Response> {
   const targetUrl = new URL(path, env.STATIC_ORIGIN).toString();
-  
+
   try {
     const res = await fetch(targetUrl, {
       method: request.method,
       headers: request.headers,
       redirect: 'follow'
     });
-    
-    // Add header to indicate source
+
+    const contentType = res.headers.get('content-type') || '';
+
+    // Strip Cloudflare analytics beacon from HTML responses
+    if (contentType.includes('text/html')) {
+      let html = await res.text();
+
+      // Remove Cloudflare Insights beacon script
+      html = html.replace(
+        /<script[^>]*src=["'][^"']*cloudflareinsights\.com[^"']*["'][^>]*><\/script>/gi,
+        ''
+      );
+
+      // Create response with modified HTML
+      const newRes = new Response(html, {
+        status: res.status,
+        statusText: res.statusText,
+        headers: new Headers(res.headers)
+      });
+      newRes.headers.set('X-Backend-Source', 'github-pages');
+      newRes.headers.set('X-Beacon-Stripped', 'true');
+      return newRes;
+    }
+
+    // For non-HTML content, pass through unchanged
     const newRes = new Response(res.body, res);
     newRes.headers.set('X-Backend-Source', 'github-pages');
     return newRes;
-    
+
   } catch (e) {
     return new Response(`Failed to fetch from GitHub Pages: ${(e as Error).message}`, {
       status: 502,
