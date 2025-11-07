@@ -58,15 +58,21 @@ export const DEFAULT_THROTTLE_LIMITS: ThrottleLimits = {
 export const THROTTLE_THRESHOLDS = {
 	// Blacklist after this many violations in a row
 	BLACKLIST_VIOLATION_COUNT: 3,
-	
+
 	// How long to keep throttle state (cleanup)
 	STATE_TTL_MS: 5 * 60 * 1000,  // 5 minutes
-	
+
 	// How long to keep incident records
 	INCIDENT_TTL_SECONDS: 24 * 60 * 60,  // 24 hours
-	
+
 	// Max incidents to store per sessionId
-	MAX_INCIDENTS_PER_SESSION: 100
+	MAX_INCIDENTS_PER_SESSION: 100,
+
+	// Suspicious pattern detection thresholds
+	MAX_SESSIONS_PER_AUTH: 10,  // Flag if more than this many sessions per auth key
+	MAX_TOTAL_VIOLATIONS: 20,   // Flag if total violations exceed this
+	MAX_RECENT_VIOLATIONS: 50,  // Flag if violations in last hour exceed this
+	RECENT_WINDOW_MS: 60 * 60 * 1000  // Time window for recent violations (1 hour)
 };
 
 /**
@@ -265,12 +271,12 @@ export async function checkSuspiciousPatterns(
 	sessionIds: string[]
 ): Promise<{ suspicious: boolean; reasons: string[] }> {
 	const reasons: string[] = [];
-	
+
 	// Pattern 1: Too many active sessions
-	if (sessionIds.length > 10) {
+	if (sessionIds.length > THROTTLE_THRESHOLDS.MAX_SESSIONS_PER_AUTH) {
 		reasons.push(`Unusual number of sessions: ${sessionIds.length}`);
 	}
-	
+
 	// Pattern 2: Check for high violation rates across sessions
 	let totalViolations = 0;
 	for (const sessionId of sessionIds) {
@@ -279,24 +285,24 @@ export async function checkSuspiciousPatterns(
 			totalViolations += state.violations;
 		}
 	}
-	
-	if (totalViolations > 20) {
+
+	if (totalViolations > THROTTLE_THRESHOLDS.MAX_TOTAL_VIOLATIONS) {
 		reasons.push(`High violation count across sessions: ${totalViolations}`);
 	}
-	
+
 	// Pattern 3: Check recent incidents
 	const recentIncidents: IncidentRecord[] = [];
 	for (const sessionId of sessionIds.slice(0, 5)) {  // Check last 5 sessions
 		const incidents = await getIncidents(kv, sessionId);
 		recentIncidents.push(...incidents);
 	}
-	
+
 	const recentViolations = recentIncidents.filter(
-		i => i.type === 'throttle_violation' && 
-		Date.now() - new Date(i.timestamp).getTime() < 60 * 60 * 1000  // Last hour
+		i => i.type === 'throttle_violation' &&
+		Date.now() - new Date(i.timestamp).getTime() < THROTTLE_THRESHOLDS.RECENT_WINDOW_MS
 	);
-	
-	if (recentViolations.length > 50) {
+
+	if (recentViolations.length > THROTTLE_THRESHOLDS.MAX_RECENT_VIOLATIONS) {
 		reasons.push(`High recent violation rate: ${recentViolations.length} in last hour`);
 	}
 	

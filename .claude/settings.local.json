@@ -5,7 +5,18 @@
       "Bash(python:*)",
       "Bash(find:*)",
       "Bash(npm test:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(chcp 65001)",
+      "Bash(nul)",
+      "Bash(set:*)",
+      "Bash(done)",
+      "Bash(git checkout:*)",
+      "Bash(powershell -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; cd scripts; python administration.py verify-install\")",
+      "Bash(powershell -Command \"$env:PYTHONIOENCODING=''utf-8''; cd scripts; python administration.py verify-install\")",
+      "Bash(cmd /c \"chcp 65001 > nul && cd scripts && python administration.py verify-install\")",
+      "Bash(cmd.exe /c \"cd scripts && python administration.py kv-summary\")",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(pnpm test:*)"
     ],
     "deny": [],
     "ask": []

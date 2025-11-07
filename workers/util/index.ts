@@ -87,11 +87,7 @@ export {
 	conflict,
 	serverError,
 	validationError,
-	healthCheck,
-	createHealthCheckHandler,
-	handleError,
-	withErrorHandling,
-	responses
+	healthCheck
 } from './responses.js';
 
 // Types
