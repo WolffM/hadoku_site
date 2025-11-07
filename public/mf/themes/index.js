@@ -1,7 +1,7 @@
 /**
  * Hadoku Theme System - Utilities
  * Framework-agnostic theme management for Hadoku themes
- * 24 beautiful themes across 12 theme families
+ * 18 beautiful themes across 9 theme families
  */
 export const THEMES = [
     'light',
@@ -20,14 +20,8 @@ export const THEMES = [
     'cyberpunk-dark',
     'pink-light',
     'pink-dark',
-    'kitsune-springs-a-light',
-    'kitsune-springs-a-dark',
-    'kitsune-springs-b-light',
-    'kitsune-springs-b-dark',
-    'kitsune-springs-c-light',
-    'kitsune-springs-c-dark',
-    'kitsune-springs-d-light',
-    'kitsune-springs-d-dark'
+    'izakaya-light',
+    'izakaya-dark'
 ];
 /**
  * Set the active theme
@@ -59,19 +53,28 @@ export function saveTheme(theme) {
 }
 /**
  * Load saved theme from sessionStorage
- * @returns Saved theme or 'light' if none saved
+ * @returns Saved theme, or browser preference, or 'light' if none available
  */
 export function loadTheme() {
+    // First check sessionStorage
     const saved = sessionStorage.getItem('hadoku-theme');
     if (saved && THEMES.includes(saved)) {
         setTheme(saved);
         return saved;
     }
+    // If no saved theme, respect browser's color scheme preference
+    if (typeof window !== 'undefined' && window.matchMedia) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const browserTheme = prefersDark ? 'dark' : 'light';
+        setTheme(browserTheme);
+        return browserTheme;
+    }
+    // Final fallback to light
     return 'light';
 }
 /**
  * Initialize theme system on page load
- * Loads saved theme or defaults to light
+ * Loads saved theme, respects browser preference, or defaults to light
  */
 export function initTheme() {
     return loadTheme();
