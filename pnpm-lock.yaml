@@ -17,6 +17,9 @@ importers:
       '@wolffm/task':
         specifier: ^3.3.1
         version: 3.3.1
+      '@wolffm/task-ui-components':
+        specifier: ^1.0.2
+        version: 1.0.2(react@19.2.0)
       '@wolffm/themes':
         specifier: 1.0.20
         version: 1.0.20
@@ -1081,6 +1084,11 @@ packages:
 
   '@vitest/utils@4.0.4':
     resolution: {integrity: sha512-4bJLmSvZLyVbNsYFRpPYdJViG9jZyRvMZ35IF4ymXbRZoS+ycYghmwTGiscTXduUg2lgKK7POWIyXJNute1hjw==}
+
+  '@wolffm/task-ui-components@1.0.2':
+    resolution: {integrity: sha512-CtDUhLi/G4tfSdSQGZonffDgdks10vYHumfXK6pxh6m4Th3N45IerGEGe+4e+Rt6lEyFYKRnze/0zArc83B6Hw==, tarball: https://npm.pkg.github.com/download/@wolffm/task-ui-components/1.0.2/90539d2ef741d3e9ed5a88870d9f49b12031b1f9}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
 
   '@wolffm/task@3.3.1':
     resolution: {integrity: sha512-VaLkUY8KAtVlCKYT8uw8KK1IJKT1OGj8d4yOWq0BwL2vAgdkIBjztAwpldCJNMMqvnanXs2Vs9Gv8Wcetqppjw==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.3.1/e8d916edd0253c883fcadbdf8f17357de206455b}
@@ -3816,6 +3824,10 @@ snapshots:
     dependencies:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
+
+  '@wolffm/task-ui-components@1.0.2(react@19.2.0)':
+    dependencies:
+      react: 19.2.0
 
   '@wolffm/task@3.3.1':
     dependencies:
