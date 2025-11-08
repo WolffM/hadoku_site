@@ -84,11 +84,9 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     </div>
   </div>
 
-  <script type="module" define:vars={{ 
-    appInfo, 
-    appVisibility,
-    adminKey: import.meta.env.PUBLIC_ADMIN_KEY || 'default-admin-key',
-    friendKey: import.meta.env.PUBLIC_FRIEND_KEY || 'default-friend-key'
+  <script type="module" define:vars={{
+    appInfo,
+    appVisibility
   }}>
     // Wait for theme system to be available
     function waitForThemes(callback) {
@@ -226,21 +224,25 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     
     // Get access key from URL
     const params = new URLSearchParams(window.location.search);
-    const key = params.get('key');
-    
-    // Access configuration (from build-time env vars)
-    const ADMIN_KEY = adminKey;
-    const FRIEND_KEY = friendKey;
-    
-    // Determine user type based on key
-    let userType = 'public';
-    if (key === ADMIN_KEY) {
-      userType = 'admin';
-    } else if (key === FRIEND_KEY) {
-      userType = 'friend';
+    const urlKey = params.get('key');
+
+    // Store key in localStorage if provided in URL
+    if (urlKey) {
+      localStorage.setItem('authKey', urlKey);
+      // Remove key from URL for security (prevent sharing URLs with keys)
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
     }
-    
-    // Apply visual theme based on user type (without exposing key)
+
+    // Get stored key
+    const authKey = localStorage.getItem('authKey') || 'public';
+
+    // Determine user type by checking key against API (secure server-side validation)
+    // For now, default to 'public' - the micro-apps will validate the key server-side
+    let userType = 'public';
+
+    // Apply visual theme based on user type
+    // Note: Actual access control happens server-side in workers
     document.body.setAttribute('data-user-type', userType);
     
     // Get accessible apps for this user type

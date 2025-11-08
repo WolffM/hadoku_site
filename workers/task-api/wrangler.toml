@@ -1,6 +1,7 @@
 name = "task-api"
 main = "src/index.ts"
 compatibility_date = "2025-10-11"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
 # Observability settings
@@ -17,13 +18,6 @@ invocation_logs = true
 # Build configuration
 [build]
 command = ""
-
-# Specify tsconfig to avoid scanning parent directories
-[build.upload]
-format = "modules"
-
-# Use node compat flag (compatibility_flags replaces node_compat)
-compatibility_flags = ["nodejs_compat"]
 
 # Routes removed - edge-router will proxy to workers.dev URL
 # routes = [
