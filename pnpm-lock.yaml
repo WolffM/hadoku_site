@@ -15,8 +15,8 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2(astro@5.15.1(@types/node@24.9.1)(jiti@1.21.7)(rollup@4.52.5)(typescript@5.9.3)(yaml@2.8.1))(tailwindcss@3.4.18)
       '@wolffm/task':
-        specifier: ^3.3.0
-        version: 3.3.0
+        specifier: ^3.3.1
+        version: 3.3.1
       '@wolffm/themes':
         specifier: 1.0.20
         version: 1.0.20
@@ -88,8 +88,8 @@ importers:
         specifier: workspace:*
         version: link:../util
       '@wolffm/task':
-        specifier: ^3.3.0
-        version: 3.3.0
+        specifier: ^3.3.1
+        version: 3.3.1
       hono:
         specifier: ^4.10.3
         version: 4.10.3
@@ -1082,8 +1082,8 @@ packages:
   '@vitest/utils@4.0.4':
     resolution: {integrity: sha512-4bJLmSvZLyVbNsYFRpPYdJViG9jZyRvMZ35IF4ymXbRZoS+ycYghmwTGiscTXduUg2lgKK7POWIyXJNute1hjw==}
 
-  '@wolffm/task@3.3.0':
-    resolution: {integrity: sha512-dce3hfHRsKWS8gfRgB8HQGhRIkSn3PAZnhGdGGM9qm35WOITD9WMPJvpDX2AhwzTwvyLDJOJnTpPX3ak5GoCsA==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.3.0/0d50f59ac7e89a5bf9a4e0b1bf08a49a890eb3aa}
+  '@wolffm/task@3.3.1':
+    resolution: {integrity: sha512-VaLkUY8KAtVlCKYT8uw8KK1IJKT1OGj8d4yOWq0BwL2vAgdkIBjztAwpldCJNMMqvnanXs2Vs9Gv8Wcetqppjw==, tarball: https://npm.pkg.github.com/download/@wolffm/task/3.3.1/e8d916edd0253c883fcadbdf8f17357de206455b}
 
   '@wolffm/themes@1.0.20':
     resolution: {integrity: sha512-cP4y9SXEhEOGcS4j25GlqJfZPrLpi17vilRB2wuhyDz10xBgS2BHGd7dTevqyTwUcUhXMMRXsY+tSHp3LiMDBQ==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.0.20/f3dd3d70ea77b18d8fa6aa38393dbc1f8a0d529a}
@@ -3817,7 +3817,7 @@ snapshots:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
 
-  '@wolffm/task@3.3.0':
+  '@wolffm/task@3.3.1':
     dependencies:
       '@wolffm/themes': 1.0.20
       react: 18.3.1
