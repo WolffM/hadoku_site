@@ -11,7 +11,8 @@
     "update-task-bundle": "node scripts/update-task-bundle.mjs",
     "update-watchparty-bundle": "node scripts/update-watchparty-bundle.mjs",
     "update-themes-bundle": "node scripts/update-themes-bundle.mjs",
-    "prebuild": "pnpm run update-task-bundle && pnpm run update-watchparty-bundle && pnpm run update-themes-bundle && pnpm run generate-registry"
+    "update-ui-components-bundle": "node scripts/update-ui-components-bundle.mjs",
+    "prebuild": "pnpm run update-task-bundle && pnpm run update-watchparty-bundle && pnpm run update-themes-bundle && pnpm run update-ui-components-bundle && pnpm run generate-registry"
   },
   "keywords": [],
   "author": "",
