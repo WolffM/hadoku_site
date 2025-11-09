@@ -6,7 +6,8 @@
       "Bash(tar:*)",
       "Bash(pnpm add:*)",
       "Bash(pnpm astro add:*)",
-      "Bash(timeout 10 pnpm run dev:*)"
+      "Bash(timeout 10 pnpm run dev:*)",
+      "Bash(pnpm install:*)"
     ],
     "deny": [],
     "ask": []

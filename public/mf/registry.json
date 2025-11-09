@@ -1,6 +1,6 @@
 {
   "home": {
-    "url": "/mf/home/index.js?v=1762649008829",
+    "url": "/mf/home/index.js?v=1762650564423",
     "basename": "/",
     "props": {
       "basename": "/",
@@ -30,7 +30,7 @@
     }
   },
   "contact": {
-    "url": "/mf/contact/index.js?v=1762649008829",
+    "url": "/mf/contact/index.js?v=1762650564423",
     "basename": "/contact",
     "props": {
       "basename": "/contact",
@@ -39,7 +39,7 @@
     }
   },
   "herodraft": {
-    "url": "/mf/herodraft/index.js?v=1762649008829",
+    "url": "/mf/herodraft/index.js?v=1762650564423",
     "basename": "/herodraft",
     "props": {
       "basename": "/herodraft",
