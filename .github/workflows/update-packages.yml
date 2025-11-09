@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       packages:
-        description: 'Comma-separated packages (e.g. @wolffm/task,@wolffm/themes,@wolffm/watchparty-ui)'
+        description: 'Comma-separated packages (e.g. @wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components)'
         required: true
-        default: '@wolffm/task,@wolffm/themes,@wolffm/watchparty-ui'
+        default: '@wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components'
 
 permissions:
   contents: write
@@ -72,6 +72,14 @@ jobs:
             echo "✅ Will update @wolffm/watchparty-ui"
           else
             echo "update_watchparty=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if task-ui-components package needs update
+          if echo "$PACKAGES" | jq -e 'map(select(. == "@wolffm/task-ui-components")) | length > 0' > /dev/null; then
+            echo "update_ui_components=true" >> $GITHUB_OUTPUT
+            echo "✅ Will update @wolffm/task-ui-components"
+          else
+            echo "update_ui_components=false" >> $GITHUB_OUTPUT
           fi
       
       - name: Backup KV namespace before package update
@@ -189,7 +197,15 @@ jobs:
           echo "📦 Regenerating registry with cache-busting version..."
           pnpm run generate-registry
           echo "✅ Updated public/mf/registry.json with new versions"
-      
+
+      - name: Update UI components
+        if: steps.parse.outputs.update_ui_components == 'true'
+        run: |
+          echo "🔨 UI components package updated..."
+          echo "📦 @wolffm/task-ui-components is a dependency used by Astro site"
+          echo "✅ Package installed - no bundle rebuild needed"
+          echo "ℹ️  Changes will be picked up on next Astro build/deploy"
+
       - name: Commit and push if changed
         id: commit
         run: |

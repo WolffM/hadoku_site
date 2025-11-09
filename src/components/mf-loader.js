@@ -1,15 +1,17 @@
 // Micro-frontend loader using Shadow DOM
+import { logger } from '../utils/logger.ts';
+
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const root = document.getElementById('root');
     if (!root) {
-      console.error('Micro-app container #root not found.');
+      logger.error('Micro-app container #root not found');
       return;
     }
 
     const appName = root.getAttribute('data-app-name');
     if (!appName) {
-      console.error('Micro-app name is not specified (data-app-name).');
+      logger.error('Micro-app name is not specified (data-app-name)');
       return;
     }
 
@@ -21,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const appConfig = registry[appName];
 
     if (!appConfig) {
-      console.error(`Configuration for micro-app "${appName}" not found.`);
+      logger.error(`Configuration for micro-app "${appName}" not found`);
       return;
     }
 
@@ -39,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       link.rel = 'stylesheet';
       link.href = appConfig.css;
       document.head.appendChild(link);
-      console.log(`Loaded CSS for micro-app: ${appName}`);
+      logger.debug(`Loaded CSS for micro-app: ${appName}`);
     }
 
     // Load JS module (URL already includes cache-busting version param)
@@ -83,41 +85,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (sessionResponse.ok) {
                   const sessionData = await sessionResponse.json();
                   sessionId = sessionData.sessionId;
-                  
+
                   // Store session data in sessionStorage (survives page reloads, not browser close)
                   sessionStorage.setItem('hadoku_session_id', sessionId);
                   sessionStorage.setItem('hadoku_session_key', key);
-                  
+
+                  logger.info(`Session created/refreshed`, { sessionId: sessionId.substring(0, 16) + '...' });
+
                   // Scrub key from URL for security (only if it was in the URL)
                   if (keyFromUrl) {
                     const newUrl = new URL(window.location);
                     newUrl.searchParams.delete('key');
                     window.history.replaceState({}, '', newUrl);
-                    console.log('🔒 Key removed from URL for security');
-                  }
-                  
-                  console.log(`Session created/refreshed: ${sessionId}`);
-                  
-                  // If key was in URL, scrub it for security
-                  if (keyFromUrl) {
-                    const url = new URL(window.location);
-                    url.searchParams.delete('key');
-                    window.history.replaceState({}, '', url);
-                    console.log('🔒 Key scrubbed from URL for security');
+                    logger.info('🔒 Key removed from URL for security');
                   }
                 } else {
-                  console.error('Failed to create session:', await sessionResponse.text());
+                  const errorText = await sessionResponse.text();
+                  logger.error('Failed to create session', { status: sessionResponse.status, error: errorText });
                   // Clear invalid session data
                   sessionStorage.removeItem('hadoku_session_id');
                   sessionStorage.removeItem('hadoku_session_key');
                 }
               } catch (err) {
-                console.error('Error creating session:', err);
+                logger.error('Error creating session', { error: err.message });
                 sessionStorage.removeItem('hadoku_session_id');
                 sessionStorage.removeItem('hadoku_session_key');
               }
             } else {
-              console.log(`Using existing session: ${sessionId}`);
+              logger.debug(`Using existing session`, { sessionId: sessionId.substring(0, 16) + '...' });
             }
           } else {
             // No key found - clear any stale session data
@@ -137,18 +132,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             sessionId  // Pass sessionId to child app (not the key!)
           };
           
-          console.log(`Mounting ${appName} with props:`, runtimeProps);
+          logger.debug(`Mounting ${appName} with props`, runtimeProps);
           module.mount(root, runtimeProps);
-          console.log('Micro-app mounted successfully.');
+          logger.info('Micro-app mounted successfully', { appName });
         } else {
-          console.error('Micro-app module does not have a mount function.');
+          logger.error('Micro-app module does not have a mount function', { appName });
         }
       } catch (err) {
-        console.error('Error loading micro-app module:', err);
+        logger.error('Error loading micro-app module', { appName, error: err.message });
       }
     }
   } catch (error) {
-    console.error('Failed to load micro-app:', error);
+    logger.error('Failed to load micro-app', { error: error.message });
   }
 });
 
@@ -178,16 +173,16 @@ window.updateHadokuSession = async function(newKey) {
       // Update sessionStorage with new session
       sessionStorage.setItem('hadoku_session_id', sessionId);
       sessionStorage.setItem('hadoku_session_key', newKey);
-      
-      console.log(`Session updated: ${sessionId}`);
+
+      logger.info(`Session updated`, { sessionId: sessionId.substring(0, 16) + '...' });
       return { success: true, sessionId };
     } else {
       const errorText = await sessionResponse.text();
-      console.error('Failed to update session:', errorText);
+      logger.error('Failed to update session', { status: sessionResponse.status, error: errorText });
       return { success: false, error: errorText };
     }
   } catch (err) {
-    console.error('Error updating session:', err);
+    logger.error('Error updating session', { error: err.message });
     return { success: false, error: err.message };
   }
 };

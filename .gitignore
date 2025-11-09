@@ -31,9 +31,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# generated files
-public/mf/registry.json
-
 # task app data (managed at runtime, not committed to parent)
 data/task/
 
