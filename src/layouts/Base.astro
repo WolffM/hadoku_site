@@ -19,7 +19,26 @@ import '../styles/global.css';
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  
+
+  <!-- Blocking theme initialization to prevent flash of unstyled content -->
+  <script>
+    (function() {
+      // Check sessionStorage first
+      const saved = sessionStorage.getItem('hadoku-theme');
+      if (saved) {
+        if (saved !== 'light') {
+          document.documentElement.setAttribute('data-theme', saved);
+        }
+        return;
+      }
+
+      // Respect browser's color scheme preference
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+
   <!-- Cloudflare Web Analytics -->
   {import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN && (
     <script 
