@@ -52,16 +52,32 @@ function main() {
     console.log('⚠ Could not copy themes.css:', err.message);
   }
 
-  // Copy theme metadata
-  const metadataSource = join(__dirname, '..', 'src', 'config', 'themes.js');
+  // Copy theme metadata from package dist
+  const metadataSource = join(sourceDir, 'metadata.js');
   const metadataTarget = join(targetDir, 'metadata.js');
   try {
     if (existsSync(metadataSource)) {
       copyFileSync(metadataSource, metadataTarget);
-      console.log('✓ Copied theme metadata');
+      console.log('✓ Copied metadata.js');
+    } else {
+      console.log('⚠ metadata.js not found in package');
     }
   } catch (err) {
-    console.log('⚠ Could not copy theme metadata:', err.message);
+    console.log('⚠ Could not copy metadata.js:', err.message);
+  }
+
+  // Copy useTheme React hook
+  const useThemeSource = join(sourceDir, 'useTheme.js');
+  const useThemeTarget = join(targetDir, 'useTheme.js');
+  try {
+    if (existsSync(useThemeSource)) {
+      copyFileSync(useThemeSource, useThemeTarget);
+      console.log('✓ Copied useTheme.js');
+    } else {
+      console.log('⚠ useTheme.js not found in package');
+    }
+  } catch (err) {
+    console.log('⚠ Could not copy useTheme.js:', err.message);
   }
 
   console.log('✓ Themes bundle updated');
