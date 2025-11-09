@@ -121,16 +121,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             sessionStorage.removeItem('hadoku_session_key');
           }
           
+          // Get current theme from parent
+          const currentTheme = sessionStorage.getItem('hadoku-theme') ||
+            (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
           // Merge registry props with runtime overrides
-          // All child apps receive these standard auth props:
+          // All child apps receive these standard props:
           // - userType: 'admin' | 'friend' | 'public' (permission level)
           // - userId: string (user identifier, defaults to userType)
           // - sessionId: string | null (for API requests via X-Session-Id header)
+          // - theme: string (current theme for seamless handoff)
           const runtimeProps = {
             ...appConfig.props,
             userType,
             userId,
-            sessionId  // Pass sessionId to child app (not the key!)
+            sessionId,  // Pass sessionId to child app (not the key!)
+            theme: currentTheme  // Pass current theme for seamless handoff
           };
           
           logger.debug(`Mounting ${appName} with props`, runtimeProps);
