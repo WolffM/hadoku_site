@@ -21,7 +21,7 @@ import '../styles/global.css';
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
   <!-- Blocking theme initialization to prevent flash of unstyled content -->
-  <script>
+  <script is:inline>
     (function() {
       // Check sessionStorage first
       const saved = sessionStorage.getItem('hadoku-theme');
