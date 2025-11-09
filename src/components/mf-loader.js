@@ -1,5 +1,6 @@
 // Micro-frontend loader using Shadow DOM
-import { logger } from '../utils/logger.ts';
+// Import logger from the compiled module (works in both dev and production)
+import { logger } from '@wolffm/task-ui-components';
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {

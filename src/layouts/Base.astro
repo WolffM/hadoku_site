@@ -37,21 +37,22 @@ import '../styles/global.css';
         "react-dom/client": "https://esm.sh/react-dom@19/client",
         "react/jsx-runtime": "https://esm.sh/react@19/jsx-runtime",
         "@wolffm/themes": "/mf/themes/index.js",
-        "@hadoku/theme-metadata": "/mf/themes/metadata.js"
+        "@hadoku/theme-metadata": "/mf/themes/metadata.js",
+        "@wolffm/task-ui-components": "https://esm.sh/@wolffm/task-ui-components@1.0.5"
       }
     }
   </script>
   
   <!-- Logging utility -->
   <script type="module">
-    import { logger } from '/src/utils/logger.ts';
+    import { logger } from '@wolffm/task-ui-components';
     window.logger = logger;
   </script>
 
   <!-- Theme system - now properly imported -->
   <script type="module">
     import { THEMES, setTheme, getTheme, saveTheme, loadTheme, initTheme } from '@wolffm/themes';
-    import { logger } from '/src/utils/logger.ts';
+    import { logger } from '@wolffm/task-ui-components';
 
     // Initialize theme on page load and make functions globally available
     document.addEventListener('DOMContentLoaded', () => {
