@@ -88,6 +88,8 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     appInfo,
     appVisibility
   }}>
+    import { logger } from '/src/utils/logger.ts';
+
     // Wait for theme system to be available
     function waitForThemes(callback) {
       if (window.hadokuThemes) {
@@ -96,7 +98,7 @@ const appInfo: Record<string, { title: string; description: string; icon: string
         setTimeout(() => waitForThemes(callback), 50);
       }
     }
-    
+
     // Import theme metadata and use themes from package
     import('@hadoku/theme-metadata').then(({ themeMetadata }) => {
       const { THEMES, getTheme, setTheme, saveTheme } = window.hadokuThemes;
@@ -128,7 +130,7 @@ const appInfo: Record<string, { title: string; description: string; icon: string
       THEMES.forEach(theme => {
         const meta = themeMetadata[theme];
         if (!meta) {
-          console.warn('Missing theme metadata for:', theme);
+          logger.warn('Missing theme metadata', { theme });
           return;
         }
         if (!grouped[meta.category]) {
@@ -188,13 +190,14 @@ const appInfo: Record<string, { title: string; description: string; icon: string
                 });
 
                 if (response.ok) {
-                  console.log('[Theme] Synced to API:', theme);
+                  logger.preference('theme', theme);
+                  logger.info('Theme synced to API', { theme });
                 } else {
-                  console.warn('[Theme] Failed to sync to API:', response.status);
+                  logger.warn('Failed to sync theme to API', { status: response.status, theme });
                 }
               }
             } catch (err) {
-              console.error('[Theme] Error syncing to API:', err);
+              logger.error('Error syncing theme to API', { theme, error: err.message });
             }
           });
           optionsContainer.appendChild(option);
@@ -247,13 +250,13 @@ const appInfo: Record<string, { title: string; description: string; icon: string
     
     // Get accessible apps for this user type
     const accessibleApps = appVisibility[userType] || ['home'];
-    console.log('User type:', userType, 'Accessible apps:', accessibleApps);
-    
+    logger.info('User access determined', { userType, accessibleApps: accessibleApps.length });
+
     // Populate apps grid
     const appsGrid = document.getElementById('apps-grid');
     if (appsGrid) {
       const appsToShow = accessibleApps.filter(app => app !== 'home');
-      console.log('Apps to show:', appsToShow);
+      logger.debug('Populating apps grid', { apps: appsToShow });
       
       appsGrid.innerHTML = appsToShow.map(app => {
         const info = appInfo[app] || { title: app, description: 'No description', icon: '📦' };

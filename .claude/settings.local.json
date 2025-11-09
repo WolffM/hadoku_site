@@ -1,35 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git log:*)",
-      "Bash(python:*)",
-      "Bash(find:*)",
-      "Bash(npm test:*)",
-      "Bash(git mv:*)",
-      "Bash(chcp 65001)",
-      "Bash(nul)",
-      "Bash(set:*)",
-      "Bash(done)",
-      "Bash(git checkout:*)",
-      "Bash(powershell -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; cd scripts; python administration.py verify-install\")",
-      "Bash(powershell -Command \"$env:PYTHONIOENCODING=''utf-8''; cd scripts; python administration.py verify-install\")",
-      "Bash(cmd /c \"chcp 65001 > nul && cd scripts && python administration.py verify-install\")",
-      "Bash(cmd.exe /c \"cd scripts && python administration.py kv-summary\")",
-      "Bash(pnpm exec tsc:*)",
-      "Bash(pnpm test:*)",
-      "Bash(gh run list:*)",
-      "Bash(gh workflow:*)",
-      "Bash(gh run view:*)",
-      "Bash(powershell -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; python scripts/administration.py kv-summary\")",
-      "Bash(cmd /c \"set HADOKU_SITE_TOKEN= && python scripts/administration.py check-token\")",
-      "Bash(powershell -Command \"$env:HADOKU_SITE_TOKEN=''''; python scripts/administration.py check-token\")",
-      "Bash(powershell -Command \"$env:PYTHONIOENCODING=''utf-8''; $env:HADOKU_SITE_TOKEN=''''; python scripts/administration.py check-token\")",
-      "Bash(powershell -Command \"Remove-Item Env:HADOKU_SITE_TOKEN -ErrorAction SilentlyContinue; python scripts/administration.py check-token\")",
-      "Bash(pnpm list:*)",
-      "Bash(cat:*)",
-      "Bash(pnpm exec wrangler:*)",
-      "Bash(export CLOUDFLARE_API_TOKEN=oM9Rn4-IZz2AWvwDawJvB6mRgqK6e1y5dmk2XtTO)",
-      "Bash(export PYTHONIOENCODING=utf-8)"
+      "Bash(for file in *.py)",
+      "Bash(do python -c \"\nimport sys\nwith open(''$file'', ''r'', encoding=''utf-8'') as f:\n    lines = f.readlines()\n\n# Remove duplicate encoding lines\ncleaned = []\nseen_encoding = False\nfor i, line in enumerate(lines):\n    if ''coding: utf-8'' in line or ''coding=utf-8'' in line:\n        if not seen_encoding:\n            seen_encoding = True\n            cleaned.append(line)\n    else:\n        cleaned.append(line)\n        if i == 0 and line.startswith(''#!''):\n            seen_encoding = False\n\n# Ensure encoding is on line 2 if shebang exists\nif len(cleaned) > 0 and cleaned[0].startswith(''#!''):\n    if len(cleaned) < 2 or ''coding'' not in cleaned[1]:\n        cleaned.insert(1, ''# -*- coding: utf-8 -*-\\n'')\n\nwith open(''$file'', ''w'', encoding=''utf-8'') as f:\n    f.writelines(cleaned)\n\")"
     ],
     "deny": [],
     "ask": []

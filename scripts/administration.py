@@ -1,50 +1,62 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Hadoku Site Administration Tool
 ================================
 
-Centralized runner for all administration tasks including:
-- Package verification and installation
-- Cloudflare KV operations (backup, restore, flush, inspect)
-- Key migration operations
-- GitHub secrets management
+Centralized runner for all administration tasks.
+
+Main Operations:
+  - Package Management: Install dependencies and validate tokens
+  - KV Operations: Backup, restore, inspect, and cleanup key-value data
+  - Key Management: Generate, migrate, and delete authentication keys
+  - Secrets: Deploy configuration to GitHub Actions
 
 Usage:
     python administration.py <command> [options]
 
-Commands:
-    verify-install              Verify and install latest packages
+Package Management:
+    verify-install              Install and verify Python dependencies
     check-token [token]         Validate HADOKU_SITE_TOKEN or provided token
+
+KV Operations:
     kv-backup                   Complete backup (file + clear + upload + validate)
-    kv-backup-fast              Fast backup (file only, for quick backups)
-    kv-backup-file              Backup production KV to local JSON file only
+    kv-backup-fast              Fast backup (file only)
+    kv-backup-file              Backup production KV to local JSON file
     kv-backup-upload [file]     Upload backup to backup KV namespace
     kv-validate                 Validate backup KV against production
-    kv-restore [source]         Restore production from backup (source: 'kv' or file path)
-    kv-restore <file>           Restore Cloudflare KV from backup file (legacy)
-    kv-flush [--force]          Flush (delete) all KV data
-    kv-inspect [--key KEY]      Inspect KV data (all or specific key)
+    kv-restore [source]         Restore production from backup (KV or file)
+    kv-flush [--force]          Delete all KV data (destructive!)
     kv-summary                  Display summary of all boards and tasks
-    kv-fetch <user-key>         Fetch all KV data for a specific user key
-    kv-userId-update <key> <newId>  Update userId in boards data
-    kv-analyze                  Analyze KV keys and identify outdated patterns
-    kv-cleanup <--dry-run|--execute>  Clean up invalid/outdated KV keys
-    key-migrate <old> <new>     Migrate data from old key to new key
-    github-secrets <mode>       Update GitHub secrets (cloudflare/child-repos/all)
+    kv-fetch <user-key>         Fetch all KV data for specific user key
+    kv-cleanup <mode>           Clean up invalid/outdated KV keys (--dry-run|--execute)
 
-Examples:
+Key Management:
+    key-generate [--count N]    Generate new authentication keys (default: 1)
+    key-migrate <old> <new>     Migrate all data from old key to new key (KV + D1 + sessions)
+    key-delete <key> [opts]     Delete all data for a key (--include-d1 --execute)
+
+GitHub Secrets:
+    github-secrets <mode>       Update GitHub secrets (cloudflare|child-repos|all)
+
+Common Examples:
     python administration.py verify-install
-    python administration.py check-token
-    python administration.py check-token ghp_xxxxxxxxxxxx
-    python administration.py kv-backup
-    python administration.py kv-restore backups/kv-2025-10-21.json
-    python administration.py kv-inspect --key "boards:4355"
     python administration.py kv-summary
-    python administration.py key-migrate "old-key-123" "new-key-456"
+    python administration.py kv-fetch <your-key>
+    python administration.py key-generate --count 2
+    python administration.py key-migrate "old-uuid" "new-uuid"
+    python administration.py key-delete "old-uuid" --include-d1 --execute
     python administration.py github-secrets cloudflare
 
+Key Rotation Workflow:
+    1. python administration.py key-generate
+    2. python administration.py key-migrate <old> <new>
+    3. python administration.py github-secrets cloudflare
+    4. Verify new key works in production
+    5. python administration.py key-delete <old> --include-d1 --execute
+
 Dependencies:
-    All required packages will be installed automatically via verify-install
+    Run 'verify-install' to install all required packages automatically
 """
 
 import sys
@@ -65,8 +77,13 @@ def run_command(args):
     if len(args) < 2:
         print_help()
         return 1
-    
+
     command = args[1]
+
+    # Handle help flag
+    if command in ['--help', '-h', 'help']:
+        print_help()
+        return 0
     
     try:
         if command == 'verify-install':
@@ -132,30 +149,6 @@ def run_command(args):
             result = subprocess.run(cmd)
             return result.returncode
         
-        elif command == 'kv-inspect':
-            key = None
-            if '--key' in args:
-                key_index = args.index('--key')
-                if key_index + 1 < len(args):
-                    key = args[key_index + 1]
-            from inspect_kv import CloudflareKVInspector, load_config
-
-            config = load_config()
-            api_token = config.get('CLOUDFLARE_API_TOKEN')
-            account_id = config.get('CLOUDFLARE_ACCOUNT_ID')
-            namespace_id = config.get('CLOUDFLARE_NAMESPACE_ID')
-
-            if not all([api_token, account_id, namespace_id]):
-                print("[ERROR] Error: Missing Cloudflare credentials in .env")
-                return 1
-
-            inspector = CloudflareKVInspector(api_token, account_id, namespace_id)
-            if key:
-                inspector.inspect_key(key)
-            else:
-                inspector.show_summary()
-            return 0
-
         elif command == 'kv-summary':
             from kv_summary import main as summary_main
             return summary_main()
@@ -169,20 +162,6 @@ def run_command(args):
             result = subprocess.run([sys.executable, str(script_path), args[2]])
             return result.returncode
         
-        elif command == 'kv-userId-update':
-            if len(args) < 4:
-                print("Error: kv-userId-update requires user key and new user ID")
-                print("Usage: python administration.py kv-userId-update <user-key> <new-user-id>")
-                return 1
-            script_path = ADMIN_DIR / 'kv_userId_update.py'
-            result = subprocess.run([sys.executable, str(script_path), args[2], args[3]])
-            return result.returncode
-        
-        elif command == 'kv-analyze':
-            script_path = ADMIN_DIR / 'kv_analyze.py'
-            result = subprocess.run([sys.executable, str(script_path)])
-            return result.returncode
-        
         elif command == 'kv-cleanup':
             if len(args) < 3:
                 print("Error: kv-cleanup requires --dry-run or --execute")
@@ -194,6 +173,57 @@ def run_command(args):
             result = subprocess.run([sys.executable, str(script_path), args[2]])
             return result.returncode
         
+        elif command == 'key-generate':
+            # Parse count argument
+            count = 1
+            if '--count' in args:
+                try:
+                    count_index = args.index('--count')
+                    if count_index + 1 < len(args):
+                        count = int(args[count_index + 1])
+                except (ValueError, IndexError):
+                    print("Error: Invalid --count value")
+                    return 1
+
+            import uuid
+            import json
+
+            print("=" * 80)
+            print("AUTHENTICATION KEY GENERATOR")
+            print("=" * 80)
+            print(f"Generating {count} secure authentication key(s)...\n")
+
+            keys = []
+            for i in range(count):
+                # Generate UUID v4 (recommended format)
+                key = str(uuid.uuid4())
+                keys.append(key)
+                print(f"Key {i+1}: {key}")
+
+            print()
+            print("=" * 80)
+            print("USAGE")
+            print("=" * 80)
+            print("Add these keys to your .env file:")
+            print()
+            print("For admin keys:")
+            if count == 1:
+                print(f'  ADMIN_KEYS=["{keys[0]}"]')
+            else:
+                print(f'  ADMIN_KEYS={json.dumps(keys)}')
+            print()
+            print("For friend keys:")
+            if count == 1:
+                print(f'  FRIEND_KEYS=["{keys[0]}"]')
+            else:
+                print(f'  FRIEND_KEYS={json.dumps(keys)}')
+            print()
+            print("Then deploy to GitHub secrets:")
+            print("  python scripts/administration.py github-secrets cloudflare")
+            print("=" * 80)
+
+            return 0
+
         elif command == 'key-migrate':
             if len(args) < 4:
                 print("Error: key-migrate requires old and new keys")
@@ -201,7 +231,25 @@ def run_command(args):
                 return 1
             from key_migration import migrate_key
             return migrate_key(args[2], args[3])
-        
+
+        elif command == 'key-delete':
+            if len(args) < 3:
+                print("Error: key-delete requires a user key")
+                print("Usage: python administration.py key-delete <user-key> [--include-d1] [--execute]")
+                print()
+                print("Options:")
+                print("  --include-d1    Also delete D1 task_events")
+                print("  --execute       Actually delete (default is dry-run)")
+                return 1
+            script_path = ADMIN_DIR / 'delete_key_data.py'
+            cmd = [sys.executable, str(script_path), args[2]]
+            if '--include-d1' in args:
+                cmd.append('--include-d1')
+            if '--execute' in args:
+                cmd.append('--execute')
+            result = subprocess.run(cmd)
+            return result.returncode
+
         elif command == 'github-secrets':
             if len(args) < 3:
                 print("Error: github-secrets requires a mode")

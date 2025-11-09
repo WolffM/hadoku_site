@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Key Migration Module
 Migrates data from one authentication key to another in Cloudflare KV
@@ -177,7 +178,8 @@ def migrate_key(old_key: str, new_key: str):
     old_prefixes = [
         f'boards:{old_key}',
         f'tasks:{old_key}:',
-        f'prefs:{old_key}'
+        f'prefs:{old_key}',
+        f'session-map:{old_key}'  # Session mapping for the user key
     ]
     
     migrated_count = 0
@@ -198,11 +200,11 @@ def migrate_key(old_key: str, new_key: str):
         
         for key_obj in keys:
             old_full_key = key_obj['name']
-            
+
             # Generate new key name
             new_full_key = old_full_key.replace(f':{old_key}', f':{new_key}', 1)
             new_full_key = new_full_key.replace(f'{old_key}', f'{new_key}', 1)
-            
+
             # Get value from old key
             get_url = f"{base_url}/values/{old_full_key}"
             response = requests.get(get_url, headers=headers)
@@ -213,17 +215,78 @@ def migrate_key(old_key: str, new_key: str):
 
             value = response.text
 
+            # Special handling for session-map: update authKey field
+            if old_full_key.startswith('session-map:'):
+                try:
+                    session_map = json.loads(value)
+                    session_map['authKey'] = new_key
+
+                    # Migrate all related session-info keys
+                    session_ids = session_map.get('sessionIds', [])
+                    print(f"   [INFO] Migrating {len(session_ids)} session-info keys...")
+
+                    for session_id in session_ids:
+                        old_session_key = f'session-info:{session_id}'
+                        get_session_url = f"{base_url}/values/{old_session_key}"
+                        session_response = requests.get(get_session_url, headers=headers)
+
+                        if session_response.ok:
+                            session_info = json.loads(session_response.text)
+                            session_info['authKey'] = new_key
+
+                            # Update session-info with new authKey
+                            put_session_url = f"{base_url}/values/{old_session_key}"
+                            update_response = requests.put(put_session_url, headers=headers,
+                                                          data=json.dumps(session_info))
+
+                            if update_response.ok:
+                                print(f"      [SUCCESS] Updated session-info:{session_id}")
+                                migrated_count += 1
+                            else:
+                                print(f"      [WARNING] Failed to update session-info:{session_id}")
+
+                    value = json.dumps(session_map)
+                except json.JSONDecodeError:
+                    print(f"   [WARNING] Failed to parse session-map JSON, copying as-is")
+
             # Write value to new key
             put_url = f"{base_url}/values/{new_full_key}"
             response = requests.put(put_url, headers=headers, data=value)
 
             if response.ok:
-                print(f"   [SUCCESS] {old_full_key} → {new_full_key}")
+                print(f"   [SUCCESS] {old_full_key} -> {new_full_key}")
                 migrated_count += 1
             else:
                 print(f"   [ERROR] Failed to write {new_full_key}")
 
-    print(f"\n[SUCCESS] Migration complete: {migrated_count} keys migrated")
+    print(f"\n[SUCCESS] KV Migration complete: {migrated_count} keys migrated")
+    print()
+
+    # Step 3.5: Migrate D1 Database
+    print("=" * 80)
+    print("[INFO] Step 3.5: D1 Database Migration (task_events)")
+    print("=" * 80)
+    print("Task events are stored in the D1 database and need to be migrated separately.")
+    print()
+
+    response = input("Would you like to migrate D1 task events now? (y/n): ").lower()
+
+    if response == 'y':
+        print("\n[INFO] Migrating D1 task_events...")
+        from d1_key_migration import migrate_d1_key
+
+        d1_result = migrate_d1_key(old_key, new_key, preview=False)
+
+        if d1_result == 0:
+            print("\n[SUCCESS] D1 migration completed successfully!")
+        else:
+            print("\n[WARNING] D1 migration had issues. You may need to migrate manually.")
+            print("   See KEY_ROTATION_GUIDE.md for manual D1 migration steps.")
+    else:
+        print("\n[WARNING] Skipping D1 migration.")
+        print("   Remember to migrate D1 data manually:")
+        print("   python scripts/admin/d1_key_migration.py <old-key> <new-key>")
+
     print()
 
     # Step 4: Ask about GitHub secrets redeployment
@@ -257,19 +320,23 @@ def migrate_key(old_key: str, new_key: str):
 
     print()
     print("=" * 80)
-    print("[INFO] Migration Summary")
+    print("[INFO] Complete Migration Summary")
     print("=" * 80)
-    print(f"[SUCCESS] Migrated {migrated_count} keys from '{old_key}' to '{new_key}'")
+    print(f"[SUCCESS] Migrated {migrated_count} KV keys from '{old_key}' to '{new_key}'")
+    print(f"[SUCCESS] D1 task_events migrated (if you selected yes)")
     print(f"[SUCCESS] New key added to {key_type.upper()}_KEYS in .env")
-    print(f"[WARNING] Old keys still exist in KV (verify new key works, then delete old)")
+    print(f"[WARNING] Old data still exists (verify new key works, then delete old)")
     print()
     print("Next steps:")
-    print("1. Test the new key by authenticating with it")
-    print("2. Verify all data is accessible")
-    print("3. Delete old keys if everything works:")
-    print(f"   - Use kv-cleanup or delete manually")
+    print("1. Test the new key by authenticating with it:")
+    print(f"   https://hadoku.me/?key={new_key}")
+    print("2. Verify all data is accessible (boards, tasks, preferences)")
+    print("3. If everything works, clean up old data:")
+    print(f"   - KV: Use kv-cleanup or delete manually")
+    print(f"   - D1: python scripts/admin/d1_key_migration.py (if you skipped it)")
     print("4. Remove old key from .env ADMIN_KEYS/FRIEND_KEYS")
-    print("5. Redeploy secrets again to remove old key from GitHub")
+    print("5. Redeploy secrets again to remove old key from GitHub:")
+    print("   python scripts/administration.py github-secrets cloudflare")
     print("=" * 80)
     
     return 0

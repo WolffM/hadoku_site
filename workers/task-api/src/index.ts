@@ -85,12 +85,14 @@ app.use('*', async (c, next) => {
 	const sessionId = auth.sessionId || 'public';
 	const userType = auth.userType as 'admin' | 'friend' | 'public';
 
-	// Skip throttling for health check endpoint
-	if (c.req.path === '/task/api/health') {
+	// Skip throttling for health check endpoint or authenticated users
+	// Authenticated users (admin/friend) are trusted and don't need aggressive rate limiting
+	// This significantly reduces KV operations during development and normal authenticated usage
+	if (c.req.path === '/task/api/health' || userType !== 'public') {
 		return next();
 	}
 
-	// Check throttle
+	// Check throttle (only for public users)
 	const throttleResult = await checkThrottle(
 		c.env.TASKS_KV,
 		sessionId,

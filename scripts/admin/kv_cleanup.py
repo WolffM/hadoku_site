@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 KV Cleanup Script - Remove outdated/invalid keys
 

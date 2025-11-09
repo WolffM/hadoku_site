@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Fetch all KV data for a specific user key in a compact view.
 Shows boards, tasks, and preferences for the user.

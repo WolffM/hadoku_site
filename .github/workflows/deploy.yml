@@ -64,18 +64,6 @@ jobs:
 
       - name: Update task micro-frontend bundle
         run: pnpm run update-task-bundle
-      
-      - name: Debug environment variables
-        env:
-          PUBLIC_ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-          PUBLIC_FRIEND_KEY: ${{ secrets.FRIEND_KEY }}
-        run: |
-          echo "PUBLIC_ADMIN_KEY set? ${PUBLIC_ADMIN_KEY:+yes}"
-          echo "PUBLIC_FRIEND_KEY set? ${PUBLIC_FRIEND_KEY:+yes}"
-          if [ -z "$PUBLIC_ADMIN_KEY" ] || [ -z "$PUBLIC_FRIEND_KEY" ]; then
-            echo "❌ Missing required secrets (ADMIN_KEY or FRIEND_KEY)."
-            exit 1
-          fi
 
       - name: Generate registry (uses prebuild hook)
         env:
@@ -85,8 +73,6 @@ jobs:
       - name: Build with Astro
         env:
           HADOKU_SITE_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
-          PUBLIC_ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-          PUBLIC_FRIEND_KEY: ${{ secrets.FRIEND_KEY }}
           MODE: production
         run: pnpm run build
       

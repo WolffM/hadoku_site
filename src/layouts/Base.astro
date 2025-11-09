@@ -42,15 +42,22 @@ import '../styles/global.css';
     }
   </script>
   
+  <!-- Logging utility -->
+  <script type="module">
+    import { logger } from '/src/utils/logger.ts';
+    window.logger = logger;
+  </script>
+
   <!-- Theme system - now properly imported -->
   <script type="module">
     import { THEMES, setTheme, getTheme, saveTheme, loadTheme, initTheme } from '@wolffm/themes';
-    
+    import { logger } from '/src/utils/logger.ts';
+
     // Initialize theme on page load and make functions globally available
     document.addEventListener('DOMContentLoaded', () => {
       const theme = initTheme();
-      console.log('Theme initialized:', theme);
-      
+      logger.info('Theme initialized', { theme });
+
       // Make theme functions globally available
       window.hadokuThemes = {
         THEMES,
