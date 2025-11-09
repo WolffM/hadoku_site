@@ -24,7 +24,7 @@
     "@types/react-dom": "^19.2.2",
     "@wolffm/task": "^3.3.1",
     "@wolffm/task-ui-components": "^1.0.5",
-    "@wolffm/themes": "1.1.1",
+    "@wolffm/themes": "1.1.5",
     "@wolffm/watchparty-ui": "^0.1.11",
     "astro": "^5.15.1",
     "chokidar": "^4.0.3",

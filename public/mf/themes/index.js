@@ -2,6 +2,7 @@
  * Hadoku Theme System - Utilities
  * Framework-agnostic theme management for Hadoku themes
  * 18 beautiful themes across 9 theme families
+ * Now with React integration support!
  */
 export const THEMES = [
     'light',
@@ -86,3 +87,6 @@ export function clearTheme() {
     sessionStorage.removeItem('hadoku-theme');
     setTheme('light');
 }
+// Theme metadata and React integration (optional peer dependencies)
+export { THEME_FAMILIES, THEME_ICON_MAP } from './metadata.js';
+export { useTheme } from './useTheme.js';

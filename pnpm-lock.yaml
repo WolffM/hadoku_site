@@ -30,11 +30,11 @@ importers:
         specifier: ^1.0.5
         version: 1.0.5(react@19.2.0)
       '@wolffm/themes':
-        specifier: 1.1.1
-        version: 1.1.1
+        specifier: 1.1.5
+        version: 1.1.5(@wolffm/task-ui-components@1.0.5(react@19.2.0))(react@19.2.0)
       '@wolffm/watchparty-ui':
         specifier: ^0.1.11
-        version: 0.1.11(@types/react@19.2.2)
+        version: 0.1.11(@types/react@19.2.2)(@wolffm/task-ui-components@1.0.5(react@19.2.0))
       astro:
         specifier: ^5.15.1
         version: 5.15.1(@types/node@24.9.1)(jiti@1.21.7)(rollup@4.52.5)(typescript@5.9.3)(yaml@2.8.1)
@@ -110,7 +110,7 @@ importers:
         version: 3.3.1
       '@wolffm/task-ui-components':
         specifier: ^1.0.3
-        version: 1.0.5(react@18.3.1)
+        version: 1.0.5(react@19.2.0)
       hono:
         specifier: ^4.10.3
         version: 4.10.3
@@ -1221,8 +1221,11 @@ packages:
   '@wolffm/themes@1.0.20':
     resolution: {integrity: sha512-cP4y9SXEhEOGcS4j25GlqJfZPrLpi17vilRB2wuhyDz10xBgS2BHGd7dTevqyTwUcUhXMMRXsY+tSHp3LiMDBQ==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.0.20/f3dd3d70ea77b18d8fa6aa38393dbc1f8a0d529a}
 
-  '@wolffm/themes@1.1.1':
-    resolution: {integrity: sha512-FinThgaONEIlxz5CRID6dJf18unZCtfzRJqyVqUIXE5ptzZiMdFJojdJXA3kbMdBD91xusRA6DVHp0EQUUu96w==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.1.1/c6f2259a7cb848ff17cd5f8957bf862dea964fe5}
+  '@wolffm/themes@1.1.5':
+    resolution: {integrity: sha512-u1t7hMWX1YyekX9jTwCYqJcWIlSTohT6QoitkCCdkoEqUuKTKpn1BqhxdwixJQQ0fULDGrGADgN58yXYC2xZCQ==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.1.5/6b774345d893a35c433c5e863f500f5ae4c8a17f}
+    peerDependencies:
+      '@wolffm/task-ui-components': ^1.0.0
+      react: ^18.0.0 || ^19.0.0
 
   '@wolffm/watchparty-ui@0.1.11':
     resolution: {integrity: sha512-vaC28th0dogsjGvPThHjOZ+CIrZQHe+VuopHcZPGCU4Lc5Sebd5dnSeU7wM+UEMkhk/8FmIQhngCQpcRnsVHsA==, tarball: https://npm.pkg.github.com/download/@wolffm/watchparty-ui/0.1.11/59ef70be8045fb217ab883418914a564fad8f9e2}
@@ -4157,10 +4160,6 @@ snapshots:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
 
-  '@wolffm/task-ui-components@1.0.5(react@18.3.1)':
-    dependencies:
-      react: 18.3.1
-
   '@wolffm/task-ui-components@1.0.5(react@19.2.0)':
     dependencies:
       react: 19.2.0
@@ -4173,11 +4172,14 @@ snapshots:
 
   '@wolffm/themes@1.0.20': {}
 
-  '@wolffm/themes@1.1.1': {}
-
-  '@wolffm/watchparty-ui@0.1.11(@types/react@19.2.2)':
+  '@wolffm/themes@1.1.5(@wolffm/task-ui-components@1.0.5(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@wolffm/themes': 1.1.1
+      '@wolffm/task-ui-components': 1.0.5(react@19.2.0)
+      react: 19.2.0
+
+  '@wolffm/watchparty-ui@0.1.11(@types/react@19.2.2)(@wolffm/task-ui-components@1.0.5(react@19.2.0))':
+    dependencies:
+      '@wolffm/themes': 1.1.5(@wolffm/task-ui-components@1.0.5(react@19.2.0))(react@19.2.0)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       react-router-dom: 6.30.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -4185,6 +4187,7 @@ snapshots:
       zustand: 4.5.7(@types/react@19.2.2)(react@19.2.0)
     transitivePeerDependencies:
       - '@types/react'
+      - '@wolffm/task-ui-components'
       - bufferutil
       - immer
       - supports-color
