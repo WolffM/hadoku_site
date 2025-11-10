@@ -10,6 +10,7 @@
 
 import { logToAnalytics } from './logging';
 import type { LogEntry } from './logging';
+import { jsonResponse, jsonError, corsPreflight, HttpStatus } from '../../util/web-responses';
 
 interface Env {
   ROUTE_CONFIG: string;
@@ -36,7 +37,7 @@ export default {
     
     // Handle CORS preflight requests
     if (request.method === 'OPTIONS') {
-      return handleCorsPreflight();
+      return corsPreflight();
     }
     
     let response: Response;
@@ -154,7 +155,7 @@ async function handleApiRoute(
   return { 
     response: jsonError(
       'All backends failed',
-      502,
+      HttpStatus.BAD_GATEWAY,
       {
         'X-Backend-Source': 'none',
         'X-Error-Details': lastErr?.message || 'Unknown error'
@@ -246,52 +247,6 @@ function basesFor(path: string, env: Env): string[] {
 }
 
 /**
- * Create standard JSON response headers with CORS
- */
-function createJsonHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    ...additionalHeaders
-  };
-}
-
-/**
- * Create JSON response with standard headers
- */
-function jsonResponse(data: any, status: number = 200, additionalHeaders: Record<string, string> = {}): Response {
-  return new Response(
-    JSON.stringify(data),
-    {
-      status,
-      headers: createJsonHeaders(additionalHeaders)
-    }
-  );
-}
-
-/**
- * Create JSON error response
- */
-function jsonError(error: string, status: number = 500, additionalHeaders: Record<string, string> = {}): Response {
-  return jsonResponse({ error }, status, additionalHeaders);
-}
-
-/**
- * Handle CORS preflight requests
- */
-function handleCorsPreflight(): Response {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'X-User-Key, X-Session-Id, Content-Type',
-      'Access-Control-Max-Age': '86400'
-    }
-  });
-}
-
-/**
  * Generate a secure random session ID
  */
 function generateSessionId(): string {
@@ -306,7 +261,7 @@ function generateSessionId(): string {
  */
 async function handleCreateSession(request: Request, env: Env): Promise<Response> {
   if (!env.SESSIONS_KV) {
-    return jsonError('Session storage not configured', 500);
+    return jsonError('Session storage not configured', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   try {
@@ -314,7 +269,7 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
     const key = request.headers.get('X-User-Key');
 
     if (!key || typeof key !== 'string') {
-      return jsonError('Missing or invalid X-User-Key header', 400);
+      return jsonError('Missing or invalid X-User-Key header', HttpStatus.BAD_REQUEST);
     }
 
     // Generate session ID
@@ -329,7 +284,7 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
 
     return jsonResponse(
       { sessionId },
-      200,
+      HttpStatus.OK,
       {
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'X-User-Key, Content-Type'
@@ -337,7 +292,7 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
     );
   } catch (e) {
     console.error('Error creating session:', e);
-    return jsonError('Failed to create session', 500);
+    return jsonError('Failed to create session', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
 
