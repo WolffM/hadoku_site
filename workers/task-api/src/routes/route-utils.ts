@@ -135,7 +135,24 @@ export async function handleOperation<T>(
 
 /**
  * Simple in-memory lock to prevent concurrent writes to the same board
- * This prevents race conditions when multiple PATCH requests hit simultaneously
+ * 
+ * IMPORTANT LIMITATION:
+ * These locks are per-worker instance, NOT globally coordinated across all
+ * Cloudflare Worker instances. This means:
+ * 
+ * - ✅ Prevents race conditions within a single worker instance
+ * - ❌ Does NOT prevent race conditions across multiple worker instances
+ * - ✅ Acceptable for personal use (single user, low traffic)
+ * - ❌ Not suitable for production multi-user deployments without Durable Objects
+ * 
+ * For production deployments with multiple concurrent users, consider:
+ * 1. Durable Objects - Provides true global coordination with single instance per board
+ * 2. Optimistic locking - Use version numbers/ETags in KV metadata
+ * 3. Accept eventual consistency - Document limitation and monitor for conflicts
+ * 
+ * Current approach trades strong consistency for simplicity and cost (free tier).
+ * 
+ * @see https://developers.cloudflare.com/durable-objects/ for global coordination
  */
 const boardLocks = new Map<string, Promise<any>>();
 
