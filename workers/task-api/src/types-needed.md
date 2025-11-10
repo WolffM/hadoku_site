@@ -2,6 +2,13 @@
 
 This file tracks the types we need to import from the `@wolffm/task` package to improve test type safety.
 
+## Summary
+
+- **158 `any` type warnings** - Most require external types
+- **94 non-null assertion warnings** - Could use proper null checks
+- **10 await-in-loop warnings** - Intentional in tests for sequential execution
+- **2 unused variable warnings** - Minor cleanup needed
+
 ## Types to Import
 
 ### Task Types
