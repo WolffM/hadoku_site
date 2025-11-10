@@ -255,7 +255,7 @@ function generateSessionId(): string {
 }
 
 /**
- * Handle session creation: POST /session/create with { key: "..." }
+ * Handle session creation: POST /session/create with X-User-Key header
  * Returns { sessionId: "..." }
  */
 async function handleCreateSession(request: Request, env: Env): Promise<Response> {
@@ -267,12 +267,12 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
   }
 
   try {
-    const body = await request.json() as { key?: string };
-    const key = body.key;
+    // Read key from header (NEVER from body for security)
+    const key = request.headers.get('X-User-Key');
 
     if (!key || typeof key !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'Missing or invalid key' }),
+        JSON.stringify({ error: 'Missing or invalid X-User-Key header' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }

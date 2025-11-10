@@ -117,8 +117,9 @@ document.addEventListener('DOMContentLoaded', async () => {
               try {
                 const sessionResponse = await fetch('/session/create', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ key })
+                  headers: { 
+                    'X-User-Key': key
+                  }
                 });
                 
                 if (sessionResponse.ok) {
@@ -207,8 +208,9 @@ window.updateHadokuSession = async function(newKey) {
   try {
     const sessionResponse = await fetch('/session/create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: newKey })
+      headers: { 
+        'X-User-Key': newKey
+      }
     });
     
     if (sessionResponse.ok) {
