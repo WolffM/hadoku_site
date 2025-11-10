@@ -75,6 +75,14 @@ export {
 	SENSITIVE_FIELDS
 } from './logging.js';
 
+// Masking (data sanitization for logs)
+export {
+	maskKey,
+	maskSessionId,
+	maskEmail,
+	MASKING
+} from './masking.js';
+
 // Responses
 export {
 	ok,

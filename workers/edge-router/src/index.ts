@@ -9,11 +9,19 @@
  */
 
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import type { Context } from 'hono';
 import { logToAnalytics } from './logging';
 import type { LogEntry } from './logging';
-import { badRequest, serverError } from '../../util';
+import { 
+  badRequest, 
+  serverError, 
+  createCorsMiddleware,
+  DEFAULT_HADOKU_ORIGINS,
+  logRequest,
+  logError,
+  maskKey,
+  maskSessionId
+} from '../../util';
 
 interface Env {
   ROUTE_CONFIG: string;
@@ -42,12 +50,13 @@ type AppContext = {
 
 const app = new Hono<AppContext>();
 
-// 1. CORS Middleware - Allow all origins for static site
-app.use('*', cors({
-  origin: '*',
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['X-User-Key', 'X-Session-Id', 'Content-Type'],
-  exposeHeaders: ['X-Backend-Source'],
+// 1. CORS Middleware - Same configuration as task-api for consistency
+app.use('*', createCorsMiddleware({
+  origins: DEFAULT_HADOKU_ORIGINS,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['X-User-Key', 'X-Session-Id', 'Content-Type'],
+  exposedHeaders: ['X-Backend-Source'],
+  credentials: true,
   maxAge: 86400
 }));
 
@@ -79,12 +88,15 @@ app.post('/session/create', async (c) => {
       expirationTtl: 86400 // 24 hours
     });
 
-    console.log(`Created session ${sessionId} for key ${key.substring(0, 8)}...`);
+    logRequest('POST', '/session/create', { 
+      sessionId: maskSessionId(sessionId),
+      keyPreview: maskKey(key)
+    });
 
     c.set('backend', 'session');
     return c.json({ sessionId });
   } catch (e) {
-    console.error('Error creating session:', e);
+    logError('POST', '/session/create', (e as Error).message);
     return serverError(c, 'Failed to create session');
   }
 });
@@ -144,7 +156,11 @@ async function handleApiRoute(c: Context<AppContext>): Promise<Response> {
       // Inject the key from session
       if (key) {
         headers.set('X-User-Key', key);
-        console.log(`Injected key from session ${sessionId} -> ${key.substring(0, 8)}...`);
+        logRequest(c.req.method, c.req.path, {
+          action: 'key_injection',
+          sessionId: sessionId ? maskSessionId(sessionId) : 'none',
+          keyPreview: maskKey(key)
+        });
       }
       
       // Create request with timeout
@@ -181,7 +197,7 @@ async function handleApiRoute(c: Context<AppContext>): Promise<Response> {
       
     } catch (e) {
       lastErr = e as Error;
-      console.log(`Failed ${base}: ${lastErr.message}`);
+      logError(c.req.method, c.req.path, `Backend ${base} failed: ${lastErr.message}`);
       // Continue to next provider
     }
   }
@@ -259,7 +275,7 @@ function basesFor(path: string, env: Env): string[] {
   try {
     config = JSON.parse(env.ROUTE_CONFIG || '{"global_priority":"12"}');
   } catch (e) {
-    console.error('Failed to parse ROUTE_CONFIG, using default:', e);
+    logError('CONFIG', 'basesFor', `Failed to parse ROUTE_CONFIG: ${(e as Error).message}`);
     config = { global_priority: '12' };
   }
   
@@ -301,7 +317,7 @@ async function getKeyForSession(sessionId: string | null, env: Env): Promise<str
     const key = await env.SESSIONS_KV.get(`session:${sessionId}`);
     return key;
   } catch (e) {
-    console.error('Error fetching session:', e);
+    logError('SESSION', 'getKeyForSession', (e as Error).message);
     return null;
   }
 }

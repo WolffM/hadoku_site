@@ -79,28 +79,10 @@ export function validateBoardId(id: string | null): string | null {
 }
 
 /**
- * Mask a key for logging (show first N characters)
- *
- * @param key - Key to mask
- * @param length - Number of characters to show (default from MASKING.KEY_PREFIX_LENGTH)
- * @returns Masked key (e.g., "12345678...")
+ * Re-export masking utilities from constants (which re-exports from util)
+ * @deprecated Import directly from '@hadoku/worker-utils' instead
  */
-export function maskKey(key: string, length: number = MASKING.KEY_PREFIX_LENGTH): string {
-	if (!key || key.length <= length) {
-		return key;
-	}
-	return key.substring(0, length) + MASKING.KEY_SUFFIX;
-}
-
-/**
- * Mask a session ID for logging (show first N characters)
- *
- * @param id - Session ID to mask
- * @returns Masked session ID
- */
-export function maskSessionId(id: string): string {
-	return maskKey(id, MASKING.SESSION_ID_PREFIX_LENGTH);
-}
+export { maskKey, maskSessionId } from './constants';
 
 /**
  * Parse request body safely

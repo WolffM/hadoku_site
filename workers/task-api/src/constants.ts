@@ -131,9 +131,8 @@ export const ERROR_MESSAGES = {
 // Masking Configuration
 // ============================================================================
 
-export const MASKING = {
-	KEY_PREFIX_LENGTH: 8,
-	KEY_SUFFIX: '...',
-	SESSION_ID_PREFIX_LENGTH: 16,
-	SESSION_ID_SUFFIX: '...'
-} as const;
+/**
+ * Re-export masking constants from util for backward compatibility
+ * @deprecated Import from '@hadoku/worker-utils' instead
+ */
+export { MASKING, maskKey, maskSessionId } from '../../util';
