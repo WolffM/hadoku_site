@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import app from './index';
-import { createTestEnv, createAuthHeaders } from './test-utils';
+import { createTestEnv } from './test-utils';
 import {
 	checkThrottle,
 	recordIncident,
@@ -14,8 +14,6 @@ import {
 	getThrottleState,
 	getIncidents,
 	isSessionBlacklisted,
-	DEFAULT_THROTTLE_LIMITS,
-	THROTTLE_THRESHOLDS,
 	type ThrottleLimits
 } from './throttle';
 

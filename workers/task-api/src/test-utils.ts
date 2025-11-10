@@ -9,11 +9,11 @@
  * Uses an in-memory Map to simulate Workers KV.
  */
 export function createMockKV(): KVNamespace {
-	const store = new Map<string, string>();
+	const _store = new Map<string, string>();
 	
 	return {
 		async get(key: string, type?: 'text' | 'json' | 'arrayBuffer' | 'stream') {
-			const value = store.get(key);
+			const value = _store.get(key);
 			if (!value) return null;
 			
 			if (type === 'json') {
@@ -24,9 +24,9 @@ export function createMockKV(): KVNamespace {
 		
 		async put(key: string, value: string | ArrayBuffer | ReadableStream) {
 			if (typeof value === 'string') {
-				store.set(key, value);
+				_store.set(key, value);
 			} else if (value instanceof ArrayBuffer) {
-				store.set(key, new TextDecoder().decode(value));
+				_store.set(key, new TextDecoder().decode(value));
 			} else {
 				// For streams, read and store
 				const reader = value.getReader();
@@ -42,17 +42,17 @@ export function createMockKV(): KVNamespace {
 					combined.set(chunk, offset);
 					offset += chunk.length;
 				}
-				store.set(key, new TextDecoder().decode(combined));
+				_store.set(key, new TextDecoder().decode(combined));
 			}
 		},
 		
 		async delete(key: string) {
-			store.delete(key);
+			_store.delete(key);
 		},
 		
 		async list() {
 			return {
-				keys: Array.from(store.keys()).map(name => ({ name })),
+				keys: Array.from(_store.keys()).map(name => ({ name })),
 				list_complete: true,
 				cursor: '',
 			} as any;
@@ -74,12 +74,12 @@ export function createMockKV(): KVNamespace {
  * Create a mock D1 database for testing
  */
 function createMockD1(): D1Database {
-	const store = new Map<string, any[]>();
+	const _store = new Map<string, any[]>();
 
 	return {
 		prepare(query: string) {
 			return {
-				bind(...values: any[]) {
+				bind(..._values: any[]) {
 					return {
 						async run() {
 							// Mock INSERT/UPDATE/DELETE
@@ -115,10 +115,10 @@ function createMockD1(): D1Database {
 		async dump() {
 			return new ArrayBuffer(0);
 		},
-		async batch(statements: any[]) {
+		async batch(_statements: any[]) {
 			return [];
 		},
-		async exec(query: string) {
+		async exec(_query: string) {
 			return { count: 0, duration: 0 };
 		},
 	} as any;

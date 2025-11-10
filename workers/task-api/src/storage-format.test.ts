@@ -307,8 +307,8 @@ describe('Storage Format Tests', () => {
 
 			// But tasks entry might not exist (depends on implementation)
 			// This documents the behavior
-			const tasksEntry = await env.TASKS_KV.get(`tasks:test-admin-key:${boardId}`, 'json');
-			// tasksEntry might be null or contain default data - document the expectation
+			const _tasksEntry = await env.TASKS_KV.get(`tasks:test-admin-key:${boardId}`, 'json');
+			// _tasksEntry might be null or contain default data - document the expectation
 		});
 	});
 });

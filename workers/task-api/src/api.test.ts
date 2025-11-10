@@ -4,7 +4,7 @@
  * Fast tests that validate basic functionality.
  * Run these on every commit to catch major breakages.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import app from './index';
 import { createTestEnv, createAuthHeaders, uniqueId } from './test-utils';
 

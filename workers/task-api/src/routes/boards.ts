@@ -7,7 +7,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
 import { badRequest, logRequest, logError, requireFields } from '../../../util';
-import { getContext, handleOperation, withBoardLock } from './route-utils';
+import { getContext, withBoardLock } from './route-utils';
 import { validateBoardId } from '../request-utils';
 import { boardsKey } from '../kv-keys';
 

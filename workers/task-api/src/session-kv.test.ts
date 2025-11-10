@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import app from './index';
-import { createTestEnv, createAuthHeaders } from './test-utils';
+import { createTestEnv } from './test-utils';
 import type { HandshakeResponse, UserPreferences, SessionInfo, SessionMapping } from './session';
 
 describe('Session KV Integration Tests', () => {
