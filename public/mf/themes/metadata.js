@@ -87,8 +87,8 @@ export const THEME_FAMILIES = [
  * Useful for getting the icon for a specific theme
  */
 export const THEME_ICON_MAP = {
-    'light': SunIcon,
-    'dark': MoonIcon,
+    light: SunIcon,
+    dark: MoonIcon,
     'strawberry-light': StrawberryIcon,
     'strawberry-dark': StrawberryIcon,
     'ocean-light': WaveIcon,
