@@ -151,22 +151,17 @@ async function handleApiRoute(
   }
 
   // All backends failed
-  const errorResponse = new Response(
-    JSON.stringify({ 
-      error: 'All backends failed', 
-      details: lastErr?.message,
-      attempted: bases
-    }),
-    { 
-      status: 502, 
-      headers: { 
-        'Content-Type': 'application/json',
-        'X-Backend-Source': 'none'
+  return { 
+    response: jsonError(
+      'All backends failed',
+      502,
+      {
+        'X-Backend-Source': 'none',
+        'X-Error-Details': lastErr?.message || 'Unknown error'
       }
-    }
-  );
-  
-  return { response: errorResponse, backend: 'error' };
+    ), 
+    backend: 'error' 
+  };
 }
 
 /**
@@ -251,6 +246,37 @@ function basesFor(path: string, env: Env): string[] {
 }
 
 /**
+ * Create standard JSON response headers with CORS
+ */
+function createJsonHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    ...additionalHeaders
+  };
+}
+
+/**
+ * Create JSON response with standard headers
+ */
+function jsonResponse(data: any, status: number = 200, additionalHeaders: Record<string, string> = {}): Response {
+  return new Response(
+    JSON.stringify(data),
+    {
+      status,
+      headers: createJsonHeaders(additionalHeaders)
+    }
+  );
+}
+
+/**
+ * Create JSON error response
+ */
+function jsonError(error: string, status: number = 500, additionalHeaders: Record<string, string> = {}): Response {
+  return jsonResponse({ error }, status, additionalHeaders);
+}
+
+/**
  * Handle CORS preflight requests
  */
 function handleCorsPreflight(): Response {
@@ -280,16 +306,7 @@ function generateSessionId(): string {
  */
 async function handleCreateSession(request: Request, env: Env): Promise<Response> {
   if (!env.SESSIONS_KV) {
-    return new Response(
-      JSON.stringify({ error: 'Session storage not configured' }),
-      { 
-        status: 500, 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        } 
-      }
-    );
+    return jsonError('Session storage not configured', 500);
   }
 
   try {
@@ -297,16 +314,7 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
     const key = request.headers.get('X-User-Key');
 
     if (!key || typeof key !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Missing or invalid X-User-Key header' }),
-        { 
-          status: 400, 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
-        }
-      );
+      return jsonError('Missing or invalid X-User-Key header', 400);
     }
 
     // Generate session ID
@@ -319,30 +327,17 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
 
     console.log(`Created session ${sessionId} for key ${key.substring(0, 8)}...`);
 
-    return new Response(
-      JSON.stringify({ sessionId }),
+    return jsonResponse(
+      { sessionId },
+      200,
       {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'X-User-Key, Content-Type'
-        }
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'X-User-Key, Content-Type'
       }
     );
   } catch (e) {
     console.error('Error creating session:', e);
-    return new Response(
-      JSON.stringify({ error: 'Failed to create session' }),
-      { 
-        status: 500, 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        } 
-      }
-    );
+    return jsonError('Failed to create session', 500);
   }
 }
 
