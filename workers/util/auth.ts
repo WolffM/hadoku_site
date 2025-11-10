@@ -288,8 +288,61 @@ export function requireUserType(
 	
 	return async (c: Context, next: Next) => {
 		if (!hasUserType(c, allowedTypes, contextKey)) {
-			return c.json({ error: errorMessage }, errorStatus);
+			return c.json({ error: errorMessage }, errorStatus as any);
 		}
 		await next();
 	};
+}
+
+/**
+ * Validate a key and determine userType
+ * 
+ * Generic utility for checking if a key exists in admin/friend key sets/maps
+ * and returning the appropriate user type.
+ *
+ * @param key - The key to validate
+ * @param adminKeys - Admin keys (Set or Record)
+ * @param friendKeys - Friend keys (Set or Record)
+ * @returns Validation result with userType
+ * 
+ * @example
+ * ```typescript
+ * const adminKeys = new Set(['admin-key-1', 'admin-key-2']);
+ * const friendKeys = { 'friend-1': 'user1', 'friend-2': 'user2' };
+ * 
+ * const result = validateKeyAndGetType('admin-key-1', adminKeys, friendKeys);
+ * // Returns: { valid: true, userType: 'admin' }
+ * 
+ * const result2 = validateKeyAndGetType('friend-1', adminKeys, friendKeys);
+ * // Returns: { valid: true, userType: 'friend' }
+ * 
+ * const result3 = validateKeyAndGetType('invalid', adminKeys, friendKeys);
+ * // Returns: { valid: false, userType: 'public' }
+ * ```
+ */
+export function validateKeyAndGetType(
+	key: string,
+	adminKeys: Record<string, string> | Set<string>,
+	friendKeys: Record<string, string> | Set<string>
+): { valid: boolean; userType: 'admin' | 'friend' | 'public' } {
+	// Check admin keys
+	if (adminKeys instanceof Set) {
+		if (adminKeys.has(key)) {
+			return { valid: true, userType: 'admin' };
+		}
+	} else if (key in adminKeys) {
+		return { valid: true, userType: 'admin' };
+	}
+
+	// Check friend keys
+	if (friendKeys instanceof Set) {
+		if (friendKeys.has(key)) {
+			return { valid: true, userType: 'friend' };
+		}
+	} else if (key in friendKeys) {
+		return { valid: true, userType: 'friend' };
+	}
+
+	// Not found in either
+	return { valid: false, userType: 'public' };
 }

@@ -24,7 +24,8 @@ export {
 	parseKeysFromEnv,
 	getAuthContext,
 	hasUserType,
-	requireUserType
+	requireUserType,
+	validateKeyAndGetType
 } from './auth.js';
 
 // Context extraction

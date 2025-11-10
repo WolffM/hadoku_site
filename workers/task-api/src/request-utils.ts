@@ -2,10 +2,19 @@
  * Request Utilities for Task API
  *
  * Common utilities for extracting and validating request parameters.
+ * 
+ * NOTE: Many generic utilities have been moved to @hadoku/worker-utils.
+ * This file now contains only task-api-specific helpers.
  */
 import type { Context } from 'hono';
-import { extractField } from '../../util';
-import { MASKING, DEFAULT_SESSION_ID, DEFAULT_BOARD_ID } from './constants';
+import { extractField, parseBody, isNonEmptyString } from '../../util';
+import { DEFAULT_SESSION_ID, DEFAULT_BOARD_ID } from './constants';
+
+/**
+ * Re-export masking utilities from constants (which re-exports from util)
+ * @deprecated Import directly from '@hadoku/worker-utils' instead
+ */
+export { maskKey, maskSessionId } from './constants';
 
 /**
  * Get board ID from request synchronously (assumes body already parsed)
@@ -53,49 +62,39 @@ export function getSessionIdFromRequest(
 }
 
 /**
- * Validate task ID
+ * Validate task ID (uses util's isNonEmptyString)
  * 
  * @param id - Task ID to validate
  * @returns Error message or null if valid
  */
 export function validateTaskId(id: string | null): string | null {
-	if (!id || id.trim() === '') {
+	if (!isNonEmptyString(id)) {
 		return 'Missing required parameter: task ID';
 	}
 	return null;
 }
 
 /**
- * Validate board ID
+ * Validate board ID (uses util's isNonEmptyString)
  * 
  * @param id - Board ID to validate
  * @returns Error message or null if valid
  */
 export function validateBoardId(id: string | null): string | null {
-	if (!id || id.trim() === '') {
+	if (!isNonEmptyString(id)) {
 		return 'Missing required parameter: board ID';
 	}
 	return null;
 }
 
 /**
- * Re-export masking utilities from constants (which re-exports from util)
- * @deprecated Import directly from '@hadoku/worker-utils' instead
- */
-export { maskKey, maskSessionId } from './constants';
-
-/**
- * Parse request body safely
+ * Parse request body safely (wrapper around util's parseBody with default)
  * 
  * @param c - Hono context
  * @returns Parsed body or empty object
  */
 export async function parseBodySafely(c: Context): Promise<any> {
-	try {
-		return await c.req.json();
-	} catch {
-		return {};
-	}
+	return parseBody(c, {});
 }
 
 /**
@@ -136,37 +135,7 @@ export function createTaskOperationHandler<T>(
 }
 
 /**
- * Validate a key and determine userType
- * Shared utility used by auth middleware and validate-key endpoint
- *
- * @param key - The key to validate
- * @param adminKeys - Admin keys (Set or Record)
- * @param friendKeys - Friend keys (Set or Record)
- * @returns Validation result with userType
+ * Re-export validateKeyAndGetType from util for backward compatibility
+ * @deprecated Import from '@hadoku/worker-utils' instead
  */
-export function validateKeyAndGetType(
-	key: string,
-	adminKeys: Record<string, string> | Set<string>,
-	friendKeys: Record<string, string> | Set<string>
-): { valid: boolean; userType: 'admin' | 'friend' | 'public' } {
-	// Check admin keys
-	if (adminKeys instanceof Set) {
-		if (adminKeys.has(key)) {
-			return { valid: true, userType: 'admin' };
-		}
-	} else if (key in adminKeys) {
-		return { valid: true, userType: 'admin' };
-	}
-
-	// Check friend keys
-	if (friendKeys instanceof Set) {
-		if (friendKeys.has(key)) {
-			return { valid: true, userType: 'friend' };
-		}
-	} else if (key in friendKeys) {
-		return { valid: true, userType: 'friend' };
-	}
-
-	// Not found in either
-	return { valid: false, userType: 'public' };
-}
+export { validateKeyAndGetType } from '../../util';
