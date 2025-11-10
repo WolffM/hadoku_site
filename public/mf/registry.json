@@ -1,6 +1,6 @@
 {
   "home": {
-    "url": "/mf/home/index.js?v=1762660742028",
+    "url": "/mf/home/index.js?v=1762797395151",
     "basename": "/",
     "props": {
       "basename": "/",
@@ -20,8 +20,8 @@
     }
   },
   "task": {
-    "url": "/mf/task/index.js?v=3.3.1",
-    "css": "/mf/task/style.css?v=3.3.1",
+    "url": "/mf/task/index.js?v=3.4.0",
+    "css": "/mf/task/style.css?v=3.4.0",
     "basename": "/task",
     "props": {
       "basename": "/task",
@@ -30,7 +30,7 @@
     }
   },
   "contact": {
-    "url": "/mf/contact/index.js?v=1762660742028",
+    "url": "/mf/contact/index.js?v=1762797395151",
     "basename": "/contact",
     "props": {
       "basename": "/contact",
@@ -39,7 +39,7 @@
     }
   },
   "herodraft": {
-    "url": "/mf/herodraft/index.js?v=1762660742028",
+    "url": "/mf/herodraft/index.js?v=1762797395151",
     "basename": "/herodraft",
     "props": {
       "basename": "/herodraft",
