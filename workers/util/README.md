@@ -16,6 +16,7 @@ workers/util/
 ├── validation.ts   # Input validation
 ├── cors.ts         # CORS configuration
 ├── logging.ts      # Structured logging
+├── masking.ts      # Data masking for safe logging
 ├── responses.ts    # HTTP response helpers
 └── index.ts        # Barrel export
 ```
@@ -35,6 +36,8 @@ app.use('*', createKeyAuth((env) => ({
 **Functions:**
 - `createKeyAuth(keyMap, options?)` - Simple key → userType mapping
 - `createAuthMiddleware(config)` - Custom auth logic
+- `validateKeyAndGetType(key, adminKeys, friendKeys)` - Validate key & return userType
+- `parseKeysFromEnv(jsonString)` - Parse key config from env vars
 - `getAuthContext(c)` - Get auth from context
 - `requireUserType(['admin', 'friend'])` - Restrict routes
 
@@ -42,7 +45,39 @@ app.use('*', createKeyAuth((env) => ({
 
 ---
 
-## context.ts
+## masking.ts
+
+**Mask sensitive data for logging:**
+```typescript
+logRequest('POST', '/session/create', {
+  sessionId: maskSessionId(sessionId),  // "1a2b3c4d5e6f7g8h..."
+  key: maskKey(authKey)                  // "admin-se..."
+})
+```
+
+**Functions:**
+- `maskKey(key, length?)` - Mask key (show first 8 chars by default)
+- `maskSessionId(id)` - Mask session ID (show first 16 chars)
+- `maskEmail(email)` - Mask email (show first char + domain)
+- `redactFields(obj, fields)` - Redact sensitive fields from objects
+
+**Constants:**
+- `MASKING.KEY_PREFIX_LENGTH` - Default key prefix length (8)
+- `MASKING.SESSION_ID_PREFIX_LENGTH` - Default session ID prefix (16)
+- `MASKING.KEY_SUFFIX` - Suffix for masked values ("...")
+- `SENSITIVE_FIELDS` - Common sensitive field names
+
+**Examples:**
+```typescript
+maskKey('admin-secret-key-123')        // "admin-se..."
+maskSessionId('1a2b3c4d5e6f7g8h9i0j')  // "1a2b3c4d5e6f7g8h..."
+maskEmail('john@example.com')          // "j***@example.com"
+
+redactFields({ username: 'john', password: 'secret' }, ['password'])
+// { username: 'john', password: '[REDACTED]' }
+```
+
+---
 
 **Extract common fields:**
 ```typescript
