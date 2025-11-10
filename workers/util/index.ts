@@ -90,15 +90,6 @@ export {
 	healthCheck
 } from './responses.js';
 
-// Web API Responses (non-Hono)
-export {
-	jsonResponse,
-	jsonError,
-	corsPreflight,
-	createJsonHeaders,
-	HttpStatus
-} from './web-responses.js';
-
 // Types
 export type {
 	UserType,
