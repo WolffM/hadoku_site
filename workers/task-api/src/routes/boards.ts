@@ -71,7 +71,7 @@ export function createBoardRoutes() {
 		const lockKey = boardsKey(auth.sessionId);
 
 		const result = await withBoardLock(lockKey, async () => {
-			return await TaskHandlers.createBoard(storage, auth, body);
+			return TaskHandlers.createBoard(storage, auth, body);
 		});
 
 		return c.json(result);
@@ -102,7 +102,7 @@ export function createBoardRoutes() {
 		const lockKey = boardsKey(auth.sessionId);
 
 		const result = await withBoardLock(lockKey, async () => {
-			return await TaskHandlers.deleteBoard(storage, auth, boardId!);
+			return TaskHandlers.deleteBoard(storage, auth, boardId!);
 		});
 
 		return c.json(result);

@@ -108,10 +108,11 @@ export default [
       'prefer-promise-reject-errors': 'error',
       
       // Code quality
-      'no-duplicate-imports': 'error',
+      'no-duplicate-imports': 'off', // Disable base rule for TypeScript
       'no-self-compare': 'error',
       'no-template-curly-in-string': 'warn',
-      'require-atomic-updates': 'error',
+      'require-atomic-updates': ['error', { allowProperties: true }], // Allow browser navigation
+      'no-case-declarations': 'error', // Enforce block scoping in switch cases
       
       // Best practices
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
@@ -119,7 +120,8 @@ export default [
       'no-implied-eval': 'error',
       'no-new-func': 'error',
       'no-return-await': 'error',
-      'no-await-in-loop': 'warn'
+      'no-await-in-loop': 'warn',
+      'no-useless-escape': 'error'
     }
   },
 

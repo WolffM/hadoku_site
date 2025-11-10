@@ -331,7 +331,7 @@ async function cleanupStaleSessions(kv: KVNamespace, authKey: string): Promise<v
 		}
 
 		const sessionsToDelete: string[] = [];
-		let validSessions: string[] = [];
+		const validSessions: string[] = [];
 
 		// Check each session
 		for (const sessionId of mapping.sessionIds) {

@@ -41,7 +41,7 @@ export function createPreferencesRoutes() {
 
 		try {
 			// Try session-based prefs first
-			let prefs = await getPreferencesBySessionId(c.env.TASKS_KV, sessionId);
+			const prefs = await getPreferencesBySessionId(c.env.TASKS_KV, sessionId);
 
 			if (prefs) {
 				return c.json(prefs);
@@ -147,7 +147,7 @@ export function createPreferencesRoutes() {
 			return c.json({ ok: true, message: 'Preferences saved', preferences: updated });
 		} catch (error: any) {
 			logError('PUT', '/task/api/preferences', error);
-			return badRequest(c, 'Failed to save preferences: ' + error.message);
+			return badRequest(c, `Failed to save preferences: ${  error.message}`);
 		}
 	});
 

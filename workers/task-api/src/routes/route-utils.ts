@@ -193,7 +193,7 @@ export async function handleBoardOperation<T>(
 	const boardsKey = `${auth.userType}:${auth.sessionId}:${boardId}`;
 
 	const result = await withBoardLock(boardsKey, async () => {
-		return await operation(storage, auth);
+		return operation(storage, auth);
 	});
 
 	return c.json(result);
@@ -230,7 +230,7 @@ export async function handleBatchOperation<T>(
 	// Single board lock
 	if (boardsKeys.length === 1) {
 		const result = await withBoardLock(boardsKeys[0], async () => {
-			return await operation(storage, auth, body);
+			return operation(storage, auth, body);
 		});
 		return c.json(result);
 	}
@@ -238,8 +238,8 @@ export async function handleBatchOperation<T>(
 	// Multiple board locks (in consistent order to prevent deadlocks)
 	const sortedKeys = [...boardsKeys].sort();
 	const result = await withBoardLock(sortedKeys[0], async () => {
-		return await withBoardLock(sortedKeys[1], async () => {
-			return await operation(storage, auth, body);
+		return withBoardLock(sortedKeys[1], async () => {
+			return operation(storage, auth, body);
 		});
 	});
 	return c.json(result);

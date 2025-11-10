@@ -72,7 +72,7 @@ export function extractField(
 			case 'param':
 				value = c.req.param(key);
 				break;
-			case 'cookie':
+		case 'cookie': {
 				const cookieHeader = c.req.header('Cookie');
 				if (cookieHeader) {
 					const cookies = Object.fromEntries(
@@ -83,7 +83,8 @@ export function extractField(
 					);
 					value = cookies[key];
 				}
-				break;
+			break;
+		}
 			default:
 				continue;
 		}

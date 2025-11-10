@@ -44,7 +44,7 @@ describe('Task Movement Tests', () => {
 		// Verify task is in testBoard2
 		let boardsRes = await getBoards(app, env, adminHeaders);
 		let boardsData: any = await boardsRes.json();
-		let board2 = boardsData.boards.find((b: any) => b.id === testBoard2);
+		const board2 = boardsData.boards.find((b: any) => b.id === testBoard2);
 		expect(board2.tasks.find((t: any) => t.id === taskId)).toBeDefined();
 
 		// 3. Move task back to 'main' board

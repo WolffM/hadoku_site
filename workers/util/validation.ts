@@ -229,7 +229,7 @@ export const CommonRules = {
 		field: 'email',
 		required,
 		type: 'string',
-		pattern: /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/
+		pattern: /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/
 	}),
 	
 	/**
@@ -239,7 +239,7 @@ export const CommonRules = {
 		field: 'url',
 		required,
 		type: 'string',
-		pattern: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
+		pattern: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/
 	}),
 	
 	/**

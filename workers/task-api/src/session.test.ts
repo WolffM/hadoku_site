@@ -66,8 +66,8 @@ describe('Session Handshake Tests', () => {
 				method: 'POST',
 				headers: adminHeaders,
 				body: JSON.stringify({
-					oldSessionId: oldSessionId,
-					newSessionId: newSessionId
+					oldSessionId,
+					newSessionId
 				})
 			}, env);
 
@@ -232,8 +232,8 @@ describe('Session Handshake Tests', () => {
 				method: 'POST',
 				headers: adminHeaders,
 				body: JSON.stringify({
-					oldSessionId: oldSessionId,
-					newSessionId: newSessionId
+					oldSessionId,
+					newSessionId
 				})
 			}, env);
 

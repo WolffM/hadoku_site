@@ -117,7 +117,7 @@ export function createTagsBatchRoutes() {
 		const boardsKey = `${auth.userType}:${auth.sessionId}:${boardId}`;
 
 		const result = await withBoardLock(boardsKey, async () => {
-			return await TaskHandlers.batchUpdateTags(storage, auth, { ...body, boardId });
+			return TaskHandlers.batchUpdateTags(storage, auth, { ...body, boardId });
 		});
 
 		return c.json(result);

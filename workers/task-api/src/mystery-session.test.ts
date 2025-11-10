@@ -184,8 +184,8 @@ describe('Mystery Session Prevention', () => {
 
 		// Step 2: Now create session-info
 		const sessionInfo = {
-			sessionId: sessionId,
-			authKey: authKey,
+			sessionId,
+			authKey,
 			userType: 'admin' as const,
 			createdAt: new Date().toISOString(),
 			lastAccessedAt: new Date().toISOString()
@@ -234,8 +234,8 @@ describe('Mystery Session Prevention', () => {
 			method: 'POST',
 			headers: adminHeaders,
 			body: JSON.stringify({
-				oldSessionId: oldSessionId,
-				newSessionId: newSessionId
+				oldSessionId,
+				newSessionId
 			})
 		}, env);
 

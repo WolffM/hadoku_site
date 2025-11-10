@@ -51,7 +51,7 @@ describe('Legacy Preference Migration', () => {
 			headers: adminHeaders,
 			body: JSON.stringify({
 				oldSessionId: null, // No old session - simulating new device
-				newSessionId: newSessionId
+				newSessionId
 			})
 		}, env);
 
@@ -120,8 +120,8 @@ describe('Legacy Preference Migration', () => {
 			method: 'POST',
 			headers: adminHeaders,
 			body: JSON.stringify({
-				oldSessionId: oldSessionId, // Explicitly provide old session
-				newSessionId: newSessionId
+				oldSessionId, // Explicitly provide old session
+				newSessionId
 			})
 		}, env);
 
@@ -191,7 +191,7 @@ describe('Legacy Preference Migration', () => {
 			headers: adminHeaders,
 			body: JSON.stringify({
 				oldSessionId: null, // No explicit old session
-				newSessionId: newSessionId
+				newSessionId
 			})
 		}, env);
 
@@ -232,7 +232,7 @@ describe('Legacy Preference Migration', () => {
 			headers: adminHeaders,
 			body: JSON.stringify({
 				oldSessionId: null,
-				newSessionId: newSessionId
+				newSessionId
 			})
 		}, env);
 
@@ -282,7 +282,7 @@ describe('Legacy Preference Migration', () => {
 			headers: adminHeaders,
 			body: JSON.stringify({
 				oldSessionId: null,
-				newSessionId: newSessionId
+				newSessionId
 			})
 		}, env);
 

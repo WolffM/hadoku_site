@@ -131,8 +131,8 @@ describe('Session KV Integration Tests', () => {
 				method: 'POST',
 				headers: adminHeaders,
 				body: JSON.stringify({
-					oldSessionId: oldSessionId,
-					newSessionId: newSessionId
+					oldSessionId,
+					newSessionId
 				})
 			}, env);
 			

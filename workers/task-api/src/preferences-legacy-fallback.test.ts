@@ -298,7 +298,7 @@ describe('GET /preferences Legacy Fallback', () => {
 		expect(handshakeData.migratedFrom).toBe(authKey); // Confirms migration happened
 
 		// Verify session prefs now exist (migrated from legacy)
-		let sessionPrefs = await env.TASKS_KV.get(`prefs:${sessionId}`, 'json') as any;
+		const sessionPrefs = await env.TASKS_KV.get(`prefs:${sessionId}`, 'json') as any;
 		expect(sessionPrefs).toBeDefined();
 		expect(sessionPrefs.theme).toBe('auto-migrate-theme');
 		expect(sessionPrefs.customData).toBe('important');

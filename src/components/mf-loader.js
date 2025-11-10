@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   sessionStorage.setItem('hadoku_session_id', sessionId);
                   sessionStorage.setItem('hadoku_session_key', key);
 
-                  logger.info(`Session created/refreshed`, { sessionId: sessionId.substring(0, 16) + '...' });
+                  logger.info(`Session created/refreshed`, { sessionId: `${sessionId.substring(0, 16)  }...` });
 
                   // Scrub key from URL for security (only if it was in the URL)
                   if (keyFromUrl) {
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sessionStorage.removeItem('hadoku_session_key');
               }
             } else {
-              logger.debug(`Using existing session`, { sessionId: sessionId.substring(0, 16) + '...' });
+              logger.debug(`Using existing session`, { sessionId: `${sessionId.substring(0, 16)  }...` });
             }
           } else {
             // No key found - clear any stale session data
@@ -221,7 +221,7 @@ window.updateHadokuSession = async function(newKey) {
       sessionStorage.setItem('hadoku_session_id', sessionId);
       sessionStorage.setItem('hadoku_session_key', newKey);
 
-      logger.info(`Session updated`, { sessionId: sessionId.substring(0, 16) + '...' });
+      logger.info(`Session updated`, { sessionId: `${sessionId.substring(0, 16)  }...` });
       return { success: true, sessionId };
     } else {
       const errorText = await sessionResponse.text();

@@ -230,7 +230,7 @@ describe('Authentication Tests', () => {
 			body: JSON.stringify({
 				id: taskId,
 				title: 'Hi erin!',
-				boardId: boardId
+				boardId
 			})
 		}, env);
 		

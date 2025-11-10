@@ -52,17 +52,18 @@ function extractCredential(c: Context, source: string): string | undefined {
 			return c.req.header(key);
 		case 'query':
 			return c.req.query(key);
-		case 'cookie':
+		case 'cookie': {
 			// Parse cookies from Cookie header
 			const cookieHeader = c.req.header('Cookie');
 			if (!cookieHeader) return undefined;
 			const cookies = Object.fromEntries(
-				cookieHeader.split(';').map(c => {
+				cookieHeader.split(';').map((c) => {
 					const [k, v] = c.trim().split('=');
 					return [k, v];
 				})
 			);
 			return cookies[key];
+		}
 		default:
 			console.warn(`[auth] Unknown credential source type: ${type}`);
 			return undefined;

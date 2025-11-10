@@ -61,7 +61,7 @@ export function createSessionRoutes() {
 			return c.json(response);
 		} catch (error: any) {
 			logError('POST', '/task/api/session/handshake', error);
-			return badRequest(c, 'Handshake failed: ' + error.message);
+			return badRequest(c, `Handshake failed: ${  error.message}`);
 		}
 	});
 
