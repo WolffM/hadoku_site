@@ -90,7 +90,7 @@ export function createTagsBatchRoutes() {
 	 *
 	 * Updates tags on multiple tasks in a single operation
 	 */
-	const batchUpdateTagsHandler = async (c: any) => {
+	const batchUpdateTagsHandler = async (c: Context) => {
 		// First read the body to get boardId if not in URL
 		const body = await c.req.json();
 		const boardIdFromParam = c.req.param('boardId');
@@ -135,7 +135,7 @@ export function createTagsBatchRoutes() {
 	 * Moves multiple tasks from one board to another
 	 * Requires: sourceBoardId, targetBoardId, taskIds
 	 */
-	const batchMoveHandler = async (c: any) => {
+	const batchMoveHandler = async (c: Context) => {
 		logRequest('POST', '/task/api/batch-move', {
 			userType: c.get('authContext').userType
 		});

@@ -333,23 +333,33 @@ async function cleanupStaleSessions(kv: KVNamespace, authKey: string): Promise<v
 		const sessionsToDelete: string[] = [];
 		const validSessions: string[] = [];
 
-		// Check each session
-		for (const sessionId of mapping.sessionIds) {
-			const sessionInfo = await getSessionInfo(kv, sessionId);
+		// Check all sessions in parallel for better performance
+		const sessionChecks = await Promise.all(
+			mapping.sessionIds.map(async (sessionId) => {
+				const sessionInfo = await getSessionInfo(kv, sessionId);
 
-			if (!sessionInfo) {
-				// Orphaned session - no session-info exists
-				console.log(`[SessionCleanup] Removing orphaned session: ${sessionId.substring(0, 16)}...`);
-				sessionsToDelete.push(sessionId);
-				continue;
-			}
+				if (!sessionInfo) {
+					// Orphaned session - no session-info exists
+					console.log(`[SessionCleanup] Removing orphaned session: ${sessionId.substring(0, 16)}...`);
+					return { sessionId, action: 'delete' as const };
+				}
 
-			// Check if session is stale (30+ days)
-			const lastAccessed = new Date(sessionInfo.lastAccessedAt).getTime();
-			const age = now - lastAccessed;
+				// Check if session is stale (30+ days)
+				const lastAccessed = new Date(sessionInfo.lastAccessedAt).getTime();
+				const age = now - lastAccessed;
 
-			if (age > STALE_THRESHOLD_MS) {
-				console.log(`[SessionCleanup] Removing stale session: ${sessionId.substring(0, 16)}... (${Math.floor(age / (24 * 60 * 60 * 1000))} days old)`);
+				if (age > STALE_THRESHOLD_MS) {
+					console.log(`[SessionCleanup] Removing stale session: ${sessionId.substring(0, 16)}... (${Math.floor(age / (24 * 60 * 60 * 1000))} days old)`);
+					return { sessionId, action: 'delete' as const };
+				} else {
+					return { sessionId, action: 'keep' as const };
+				}
+			})
+		);
+
+		// Separate sessions to delete from those to keep
+		for (const { sessionId, action } of sessionChecks) {
+			if (action === 'delete') {
 				sessionsToDelete.push(sessionId);
 			} else {
 				validSessions.push(sessionId);

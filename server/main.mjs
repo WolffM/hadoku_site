@@ -91,7 +91,7 @@ app.use(['/task/api', '/watchparty/api'], (req, res, next) => {
           proxyRes.pipe(res);
         }
       },
-      onError: (err, req, res) => {
+      onError: (err, _req, _res) => {
         // This handles connection errors (e.g., backend is down)
         console.error(`[Router] Proxy error for ${target}:`, err.message);
         tryNext(err);
