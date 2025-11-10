@@ -1,21 +1,23 @@
 # Architecture Overview - Hadoku Site
 
-**Last Updated:** November 6, 2025
+**Last Updated:** November 10, 2025
 
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         PRODUCTION ENVIRONMENT                           │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌────────────────────────────────────────────────────────────────┐     │
-│  │  Cloudflare Worker: edge-router (hadoku.me/*)                  │     │
-│  │  • Intelligent fallback routing (tunnel → worker → static)     │     │
-│  │  • Analytics Engine logging (SQL-queryable)                    │     │
-│  │  • X-Backend-Source header tracking                            │     │
-│  └────────────────────────────────────────────────────────────────┘     │
-│         ↓                           ↓                        ↓           │
+┌────────────────────────────────────────────────────────────────────────┐
+│                         PRODUCTION ENVIRONMENT                         │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌────────────────────────────────────────────────────────────────┐    │
+│  │  Cloudflare Worker: edge-router (hadoku.me/*)                  │    │
+│  │  • Framework: Hono 4.10                                        │    │
+│  │  • Intelligent fallback routing (tunnel → worker → static)     │    │
+│  │  • Session management with KV storage                          │    │
+│  │  • Analytics Engine logging (SQL-queryable)                    │    │
+│  │  • Shared utilities from @hadoku/worker-utils                  │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│         ↓                           ↓                      ↓           │
 │  ┌───────────────┐   ┌───────────────────────┐   ┌──────────────────┐  │
 │  │  Tunnel       │   │  Cloudflare Workers   │   │  GitHub Pages    │  │
 │  │  (Priority 1) │   │  (Priority 2)         │   │  (Fallback)      │  │
@@ -24,29 +26,45 @@
 │  │ via tunnel    │   │ • Hono framework      │   │ • Astro build    │  │
 │  │ (dev/home)    │   │ • @wolffm/task pkg    │   │ • Micro-frontends│  │
 │  │               │   │ • Workers KV storage  │   │                  │  │
+│  │               │   │ • Shared utilities    │   │                  │  │
 │  └───────────────┘   └───────────────────────┘   └──────────────────┘  │
-│                                                                           │
-└─────────────────────────────────────────────────────────────────────────┘
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      GITHUB PACKAGES (PRIVATE NPM)                       │
-├─────────────────────────────────────────────────────────────────────────┤
-│  @wolffm/task@1.0.0                                                      │
-│  • TaskHandlers (pure business logic functions)                         │
-│  • TaskStorage (interface for parent to implement)                      │
-│  • AuthContext, Task types (TypeScript definitions)                     │
-│                                                                           │
-│  Published by child → Downloaded by parent → Used in task-api worker    │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                    SHARED UTILITIES (@hadoku/worker-utils)             │
+├────────────────────────────────────────────────────────────────────────┤
+│  workers/util/ (workspace package)                                     │
+│  • Authentication (createAuthMiddleware, validateKeyAndGetType)        │
+│  • CORS (createCorsMiddleware with wildcard origin support)            │
+│  • Validation (isNonEmptyString, validateFields, sanitizeString)       │
+│  • Logging (logRequest, logError with consistent format)               │
+│  • Masking (maskKey, maskSessionId, maskEmail for safe logging)        │
+│  • Responses (badRequest, serverError, ok, created - Hono helpers)     │
+│  • Context extraction (extractField, parseBody, getRequestMetadata)    │
+│                                                                        │
+│  Used by both edge-router and task-api for consistent patterns         │
+└────────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│                       DEVELOPMENT ENVIRONMENT                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│  Astro Dev Server (localhost:4321)                                      │
-│  • Serves static site locally                                            │
-│  • Hot module reloading                                                  │
-│  • No API routing (use worker or tunnel)                                │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                      GITHUB PACKAGES                     │
+├────────────────────────────────────────────────────────────────────────┤
+│  @wolffm/task                                                   │
+│  • TaskHandlers (pure business logic functions)                        │
+│  • TaskStorage (interface for parent to implement)                     │
+│  • AuthContext, Task types (TypeScript definitions)                    │
+│                                                                        │
+│  Published by child → Downloaded by parent → Used in task-api worker   │
+└────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                       DEVELOPMENT ENVIRONMENT                          │
+├────────────────────────────────────────────────────────────────────────┤
+│  Astro Dev Server (localhost:4321)                                     │
+│  • Serves static site locally                                          │
+│  • Hot module reloading                                                │
+│  • No API routing (use worker or tunnel)                               │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Request Flow
@@ -111,28 +129,40 @@ For API testing, point directly to deployed workers or tunnel.
 - **Architecture:** Micro-frontends with dynamic loading
 - **Child Apps:** React 18.3.1 (bundled with Vite)
 - **Styling:** CSS (scoped per app)
-- **Loader:** Custom mf-loader.js (dynamic imports)
+- **Loader:** Custom mf-loader.js (dynamic imports with key validation)
 - **Registry:** Auto-generated registry.json from public/mf/
 
-### Backend - Production
-- **Platform:** Cloudflare Workers
-- **edge-router:**
-  - Intelligent fallback routing (tunnel → worker → static)
-  - Analytics Engine logging (10M events/month free)
-  - Proxy to tunnel/worker/static origins
-  - TypeScript + Cloudflare Workers SDK
-- **task-api:**
-  - Hono 4.0.0 framework (Express-like for Workers)
-  - @wolffm/task package from GitHub Packages (Universal Adapter)
-  - Workers KV storage via TaskStorage adapter
-  - Authentication via X-Admin-Key header
-  - TypeScript + Hono + Octokit
+### Backend - Cloudflare Workers
+Both workers share a unified architecture built on Hono framework with shared utilities.
 
-### Backend - Development
-- **Runtime:** Astro dev server only (static site)
+**edge-router:**
+- **Framework:** Hono 4.10
+- **Features:** Intelligent fallback routing, session management, Analytics Engine logging
+- **Dependencies:** @hadoku/worker-utils
+- **Storage:** Workers KV (SESSIONS_KV namespace for session→key mapping)
+- **Security:** Key injection from sessions, CORS middleware
+
+**task-api:**
+- **Framework:** Hono 4.10
+- **Package:** @wolffm/task (Universal Adapter from GitHub Packages)
+- **Dependencies:** @hadoku/worker-utils
+- **Storage:** Workers KV (TASKS_KV namespace for task data)
+- **Security:** Auth middleware, key validation, throttling
+
+**@hadoku/worker-utils** (Shared Utilities):
+- **Authentication:** createAuthMiddleware, validateKeyAndGetType, parseKeysFromEnv
+- **CORS:** createCorsMiddleware with wildcard origin support
+- **Validation:** isNonEmptyString, validateFields, sanitizeString
+- **Logging:** logRequest, logError with consistent structured format
+- **Masking:** maskKey, maskSessionId, maskEmail for safe logging
+- **Responses:** badRequest, serverError, ok, created, etc. (Hono helpers)
+- **Context:** extractField, parseBody, getRequestMetadata
+
+### Development
+- **Runtime:** Astro dev server for static site
 - **API Testing:** Use deployed workers or tunnel directly
 - **Local Mode:** Task app uses public mode (localStorage)
-- **Storage:** localStorage for public users, Workers KV for admin/friend users
+- **Storage:** localStorage for public users, Workers KV for authenticated users
 
 ### Universal Adapter Pattern
 - **Child Packages:** @wolffm/task, @wolffm/watchparty (private GitHub Packages)
@@ -371,23 +401,30 @@ All requests go through edge-router for intelligent fallback.
 | Path | Backend | Description |
 |------|---------|-------------|
 | `/*` | GitHub Pages | Static Astro site (HTML, CSS, JS) |
+| `/session/create` | edge-router | Create session from authKey (returns sessionId) |
 | `/task/api/*` | Tunnel or Worker | Task API (fallback chain) |
 | `/watchparty/api/*` | Tunnel only | Watchparty API (home server) |
 
+### Session Management
+| Method | Path | Headers | Description |
+|--------|------|---------|-------------|
+| POST | `/session/create` | `X-User-Key: {authKey}` | Create session, returns `{ sessionId }` |
+
 ### Task API (task-api.hadoku.me/task/api/*)
-Accessed via edge-router or directly. All endpoints require X-Admin-Key header.
+Accessed via edge-router or directly. Authenticated endpoints use X-Session-Id header.
 
-| Method | Path | Description | Access |
-|--------|------|-------------|--------|
-| GET | `/task/api/` | Health check | Public |
-| GET | `/task/api/stats` | Get task stats | Admin/Friend |
-| POST | `/task/api/` | Create task | Admin/Friend |
-| PATCH | `/task/api/:id` | Update task | Admin/Friend |
-| POST | `/task/api/:id/complete` | Toggle complete | Admin/Friend |
-| DELETE | `/task/api/:id` | Delete task | Admin/Friend |
-| POST | `/task/api/clear` | Clear all tasks | Admin only |
+| Method | Path | Headers | Description | Access |
+|--------|------|---------|-------------|--------|
+| GET | `/task/api/` | None | Health check | Public |
+| POST | `/task/api/validate-key` | `X-User-Key` | Validate key & return userType | Public |
+| GET | `/task/api/stats` | `X-Session-Id` | Get task stats | Admin/Friend |
+| POST | `/task/api/` | `X-Session-Id` | Create task | Admin/Friend |
+| PATCH | `/task/api/:id` | `X-Session-Id` | Update task | Admin/Friend |
+| POST | `/task/api/:id/complete` | `X-Session-Id` | Toggle complete | Admin/Friend |
+| DELETE | `/task/api/:id` | `X-Session-Id` | Delete task | Admin/Friend |
+| POST | `/task/api/clear` | `X-Session-Id` | Clear all tasks | Admin only |
 
-**Note:** Public users use localStorage and never call these APIs.
+**Note:** Public users use localStorage and never call authenticated APIs.
 
 ## Data Flow
 
@@ -401,34 +438,70 @@ No network requests, fully offline capable.
 
 ### Admin/Friend Mode (Server-Backed via edge-router)
 ```
-User Action → React State → fetch('/task/api/tasks', { X-Admin-Key })
-           → edge-router Worker → Try local-api.hadoku.me (tunnel)
+User Action → React State → fetch('/task/api/tasks', { X-Session-Id })
+           → edge-router Worker → Looks up key from session (SESSIONS_KV)
+                                 → Injects X-User-Key into request
+                                 → Try local-api.hadoku.me (tunnel)
                                     ↓ (on error)
                                  → Try task-api.hadoku.me (worker)
                                     ↓ (success)
+                                 → task-api validates key with auth middleware
+                                 → Determines userType (admin/friend/public)
                                  → Workers KV (Cloudflare KV storage)
                                     ↓ (read/write data by sessionId)
            ← JSON Response ← task-api Worker
            ← edge-router (adds X-Backend-Source header)
 ```
 
+#### Session Management Flow
+```
+1. Client has authKey (from user input)
+2. Client POSTs to /session/create with X-User-Key: {authKey}
+3. edge-router:
+   - Generates secure sessionId (32 char hex)
+   - Stores in SESSIONS_KV: session:{sessionId} → {authKey}
+   - TTL: 24 hours
+   - Returns { sessionId }
+4. Client stores sessionId in sessionStorage
+5. All subsequent requests use X-Session-Id header
+6. edge-router looks up authKey and injects it as X-User-Key
+7. task-api validates key and determines userType
+
+Benefits:
+- Keys never sent in request bodies (security)
+- Keys only transmitted once during session creation
+- Client never needs to store raw key after session creation
+- Session expires after 24 hours (auto-cleanup)
+```
+
 ## Security Model
 
-### Edge Layer (Cloudflare Workers)
-- ✅ edge-router doesn't validate keys (transparent proxy)
+### Edge Layer (edge-router Worker)
+- ✅ Session management with SESSIONS_KV
+- ✅ Key injection from sessions (keys in headers only)
 - ✅ All requests logged with Analytics Engine (non-blocking)
 - ✅ Fallback logic prevents backend exposure
 - ✅ X-Backend-Source header reveals which backend served request
 - ✅ Timeout protection (2500ms per backend attempt)
+- ✅ CORS middleware with explicit allowed headers
 
 ### API Layer (task-api Worker)
-- ✅ All endpoints validate X-Admin-Key header
+- ✅ Auth middleware validates X-User-Key header on every request
 - ✅ Keys compared against Worker secrets (ADMIN_KEY, FRIEND_KEY)
-- ✅ userType determined server-side only
-- ✅ CORS configured for hadoku.me origin
+- ✅ validateKeyAndGetType() determines userType server-side
+- ✅ Client-side validation before app mount (prevents dead key usage)
+- ✅ CORS configured with DEFAULT_HADOKU_ORIGINS
 - ✅ Public mode uses localStorage (zero API calls)
 - ✅ Throttling & rate limiting per sessionId
 - ✅ Incident tracking for security events
+
+### Key Management
+- ✅ Keys never sent in request bodies (headers only)
+- ✅ Keys validated on both client and server
+- ✅ Dead keys detected and cleared from sessionStorage
+- ✅ Session creation returns sessionId (not key)
+- ✅ All logging uses maskKey() and maskSessionId() utilities
+- ✅ Sensitive data redacted with redactFields() utility
 
 ### Workers KV Storage
 - ✅ Globally distributed key-value store
@@ -670,26 +743,47 @@ hadoku_site/
 │           └── index.js         # Home page app
 │
 ├── workers/                      # Cloudflare Workers (production)
+│   ├── util/                    # Shared utilities (@hadoku/worker-utils)
+│   │   ├── auth.ts              # Authentication (middleware, key validation)
+│   │   ├── cors.ts              # CORS middleware (wildcard origins)
+│   │   ├── validation.ts        # Input validation (fields, sanitization)
+│   │   ├── logging.ts           # Structured logging (request/error)
+│   │   ├── masking.ts           # Data masking (keys, sessions, emails)
+│   │   ├── responses.ts         # Hono response helpers (badRequest, ok, etc.)
+│   │   ├── context.ts           # Request context extraction
+│   │   ├── types.ts             # Shared TypeScript types
+│   │   ├── index.ts             # Module exports
+│   │   ├── package.json         # Workspace package definition
+│   │   └── README.md            # Utilities documentation
+│   │
 │   ├── edge-router/             # Main traffic router
 │   │   ├── src/
-│   │   │   ├── index.ts         # Worker entry point
+│   │   │   ├── index.ts         # Hono app (routing, sessions, fallback)
 │   │   │   └── logging/
 │   │   │       ├── types.ts     # LogEntry interface
 │   │   │       ├── analytics-provider.ts  # Analytics Engine logging
 │   │   │       ├── index.ts     # Module exports
 │   │   │       └── README.md    # Logging documentation
-│   │   ├── wrangler.toml        # Worker config (routes, bindings)
-│   │   ├── package.json         # Dependencies (minimal)
-│   │   ├── tsconfig.json        # TypeScript config
-│   │   └── .npmrc               # GitHub Packages auth (generated in CI)
+│   │   ├── wrangler.toml        # Worker config (routes, KV bindings)
+│   │   ├── package.json         # Dependencies (hono, @hadoku/worker-utils)
+│   │   └── tsconfig.json        # TypeScript config
 │   │
 │   └── task-api/                # Task API Worker (Universal Adapter)
 │       ├── src/
-│       │   └── index.ts         # Hono app + Workers KV storage adapter
+│       │   ├── index.ts         # Hono app + auth middleware
+│       │   ├── constants.ts     # Constants (re-exports from util)
+│       │   ├── request-utils.ts # Task-specific request utilities
+│       │   ├── throttle.ts      # Rate limiting & incident tracking
+│       │   ├── session.ts       # Session management
+│       │   └── routes/          # API route modules
+│       │       ├── session.ts   # Session endpoints
+│       │       ├── tasks.ts     # Task CRUD endpoints
+│       │       ├── boards.ts    # Board management
+│       │       ├── misc.ts      # Health check, validate-key
+│       │       └── admin.ts     # Admin-only endpoints
 │       ├── wrangler.toml        # Worker config (KV binding, secrets)
-│       ├── package.json         # Dependencies (@wolffm/task, hono)
-│       ├── tsconfig.json        # TypeScript config
-│       └── .npmrc               # GitHub Packages auth (generated in CI)
+│       ├── package.json         # Dependencies (@wolffm/task, hono, @hadoku/worker-utils)
+│       └── tsconfig.json        # TypeScript config
 │
 ├── scripts/                      # Build and deployment scripts
 │   ├── generate-registry.mjs    # Generate mf/registry.json
@@ -765,52 +859,30 @@ hadoku_site/
 - **Package Versioning**: Semantic versioning for child packages
 - **Documentation Site**: Auto-generated API docs from TypeScript types
 
-## Architecture Evolution
+## Architecture Principles
 
-### Phase 1: Monolithic (Deprecated)
-```
-Browser → Cloudflare Pages + Functions
-       → functions/task/api/[[path]].js (Express-in-Worker adapter)
-       → /tmp storage (ephemeral)
-```
-❌ **Limitations:**
-- Tight coupling between routing, business logic, and storage
-- Complex adapter layer to run Express in Worker environment
-- Ephemeral storage cleared on every cold start
-- No fallback options (single backend only)
-- Can't use custom domains (tied to Pages)
+### 1. Shared Utilities
+All workers use the @hadoku/worker-utils package for consistent patterns:
+- **Single source of truth** for authentication, validation, logging
+- **Type-safe** utilities with TypeScript
+- **Reusable** across all workers (edge-router, task-api, future workers)
+- **Testable** - utilities can be tested independently
 
-### Phase 2: Universal Adapter Pattern (Current)
-```
-Browser → edge-router Worker (hadoku.me/*)
-       → Intelligent fallback (tunnel → task-api → static)
-       → task-api Worker imports @wolffm/task from GitHub Packages
-       → Workers KV (persistent storage)
-```
-✅ **Benefits:**
-- **Decoupling**: Child logic separated from parent infrastructure
-- **Flexibility**: Parent can swap Hono → Elysia, KV → D1 without touching child
-- **Testability**: Child can be tested with mock storage
-- **Reusability**: Same child package works with multiple parent frameworks
-- **Persistence**: Workers KV with global distribution and eventual consistency
-- **Fallback**: Multi-backend routing with automatic failover
-- **Observability**: Analytics Engine logging with zero configuration
-- **Automation**: Child publishes → parent auto-updates → Workers redeploy
-- **Performance**: Sub-50ms KV reads, globally distributed
+### 2. Hono Framework
+Both edge-router and task-api use Hono for routing:
+- **Consistent** API across all workers
+- **Fast** - optimized for Cloudflare Workers runtime
+- **Familiar** - Express-like syntax
+- **Type-safe** - full TypeScript support with Context typing
 
-### Phase 3: Service Bindings (Future)
-```
-Browser → edge-router Worker
-       → Service Binding (no HTTP) → task-api Worker
-       → Workers KV (primary storage)
-```
-🔮 **Future Advantages:**
-- Sub-millisecond Worker-to-Worker communication
-- Automatic serialization/deserialization
-- No network latency between Workers
-- Built-in load balancing and failover
+### 3. Session-Based Auth
+Keys are never stored or transmitted after initial session creation:
+- **Security** - keys in headers only (never in body)
+- **Convenience** - client uses sessionId (24hr expiration)
+- **Privacy** - all logging uses masked keys/sessions
+- **Validation** - client validates before mounting app
 
-## References
+### 4. Universal Adapter Pattern
 
 ### Cloudflare Documentation
 - **Cloudflare Workers:** https://developers.cloudflare.com/workers/
@@ -838,53 +910,38 @@ Browser → edge-router Worker
 
 ---
 
-## Storage Evolution
+## Storage Architecture
 
-### Phase 1: GitHub-Backed Storage (Pre-October 2025)
-**Architecture:**
-- Task data stored in GitHub repository (`data/task/admin/`, `data/task/friend/`)
-- task-api Worker made commits to GitHub via GitHub API
-- Required GITHUB_PAT (Personal Access Token) secret
-- Data persisted as JSON files in git history
-
-**Limitations:**
-- External API dependency (GitHub API)
-- Higher latency (network requests to GitHub)
-- Rate limiting concerns
-- Operational complexity (managing PAT)
-
-### Phase 2: Workers KV Storage (October 2025 - Present)
-**Architecture:**
-- All data stored in Cloudflare Workers KV
-- No external dependencies
+### Workers KV Storage
+**Current Architecture:**
+- All data stored in Cloudflare Workers KV namespaces
 - Direct KV read/write operations
-- No GitHub PAT required
+- No external dependencies
+- Globally distributed with edge caching
+
+**Storage Namespaces:**
+- **TASKS_KV** (task-api) - Task data keyed by sessionId
+- **SESSIONS_KV** (edge-router) - Session→key mapping (24hr TTL)
 
 **Benefits:**
-- ✅ Faster operations (no external API calls)
-- ✅ Lower operational complexity
-- ✅ Better Cloudflare Workers integration
-- ✅ Globally distributed with edge caching
-- ✅ Free tier sufficient for personal use
+- ✅ Fast operations (no external API calls)
+- ✅ Low operational complexity
+- ✅ Excellent Cloudflare Workers integration
+- ✅ Globally distributed with automatic replication
+- ✅ Free tier sufficient for personal use (100K reads/day, 1K writes/day)
 
-**Migration:**
-Completed October 2025. No data loss, seamless transition for users.
-
-### Phase 3: SessionId-Based Storage (October 2025 - Present)
+### SessionId-Based Storage
 **Architecture:**
 - Storage keyed by `sessionId` instead of `authKey`
 - Multi-device support with separate preferences per device
-- Session mapping: `authKey` → list of `sessionIds`
+- Session mapping in SESSIONS_KV: `session:{sessionId}` → `{authKey}`
+- Task data in TASKS_KV: `tasks:{sessionId}` → `[...tasks]`
 
 **Benefits:**
 - ✅ Device-specific preferences (layout, theme)
 - ✅ Better UX for desktop + mobile users
 - ✅ Preserves preferences when switching devices
-
-**Migration:**
-- Legacy `prefs:{authKey}` entries automatically migrated on next login
-- Three-tier fallback ensures no data loss
-- Gradual migration as users log in
+- ✅ Session expiration (24 hours) with automatic cleanup
 
 **See [SESSION_ARCHITECTURE.md](./SESSION_ARCHITECTURE.md) for detailed design decisions.**
 
