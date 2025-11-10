@@ -89,16 +89,21 @@ describe('Authentication Tests', () => {
 		});
 		
 		// Test each admin key
-		for (const key of ['admin-key-1', 'admin-key-2', 'admin-key-3']) {
-			const response = await app.request('/task/api/boards', {
-				method: 'GET',
-				headers: {
-					'X-User-Key': key
-				}
-			}, env);
-			
+		const keys = ['admin-key-1', 'admin-key-2', 'admin-key-3'];
+		const responses = await Promise.all(
+			keys.map(key => 
+				app.request('/task/api/boards', {
+					method: 'GET',
+					headers: {
+						'X-User-Key': key
+					}
+				}, env)
+			)
+		);
+		
+		responses.forEach(response => {
 			expect(response.status).toBe(200);
-		}
+		});
 	});
 	
 	it('should support multiple friend keys', async () => {
@@ -112,16 +117,21 @@ describe('Authentication Tests', () => {
 		});
 		
 		// Test each friend key
-		for (const key of ['friend-key-1', 'friend-key-2', '4355']) {
-			const response = await app.request('/task/api/boards', {
-				method: 'GET',
-				headers: {
-					'X-User-Key': key
-				}
-			}, env);
-			
+		const keys = ['friend-key-1', 'friend-key-2', '4355'];
+		const responses = await Promise.all(
+			keys.map(key => 
+				app.request('/task/api/boards', {
+					method: 'GET',
+					headers: {
+						'X-User-Key': key
+					}
+				}, env)
+			)
+		);
+		
+		responses.forEach(response => {
 			expect(response.status).toBe(200);
-		}
+		});
 	});
 	
 	it('should accept key from query parameter', async () => {

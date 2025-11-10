@@ -24,12 +24,26 @@ describe('Throttling System Tests', () => {
 		it('should allow requests under the limit', async () => {
 			const sessionId = `throttle-test-${Date.now()}`;
 			
-			// Make 5 requests (well under limit)
-			for (let i = 0; i < 5; i++) {
-				const result = await checkThrottle(env.TASKS_KV, sessionId, 'public');
-				expect(result.allowed).toBe(true);
-				expect(result.state.count).toBe(i + 1);
-			}
+			// Make 5 requests sequentially (state depends on previous request)
+			const result1 = await checkThrottle(env.TASKS_KV, sessionId, 'public');
+			expect(result1.allowed).toBe(true);
+			expect(result1.state.count).toBe(1);
+			
+			const result2 = await checkThrottle(env.TASKS_KV, sessionId, 'public');
+			expect(result2.allowed).toBe(true);
+			expect(result2.state.count).toBe(2);
+			
+			const result3 = await checkThrottle(env.TASKS_KV, sessionId, 'public');
+			expect(result3.allowed).toBe(true);
+			expect(result3.state.count).toBe(3);
+			
+			const result4 = await checkThrottle(env.TASKS_KV, sessionId, 'public');
+			expect(result4.allowed).toBe(true);
+			expect(result4.state.count).toBe(4);
+			
+			const result5 = await checkThrottle(env.TASKS_KV, sessionId, 'public');
+			expect(result5.allowed).toBe(true);
+			expect(result5.state.count).toBe(5);
 		});
 
 		it('should block requests over the limit', async () => {
@@ -40,11 +54,21 @@ describe('Throttling System Tests', () => {
 				public: { windowMs: 60000, maxRequests: 5 }  // Low limit for testing
 			};
 			
-			// Make requests up to limit
-			for (let i = 0; i < 5; i++) {
-				const result = await checkThrottle(env.TASKS_KV, sessionId, 'public', testLimits);
-				expect(result.allowed).toBe(true);
-			}
+			// Make requests up to limit sequentially
+			const result1 = await checkThrottle(env.TASKS_KV, sessionId, 'public', testLimits);
+			expect(result1.allowed).toBe(true);
+			
+			const result2 = await checkThrottle(env.TASKS_KV, sessionId, 'public', testLimits);
+			expect(result2.allowed).toBe(true);
+			
+			const result3 = await checkThrottle(env.TASKS_KV, sessionId, 'public', testLimits);
+			expect(result3.allowed).toBe(true);
+			
+			const result4 = await checkThrottle(env.TASKS_KV, sessionId, 'public', testLimits);
+			expect(result4.allowed).toBe(true);
+			
+			const result5 = await checkThrottle(env.TASKS_KV, sessionId, 'public', testLimits);
+			expect(result5.allowed).toBe(true);
 			
 			// Next request should be blocked
 			const blockedResult = await checkThrottle(env.TASKS_KV, sessionId, 'public', testLimits);

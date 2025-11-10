@@ -109,7 +109,7 @@ export function createTaskOperationHandler<T>(
 	logRequest: any,
 	logError: any,
 	badRequest: any,
-	getContext: any
+	_getContext: any
 ) {
 	return async (c: Context) => {
 		const id = getTaskIdFromParam(c);

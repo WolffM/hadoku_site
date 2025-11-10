@@ -50,11 +50,11 @@ describe('Route Collision Tests', () => {
 		// Setup
 		const { boardId } = await createTestBoard(app, env, adminHeaders);
 		
-		const taskIds = [];
-		for (let i = 0; i < 3; i++) {
-			const { taskId } = await createTestTask(app, env, adminHeaders, boardId, undefined, `Task ${i}`);
-			taskIds.push(taskId);
-		}
+		// Create tasks sequentially (KV storage needs consistent state)
+		const task1 = await createTestTask(app, env, adminHeaders, boardId, undefined, 'Task 0');
+		const task2 = await createTestTask(app, env, adminHeaders, boardId, undefined, 'Task 1');
+		const task3 = await createTestTask(app, env, adminHeaders, boardId, undefined, 'Task 2');
+		const taskIds = [task1.taskId, task2.taskId, task3.taskId];
 
 		// Batch tag all 3 tasks
 		const batchRes = await batchUpdateTags(

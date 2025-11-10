@@ -278,24 +278,20 @@ export async function checkSuspiciousPatterns(
 	}
 
 	// Pattern 2: Check for high violation rates across sessions
-	let totalViolations = 0;
-	for (const sessionId of sessionIds) {
-		const state = await getThrottleState(kv, sessionId);
-		if (state) {
-			totalViolations += state.violations;
-		}
-	}
+	const states = await Promise.all(
+		sessionIds.map(sessionId => getThrottleState(kv, sessionId))
+	);
+	const totalViolations = states.reduce((sum, state) => sum + (state?.violations || 0), 0);
 
 	if (totalViolations > THROTTLE_THRESHOLDS.MAX_TOTAL_VIOLATIONS) {
 		reasons.push(`High violation count across sessions: ${totalViolations}`);
 	}
 
 	// Pattern 3: Check recent incidents
-	const recentIncidents: IncidentRecord[] = [];
-	for (const sessionId of sessionIds.slice(0, 5)) {  // Check last 5 sessions
-		const incidents = await getIncidents(kv, sessionId);
-		recentIncidents.push(...incidents);
-	}
+	const incidentArrays = await Promise.all(
+		sessionIds.slice(0, 5).map(sessionId => getIncidents(kv, sessionId))
+	);
+	const recentIncidents = incidentArrays.flat();
 
 	const recentViolations = recentIncidents.filter(
 		i => i.type === 'throttle_violation' &&
