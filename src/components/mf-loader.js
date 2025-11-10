@@ -66,10 +66,51 @@ document.addEventListener('DOMContentLoaded', async () => {
           const key = keyFromUrl || sessionStorage.getItem('hadoku_session_key');
           
           if (key) {
-            // Don't determine userType here - let the backend validate via /validate-key
-            // For now, assume 'friend' as default (backend will correct it)
-            userType = 'friend';
-            userId = key; // Use key as temporary userId until backend provides real one
+            // Validate the key with the backend to get the correct userType
+            try {
+              const validationResponse = await fetch('/task/api/validate-key', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'X-User-Key': key
+                },
+                body: JSON.stringify({ key })
+              });
+              
+              if (validationResponse.ok) {
+                const validation = await validationResponse.json();
+                
+                if (validation.valid) {
+                  // Key is valid - the backend will determine userType via auth middleware
+                  // We'll get the actual userType from the session handshake response
+                  userType = 'friend'; // Temporary - will be corrected by handshake
+                  userId = key;
+                } else {
+                  // Key is invalid - clear it and go to public mode
+                  console.warn('⚠️ Invalid key detected, clearing session and redirecting to public');
+                  sessionStorage.removeItem('hadoku_session_id');
+                  sessionStorage.removeItem('hadoku_session_key');
+                  
+                  // Redirect to public route
+                  window.location.href = `/${appName}/public`;
+                  return;
+                }
+              } else {
+                // Validation endpoint failed - clear session as safety measure
+                console.error('Failed to validate key, clearing session');
+                sessionStorage.removeItem('hadoku_session_id');
+                sessionStorage.removeItem('hadoku_session_key');
+                userType = 'public';
+                userId = 'public';
+              }
+            } catch (err) {
+              console.error('Error validating key:', err);
+              // On error, clear session for safety
+              sessionStorage.removeItem('hadoku_session_id');
+              sessionStorage.removeItem('hadoku_session_key');
+              userType = 'public';
+              userId = 'public';
+            }
             
             // Try to get existing session from sessionStorage
             sessionId = sessionStorage.getItem('hadoku_session_id');

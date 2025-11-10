@@ -180,6 +180,7 @@ export interface HandshakeResponse {
 	preferences: UserPreferences;
 	isNewSession: boolean;
 	migratedFrom?: string;
+	userType: 'admin' | 'friend' | 'public'; // Return validated userType to client
 }
 
 /**
@@ -191,8 +192,11 @@ export interface HandshakeResponse {
  * 3. If nothing found, use default preferences
  * 4. MOVE preferences to newSessionId ONLY if oldSessionId was provided (delete old, save new)
  * 5. Update authKey → sessionId mapping
- * 6. Create session info for newSessionId
+ * 6. Create session info for newSessionId with the VALIDATED userType (from auth middleware)
  * 7. Delete old session info if it was migrated
+ * 
+ * IMPORTANT: The userType parameter comes from auth middleware which has already validated
+ * the authKey. This ensures we always return the current, correct userType based on key validity.
  */
 export async function handleSessionHandshake(
 	kv: KVNamespace,
@@ -201,6 +205,9 @@ export async function handleSessionHandshake(
 	request: HandshakeRequest
 ): Promise<HandshakeResponse> {
 	const { oldSessionId, newSessionId } = request;
+	
+	// Log the validated userType for debugging
+	console.log('[Session Handshake] Validated userType from auth middleware:', userType);
 	
 	let preferences: UserPreferences | null = null;
 	let migratedFrom: string | undefined = undefined;
@@ -295,7 +302,8 @@ export async function handleSessionHandshake(
 		sessionId: newSessionId,
 		preferences,
 		isNewSession,
-		migratedFrom
+		migratedFrom,
+		userType // Return the validated userType from auth middleware
 	};
 }
 
