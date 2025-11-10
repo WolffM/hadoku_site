@@ -4,8 +4,8 @@
  * Tests that verify idempotent creation of boards and tags.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
-import { createTestEnv, createAuthHeaders, createBoard, createTag, getBoards } from './test-utils';
+import app from '../../src/index';
+import { createTestEnv, createAuthHeaders, createBoard, createTag, getBoards } from '../__helpers__/test-utils';
 
 describe('Board and Tag Idempotency Tests', () => {
 	const env = createTestEnv();

@@ -5,8 +5,8 @@
  * Run these on every commit to catch major breakages.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
-import { createTestEnv, createAuthHeaders, uniqueId } from './test-utils';
+import app from '../../src/index';
+import { createTestEnv, createAuthHeaders, uniqueId } from '../__helpers__/test-utils';
 
 describe('Task API - Smoke Tests', () => {
 	const env = createTestEnv();

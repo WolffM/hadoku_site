@@ -4,9 +4,9 @@
  * Tests the session management system including handshake, migration, and multi-device scenarios.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
-import { createTestEnv, createAuthHeaders } from './test-utils';
-import type { HandshakeResponse, UserPreferences, SessionMapping, SessionInfo } from './session';
+import app from '../../src/index';
+import { createTestEnv, createAuthHeaders } from '../__helpers__/test-utils';
+import type { HandshakeResponse, UserPreferences, SessionMapping, SessionInfo } from '../../src/session';
 
 describe('Session Handshake Tests', () => {
 	const env = createTestEnv();

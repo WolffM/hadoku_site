@@ -4,7 +4,7 @@
  * Tests tag creation, assignment, and deletion with task cleanup.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
+import app from '../../src/index';
 import { 
 	createTestEnv, 
 	createAuthHeaders, 
@@ -16,7 +16,7 @@ import {
 	deleteTask,
 	getBoards,
 	uniqueId 
-} from './test-utils';
+} from '../__helpers__/test-utils';
 
 describe('Tag Lifecycle Tests', () => {
 	const env = createTestEnv();

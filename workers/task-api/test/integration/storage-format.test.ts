@@ -5,8 +5,8 @@
  * These tests catch schema changes and ensure data consistency.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import app from './index';
-import { createTestEnv, createAuthHeaders, uniqueId } from './test-utils';
+import app from '../../src/index';
+import { createTestEnv, createAuthHeaders, uniqueId } from '../__helpers__/test-utils';
 
 describe('Storage Format Tests', () => {
 	let env: ReturnType<typeof createTestEnv>;

@@ -4,7 +4,7 @@
  * Covers basic task lifecycle operations.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
+import app from '../../src/index';
 import { 
 	createTestEnv, 
 	createAuthHeaders, 
@@ -14,7 +14,7 @@ import {
 	deleteBoard,
 	completeTask,
 	getBoards
-} from './test-utils';
+} from '../__helpers__/test-utils';
 
 describe('Task CRUD Operations', () => {
 	const env = createTestEnv();

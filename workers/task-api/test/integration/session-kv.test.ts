@@ -5,9 +5,9 @@
  * Each test validates actual KV reads/writes to ensure correct behavior.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
-import { createTestEnv } from './test-utils';
-import type { HandshakeResponse, UserPreferences, SessionInfo, SessionMapping } from './session';
+import app from '../../src/index';
+import { createTestEnv } from '../__helpers__/test-utils';
+import type { HandshakeResponse, UserPreferences, SessionInfo, SessionMapping } from '../../src/session';
 
 describe('Session KV Integration Tests', () => {
 	const env = createTestEnv();

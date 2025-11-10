@@ -5,7 +5,7 @@
  * PATCH /task/api/batch-tag was matching PATCH /task/api/:id
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
+import app from '../../src/index';
 import { 
 	createTestEnv, 
 	createAuthHeaders, 
@@ -15,7 +15,7 @@ import {
 	batchUpdateTagsLegacy,
 	updateTask,
 	getBoards
-} from './test-utils';
+} from '../__helpers__/test-utils';
 
 describe('Route Collision Tests', () => {
 	const env = createTestEnv();

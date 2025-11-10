@@ -4,7 +4,7 @@
  * Tests moving tasks between boards.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
+import app from '../../src/index';
 import { 
 	createTestEnv, 
 	createAuthHeaders, 
@@ -15,7 +15,7 @@ import {
 	deleteBoard,
 	deleteTask,
 	uniqueId 
-} from './test-utils';
+} from '../__helpers__/test-utils';
 
 describe('Task Movement Tests', () => {
 	const env = createTestEnv();

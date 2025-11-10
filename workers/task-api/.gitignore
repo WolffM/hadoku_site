@@ -18,3 +18,6 @@ Thumbs.db
 
 # Secrets (copied from workspace root during CI)
 .npmrc
+
+# Admin keys (should use environment variables)
+admin_keys.txt

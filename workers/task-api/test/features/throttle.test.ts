@@ -4,8 +4,8 @@
  * Tests for rate limiting, blacklisting, and incident tracking.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
-import { createTestEnv } from './test-utils';
+import app from '../../src/index';
+import { createTestEnv } from '../__helpers__/test-utils';
 import {
 	checkThrottle,
 	recordIncident,
@@ -15,7 +15,7 @@ import {
 	getIncidents,
 	isSessionBlacklisted,
 	type ThrottleLimits
-} from './throttle';
+} from '../../src/throttle';
 
 describe('Throttling System Tests', () => {
 	const env = createTestEnv();

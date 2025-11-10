@@ -5,8 +5,8 @@
  * Users with different keys should not be able to access each other's data.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import app from './index';
-import { createTestEnv, createAuthHeaders, uniqueId } from './test-utils';
+import app from '../../src/index';
+import { createTestEnv, createAuthHeaders, uniqueId } from '../__helpers__/test-utils';
 
 describe('Data Isolation Tests', () => {
 	let env: ReturnType<typeof createTestEnv>;

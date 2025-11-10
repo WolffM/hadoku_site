@@ -4,8 +4,8 @@
  * Tests key-based authentication with JSON key objects.
  */
 import { describe, it, expect } from 'vitest';
-import app from './index';
-import { createTestEnv } from './test-utils';
+import app from '../../src/index';
+import { createTestEnv } from '../__helpers__/test-utils';
 
 describe('Authentication Tests', () => {
 	
