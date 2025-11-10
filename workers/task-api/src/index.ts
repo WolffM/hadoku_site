@@ -12,7 +12,8 @@ import type { AuthContext as TaskAuthContext } from '@wolffm/task/api';
 import {
 	createAuthMiddleware,
 	parseKeysFromEnv,
-	createHadokuCors,
+	createCorsMiddleware,
+	DEFAULT_HADOKU_ORIGINS,
 	logError
 } from '../../util';
 import {
@@ -55,7 +56,14 @@ const app = new Hono<AppContext>();
 // ============================================================================
 
 // 1. CORS Middleware
-app.use('*', createHadokuCors(['https://task-api.hadoku.me']));
+app.use('*', createCorsMiddleware({
+	origins: [...DEFAULT_HADOKU_ORIGINS, 'https://task-api.hadoku.me'],
+	methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'X-User-Key', 'X-Session-Id'],
+	exposedHeaders: ['X-Backend-Source'],
+	credentials: true,
+	maxAge: 86400
+}));
 
 // 2. Authentication Middleware
 app.use('*', createAuthMiddleware<Env>({

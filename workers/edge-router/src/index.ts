@@ -34,6 +34,11 @@ export default {
     const path = url.pathname;
     const startTime = Date.now();
     
+    // Handle CORS preflight requests
+    if (request.method === 'OPTIONS') {
+      return handleCorsPreflight();
+    }
+    
     let response: Response;
     let backend: LogEntry['backend'];
 
@@ -246,6 +251,21 @@ function basesFor(path: string, env: Env): string[] {
 }
 
 /**
+ * Handle CORS preflight requests
+ */
+function handleCorsPreflight(): Response {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'X-User-Key, X-Session-Id, Content-Type',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+}
+
+/**
  * Generate a secure random session ID
  */
 function generateSessionId(): string {
@@ -262,7 +282,13 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
   if (!env.SESSIONS_KV) {
     return new Response(
       JSON.stringify({ error: 'Session storage not configured' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        } 
+      }
     );
   }
 
@@ -273,7 +299,13 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
     if (!key || typeof key !== 'string') {
       return new Response(
         JSON.stringify({ error: 'Missing or invalid X-User-Key header' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          } 
+        }
       );
     }
 
@@ -293,9 +325,9 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*', // Allow from static pages
-          'Access-Control-Allow-Methods': 'POST',
-          'Access-Control-Allow-Headers': 'Content-Type'
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'X-User-Key, Content-Type'
         }
       }
     );
@@ -303,7 +335,13 @@ async function handleCreateSession(request: Request, env: Env): Promise<Response
     console.error('Error creating session:', e);
     return new Response(
       JSON.stringify({ error: 'Failed to create session' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        } 
+      }
     );
   }
 }
