@@ -92,6 +92,13 @@ importers:
         version: 5.9.3
 
   workers/edge-router:
+    dependencies:
+      '@hadoku/worker-utils':
+        specifier: workspace:*
+        version: link:../util
+      hono:
+        specifier: ^4.10.3
+        version: 4.10.3
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241127.0
@@ -1226,6 +1233,11 @@ packages:
     peerDependencies:
       '@wolffm/task-ui-components': ^1.0.0
       react: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@wolffm/task-ui-components':
+        optional: true
+      react:
+        optional: true
 
   '@wolffm/watchparty-ui@0.1.11':
     resolution: {integrity: sha512-vaC28th0dogsjGvPThHjOZ+CIrZQHe+VuopHcZPGCU4Lc5Sebd5dnSeU7wM+UEMkhk/8FmIQhngCQpcRnsVHsA==, tarball: https://npm.pkg.github.com/download/@wolffm/watchparty-ui/0.1.11/59ef70be8045fb217ab883418914a564fad8f9e2}
@@ -4173,7 +4185,7 @@ snapshots:
   '@wolffm/themes@1.0.20': {}
 
   '@wolffm/themes@1.1.5(@wolffm/task-ui-components@1.0.5(react@19.2.0))(react@19.2.0)':
-    dependencies:
+    optionalDependencies:
       '@wolffm/task-ui-components': 1.0.5(react@19.2.0)
       react: 19.2.0
 

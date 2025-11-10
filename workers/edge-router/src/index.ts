@@ -8,9 +8,12 @@
  * Configuration is injected from GitHub Secrets via ROUTE_CONFIG env var.
  */
 
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import type { Context } from 'hono';
 import { logToAnalytics } from './logging';
 import type { LogEntry } from './logging';
-import { jsonResponse, jsonError, corsPreflight, HttpStatus } from '../../util/web-responses';
+import { badRequest, serverError } from '../../util';
 
 interface Env {
   ROUTE_CONFIG: string;
@@ -29,94 +32,125 @@ interface RouteConfig {
   watchparty_priority?: string;
 }
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const startTime = Date.now();
-    
-    // Handle CORS preflight requests
-    if (request.method === 'OPTIONS') {
-      return corsPreflight();
-    }
-    
-    let response: Response;
-    let backend: LogEntry['backend'];
-
-    // Session management endpoint
-    if (path === '/session/create' && request.method === 'POST') {
-      response = await handleCreateSession(request, env);
-      backend = 'session';
-    }
-    // API routes: apply fallback logic with key injection
-    else if (path.startsWith('/task/api') || path.startsWith('/watchparty/api')) {
-      const result = await handleApiRoute(request, path, env);
-      response = result.response;
-      backend = result.backend;
-    } else {
-      // Static files: proxy to GitHub Pages
-      response = await proxyToGitHubPages(request, path, env);
-      backend = 'static';
-    }
-    
-    // Log to Analytics Engine (non-blocking, immediate)
-    const duration = Date.now() - startTime;
-    logToAnalytics(env, {
-      timestamp: new Date().toISOString(),
-      path,
-      method: request.method,
-      backend,
-      status: response.status,
-      duration,
-      userAgent: request.headers.get('user-agent')?.substring(0, 100)
-    });
-    
-    return response;
-  }
+type AppContext = {
+  Bindings: Env;
+  Variables: {
+    startTime: number;
+    backend: LogEntry['backend'];
+  };
 };
+
+const app = new Hono<AppContext>();
+
+// 1. CORS Middleware - Allow all origins for static site
+app.use('*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['X-User-Key', 'X-Session-Id', 'Content-Type'],
+  exposeHeaders: ['X-Backend-Source'],
+  maxAge: 86400
+}));
+
+// 2. Timing middleware
+app.use('*', async (c, next) => {
+  c.set('startTime', Date.now());
+  await next();
+});
+
+// 3. Session creation endpoint
+app.post('/session/create', async (c) => {
+  if (!c.env.SESSIONS_KV) {
+    return serverError(c, 'Session storage not configured');
+  }
+
+  try {
+    // Read key from header (NEVER from body for security)
+    const key = c.req.header('X-User-Key');
+
+    if (!key) {
+      return badRequest(c, 'Missing X-User-Key header');
+    }
+
+    // Generate session ID
+    const sessionId = generateSessionId();
+
+    // Store mapping: sessionId -> key (expires in 24 hours)
+    await c.env.SESSIONS_KV.put(`session:${sessionId}`, key, {
+      expirationTtl: 86400 // 24 hours
+    });
+
+    console.log(`Created session ${sessionId} for key ${key.substring(0, 8)}...`);
+
+    c.set('backend', 'session');
+    return c.json({ sessionId });
+  } catch (e) {
+    console.error('Error creating session:', e);
+    return serverError(c, 'Failed to create session');
+  }
+});
+
+// 4. API routes with fallback logic
+app.all('/task/api/*', async (c) => handleApiRoute(c));
+app.all('/watchparty/api/*', async (c) => handleApiRoute(c));
+
+// 5. Static files - proxy to GitHub Pages
+app.all('*', async (c) => proxyToGitHubPages(c));
+
+// 6. Analytics logging (after response)
+app.use('*', async (c, next) => {
+  await next();
+  
+  const duration = Date.now() - c.get('startTime');
+  logToAnalytics(c.env, {
+    timestamp: new Date().toISOString(),
+    path: c.req.path,
+    method: c.req.method,
+    backend: c.get('backend') || 'unknown',
+    status: c.res.status,
+    duration,
+    userAgent: c.req.header('user-agent')?.substring(0, 100)
+  });
+});
+
+export default app;
 
 /**
  * Handle API routes with fallback logic and key injection
  */
-async function handleApiRoute(
-  request: Request, 
-  path: string, 
-  env: Env
-): Promise<{ response: Response; backend: LogEntry['backend'] }> {
-  const bases = basesFor(path, env);
+async function handleApiRoute(c: Context<AppContext>): Promise<Response> {
+  const bases = basesFor(c.req.path, c.env);
   
   // Look up session and inject key if present
-  const sessionId = request.headers.get('X-Session-Id');
-  const key = sessionId ? await getKeyForSession(sessionId, env) : null;
+  const sessionId = c.req.header('X-Session-Id');
+  const key = sessionId ? await getKeyForSession(sessionId, c.env) : null;
   
   if (sessionId && !key) {
     console.warn(`Session ${sessionId} not found or expired`);
   }
   
   // Read body once so we can reuse it in fallback attempts
-  const bodyBuffer = request.body ? await request.arrayBuffer() : null;
+  const bodyBuffer = c.req.raw.body ? await c.req.arrayBuffer() : null;
   
   let lastErr: Error | null = null;
   
   for (const base of bases) {
     try {
-      const targetUrl = new URL(path, base).toString();
+      const targetUrl = new URL(c.req.path, base).toString();
       
       // Clone headers and add loop prevention
-      const headers = new Headers(request.headers);
+      const headers = new Headers(c.req.raw.headers);
       headers.set('X-No-Fallback', '1');
       
       // Inject the key from session
       if (key) {
         headers.set('X-User-Key', key);
-        // Note: Do NOT set X-User-Id here - it's managed by the frontend/child app
         console.log(`Injected key from session ${sessionId} -> ${key.substring(0, 8)}...`);
       }
       
       // Create request with timeout
       const res = await Promise.race([
         fetch(targetUrl, {
-          method: request.method,
+          method: c.req.method,
           headers,
           body: bodyBuffer,
           redirect: 'manual'
@@ -137,12 +171,13 @@ async function handleApiRoute(
       
       // Determine backend type for logging
       let backend: LogEntry['backend'];
-      if (base === env.LOCAL_BASE) backend = 'tunnel';
-      else if (base === env.WORKER_BASE) backend = 'worker';
-      else if (base === env.LAMBDA_BASE) backend = 'lambda';
+      if (base === c.env.LOCAL_BASE) backend = 'tunnel';
+      else if (base === c.env.WORKER_BASE) backend = 'worker';
+      else if (base === c.env.LAMBDA_BASE) backend = 'lambda';
       else backend = 'error';
       
-      return { response: newRes, backend };
+      c.set('backend', backend);
+      return newRes;
       
     } catch (e) {
       lastErr = e as Error;
@@ -152,29 +187,23 @@ async function handleApiRoute(
   }
 
   // All backends failed
-  return { 
-    response: jsonError(
-      'All backends failed',
-      HttpStatus.BAD_GATEWAY,
-      {
-        'X-Backend-Source': 'none',
-        'X-Error-Details': lastErr?.message || 'Unknown error'
-      }
-    ), 
-    backend: 'error' 
-  };
+  c.set('backend', 'error');
+  return serverError(c, 'All backends failed', {
+    details: lastErr?.message,
+    attempted: bases
+  });
 }
 
 /**
  * Proxy static content to GitHub Pages
  */
-async function proxyToGitHubPages(request: Request, path: string, env: Env): Promise<Response> {
-  const targetUrl = new URL(path, env.STATIC_ORIGIN).toString();
+async function proxyToGitHubPages(c: Context<AppContext>): Promise<Response> {
+  const targetUrl = new URL(c.req.path, c.env.STATIC_ORIGIN).toString();
 
   try {
     const res = await fetch(targetUrl, {
-      method: request.method,
-      headers: request.headers,
+      method: c.req.method,
+      headers: c.req.raw.headers,
       redirect: 'follow'
     });
 
@@ -198,15 +227,20 @@ async function proxyToGitHubPages(request: Request, path: string, env: Env): Pro
       });
       newRes.headers.set('X-Backend-Source', 'github-pages');
       newRes.headers.set('X-Beacon-Stripped', 'true');
+      
+      c.set('backend', 'static');
       return newRes;
     }
 
     // For non-HTML content, pass through unchanged
     const newRes = new Response(res.body, res);
     newRes.headers.set('X-Backend-Source', 'github-pages');
+    
+    c.set('backend', 'static');
     return newRes;
 
   } catch (e) {
+    c.set('backend', 'error');
     return new Response(`Failed to fetch from GitHub Pages: ${(e as Error).message}`, {
       status: 502,
       headers: { 'Content-Type': 'text/plain' }
@@ -253,47 +287,6 @@ function generateSessionId(): string {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Handle session creation: POST /session/create with X-User-Key header
- * Returns { sessionId: "..." }
- */
-async function handleCreateSession(request: Request, env: Env): Promise<Response> {
-  if (!env.SESSIONS_KV) {
-    return jsonError('Session storage not configured', HttpStatus.INTERNAL_SERVER_ERROR);
-  }
-
-  try {
-    // Read key from header (NEVER from body for security)
-    const key = request.headers.get('X-User-Key');
-
-    if (!key || typeof key !== 'string') {
-      return jsonError('Missing or invalid X-User-Key header', HttpStatus.BAD_REQUEST);
-    }
-
-    // Generate session ID
-    const sessionId = generateSessionId();
-
-    // Store mapping: sessionId -> key (expires in 24 hours)
-    await env.SESSIONS_KV.put(`session:${sessionId}`, key, {
-      expirationTtl: 86400 // 24 hours
-    });
-
-    console.log(`Created session ${sessionId} for key ${key.substring(0, 8)}...`);
-
-    return jsonResponse(
-      { sessionId },
-      HttpStatus.OK,
-      {
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'X-User-Key, Content-Type'
-      }
-    );
-  } catch (e) {
-    console.error('Error creating session:', e);
-    return jsonError('Failed to create session', HttpStatus.INTERNAL_SERVER_ERROR);
-  }
 }
 
 /**
