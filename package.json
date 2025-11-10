@@ -12,7 +12,12 @@
     "update-watchparty-bundle": "node scripts/update-watchparty-bundle.mjs",
     "update-themes-bundle": "node scripts/update-themes-bundle.mjs",
     "update-ui-components-bundle": "node scripts/update-ui-components-bundle.mjs",
-    "prebuild": "pnpm run update-task-bundle && pnpm run update-watchparty-bundle && pnpm run update-themes-bundle && pnpm run update-ui-components-bundle && pnpm run generate-registry"
+    "prebuild": "pnpm run update-task-bundle && pnpm run update-watchparty-bundle && pnpm run update-themes-bundle && pnpm run update-ui-components-bundle && pnpm run generate-registry",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm run format:check && pnpm run lint"
   },
   "keywords": [],
   "author": "",
@@ -38,13 +43,20 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@tailwindcss/typography": "^0.5.19",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
     "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
     "tailwindcss": "^3.4.18",
     "typescript": "^5.9.3"
   }
