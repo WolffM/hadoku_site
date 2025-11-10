@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import app from './index';
 import { createTestEnv, createAuthHeaders } from './test-utils';
+import type { HandshakeResponse, UserPreferences, SessionInfo, SessionMapping } from './session';
 
 describe('Session KV Integration Tests', () => {
 	const env = createTestEnv();
@@ -42,35 +43,35 @@ describe('Session KV Integration Tests', () => {
 			}, env);
 
 			expect(handshakeResponse.status).toBe(200);
-			const handshakeData: any = await handshakeResponse.json();
-			
+			const handshakeData = await handshakeResponse.json<HandshakeResponse>();
+
 			// Verify response contains defaults
 			expect(handshakeData.sessionId).toBe(sessionId);
 			expect(handshakeData.isNewSession).toBe(true);
 			expect(handshakeData.preferences.theme).toBe('system');
 			expect(handshakeData.preferences.buttons).toEqual({});
 			expect(handshakeData.preferences.experimentalFlags).toEqual({});
-			
+
 			// STEP 3: Verify KV now contains preferences with defaults
-			const prefsInKV = await env.TASKS_KV.get(`prefs:${sessionId}`, 'json') as any;
+			const prefsInKV = await env.TASKS_KV.get<UserPreferences>(`prefs:${sessionId}`, 'json');
 			expect(prefsInKV).toBeDefined();
-			expect(prefsInKV.theme).toBe('system');
-			expect(prefsInKV.buttons).toEqual({});
-			expect(prefsInKV.experimentalFlags).toEqual({});
-			expect(prefsInKV.lastUpdated).toBeDefined();
-			
+			expect(prefsInKV!.theme).toBe('system');
+			expect(prefsInKV!.buttons).toEqual({});
+			expect(prefsInKV!.experimentalFlags).toEqual({});
+			expect(prefsInKV!.lastUpdated).toBeDefined();
+
 			// STEP 4: Verify session info was created in KV
-			const sessionInfo = await env.TASKS_KV.get(`session-info:${sessionId}`, 'json') as any;
+			const sessionInfo = await env.TASKS_KV.get<SessionInfo>(`session-info:${sessionId}`, 'json');
 			expect(sessionInfo).toBeDefined();
-			expect(sessionInfo.sessionId).toBe(sessionId);
-			expect(sessionInfo.authKey).toBe(uniqueKey);
-			expect(sessionInfo.userType).toBe('admin');
-			
+			expect(sessionInfo!.sessionId).toBe(sessionId);
+			expect(sessionInfo!.authKey).toBe(uniqueKey);
+			expect(sessionInfo!.userType).toBe('admin');
+
 			// STEP 5: Verify session mapping was created in KV
-			const mapping = await env.TASKS_KV.get(`session-map:${uniqueKey}`, 'json') as any;
+			const mapping = await env.TASKS_KV.get<SessionMapping>(`session-map:${uniqueKey}`, 'json');
 			expect(mapping).toBeDefined();
-			expect(mapping.sessionIds).toContain(sessionId);
-			expect(mapping.lastSessionId).toBe(sessionId);
+			expect(mapping!.sessionIds).toContain(sessionId);
+			expect(mapping!.lastSessionId).toBe(sessionId);
 		});
 	});
 
@@ -121,10 +122,10 @@ describe('Session KV Integration Tests', () => {
 			expect(updatePrefs.status).toBe(200);
 			
 			// STEP 3: Verify old preferences exist in KV
-			const oldPrefsInKV = await env.TASKS_KV.get(`prefs:${oldSessionId}`, 'json') as any;
+			const oldPrefsInKV = await env.TASKS_KV.get<UserPreferences>(`prefs:${oldSessionId}`, 'json');
 			expect(oldPrefsInKV).toBeDefined();
-			expect(oldPrefsInKV.theme).toBe('strawberry');
-			expect(oldPrefsInKV.customData).toBe('my-custom-value');
+			expect(oldPrefsInKV!.theme).toBe('strawberry');
+			expect(oldPrefsInKV!.customData).toBe('my-custom-value');
 			
 			// STEP 4: Perform migration handshake
 			const migrationHandshake = await app.request('/task/api/session/handshake', {
@@ -137,7 +138,7 @@ describe('Session KV Integration Tests', () => {
 			}, env);
 			
 			expect(migrationHandshake.status).toBe(200);
-			const migrationData: any = await migrationHandshake.json();
+			const migrationData = await migrationHandshake.json<HandshakeResponse>();
 			
 			// Verify response contains migrated preferences
 			expect(migrationData.sessionId).toBe(newSessionId);
@@ -151,27 +152,27 @@ describe('Session KV Integration Tests', () => {
 			expect(oldPrefsAfterMigration).toBeNull();
 			
 			// STEP 6: Verify new preferences exist in KV with correct data
-			const newPrefsInKV = await env.TASKS_KV.get(`prefs:${newSessionId}`, 'json') as any;
+			const newPrefsInKV = await env.TASKS_KV.get<UserPreferences>(`prefs:${newSessionId}`, 'json');
 			expect(newPrefsInKV).toBeDefined();
-			expect(newPrefsInKV.theme).toBe('strawberry');
-			expect(newPrefsInKV.buttons.showCompleted).toBe(true);
-			expect(newPrefsInKV.experimentalFlags.newFeature).toBe(true);
-			expect(newPrefsInKV.customData).toBe('my-custom-value');
+			expect(newPrefsInKV!.theme).toBe('strawberry');
+			expect(newPrefsInKV!.buttons!.showCompleted).toBe(true);
+			expect(newPrefsInKV!.experimentalFlags!.newFeature).toBe(true);
+			expect(newPrefsInKV!.customData).toBe('my-custom-value');
 			
 			// STEP 7: Verify old session info deleted from KV
 			const oldSessionInfo = await env.TASKS_KV.get(`session-info:${oldSessionId}`, 'json');
 			expect(oldSessionInfo).toBeNull();
 			
 			// STEP 8: Verify new session info exists in KV
-			const newSessionInfo = await env.TASKS_KV.get(`session-info:${newSessionId}`, 'json') as any;
+			const newSessionInfo = await env.TASKS_KV.get<SessionInfo>(`session-info:${newSessionId}`, 'json');
 			expect(newSessionInfo).toBeDefined();
-			expect(newSessionInfo.sessionId).toBe(newSessionId);
+			expect(newSessionInfo!.sessionId).toBe(newSessionId);
 			
 			// STEP 9: Verify session mapping updated (old removed, new added)
-			const mapping = await env.TASKS_KV.get(`session-map:${uniqueKey}`, 'json') as any;
-			expect(mapping.sessionIds).not.toContain(oldSessionId);
-			expect(mapping.sessionIds).toContain(newSessionId);
-			expect(mapping.lastSessionId).toBe(newSessionId);
+			const mapping = await env.TASKS_KV.get<SessionMapping>(`session-map:${uniqueKey}`, 'json');
+			expect(mapping!.sessionIds).not.toContain(oldSessionId);
+			expect(mapping!.sessionIds).toContain(newSessionId);
+			expect(mapping!.lastSessionId).toBe(newSessionId);
 		});
 	});
 
@@ -212,8 +213,10 @@ describe('Session KV Integration Tests', () => {
 				},
 				body: JSON.stringify({
 					theme: 'dark',
-					device: 'phone',
-					fontSize: 16
+					deviceInfo: {
+						device: 'phone',
+						fontSize: 16
+					}
 				})
 			}, env);
 			
@@ -237,24 +240,24 @@ describe('Session KV Integration Tests', () => {
 				},
 				body: JSON.stringify({
 					theme: 'light',
-					device: 'desktop',
-					fontSize: 14
+					deviceInfo: {
+						device: 'desktop',
+						fontSize: 14
+					}
 				})
 			}, env);
 			
 			// STEP 3: Verify both preferences exist in KV with correct values
-			const device1PrefsInKV = await env.TASKS_KV.get(`prefs:${device1SessionId}`, 'json') as any;
-			const device2PrefsInKV = await env.TASKS_KV.get(`prefs:${device2SessionId}`, 'json') as any;
+			const device1PrefsInKV = await env.TASKS_KV.get<UserPreferences>(`prefs:${device1SessionId}`, 'json');
+			const device2PrefsInKV = await env.TASKS_KV.get<UserPreferences>(`prefs:${device2SessionId}`, 'json');
 			
 			expect(device1PrefsInKV).toBeDefined();
-			expect(device1PrefsInKV.theme).toBe('dark');
-			expect(device1PrefsInKV.device).toBe('phone');
-			expect(device1PrefsInKV.fontSize).toBe(16);
+			expect(device1PrefsInKV!.theme).toBe('dark');
+			expect(device1PrefsInKV!.deviceInfo).toEqual({ device: 'phone', fontSize: 16 });
 			
 			expect(device2PrefsInKV).toBeDefined();
-			expect(device2PrefsInKV.theme).toBe('light');
-			expect(device2PrefsInKV.device).toBe('desktop');
-			expect(device2PrefsInKV.fontSize).toBe(14);
+			expect(device2PrefsInKV!.theme).toBe('light');
+			expect(device2PrefsInKV!.deviceInfo).toEqual({ device: 'desktop', fontSize: 14 });
 			
 			// STEP 4: Load Device 2 first (reverse order test)
 			const loadDevice2 = await app.request('/task/api/preferences', {
@@ -266,10 +269,9 @@ describe('Session KV Integration Tests', () => {
 			}, env);
 			
 			expect(loadDevice2.status).toBe(200);
-			const device2Loaded: any = await loadDevice2.json();
+			const device2Loaded = await loadDevice2.json<UserPreferences>();
 			expect(device2Loaded.theme).toBe('light');
-			expect(device2Loaded.device).toBe('desktop');
-			expect(device2Loaded.fontSize).toBe(14);
+			expect(device2Loaded.deviceInfo).toEqual({ device: 'desktop', fontSize: 14 });
 			
 			// STEP 5: Load Device 1 second (reverse order test)
 			const loadDevice1 = await app.request('/task/api/preferences', {
@@ -281,10 +283,9 @@ describe('Session KV Integration Tests', () => {
 			}, env);
 			
 			expect(loadDevice1.status).toBe(200);
-			const device1Loaded: any = await loadDevice1.json();
+			const device1Loaded = await loadDevice1.json<UserPreferences>();
 			expect(device1Loaded.theme).toBe('dark');
-			expect(device1Loaded.device).toBe('phone');
-			expect(device1Loaded.fontSize).toBe(16);
+			expect(device1Loaded.deviceInfo).toEqual({ device: 'phone', fontSize: 16 });
 			
 			// STEP 6: Update Device 1 preferences
 			await app.request('/task/api/preferences', {
@@ -295,38 +296,36 @@ describe('Session KV Integration Tests', () => {
 				},
 				body: JSON.stringify({
 					theme: 'strawberry', // Change theme
-					fontSize: 18 // Change font size
+					deviceInfo: { device: 'phone', fontSize: 18 } // Change font size
 				})
 			}, env);
 			
 			// STEP 7: Verify Device 1 preferences updated in KV
-			const device1UpdatedInKV = await env.TASKS_KV.get(`prefs:${device1SessionId}`, 'json') as any;
-			expect(device1UpdatedInKV.theme).toBe('strawberry');
-			expect(device1UpdatedInKV.fontSize).toBe(18);
-			expect(device1UpdatedInKV.device).toBe('phone'); // Should be preserved
+			const device1UpdatedInKV = await env.TASKS_KV.get<UserPreferences>(`prefs:${device1SessionId}`, 'json');
+			expect(device1UpdatedInKV!.theme).toBe('strawberry');
+			expect(device1UpdatedInKV!.deviceInfo).toEqual({ device: 'phone', fontSize: 18 });
 			
 			// STEP 8: Verify Device 2 preferences unchanged in KV
-			const device2StillInKV = await env.TASKS_KV.get(`prefs:${device2SessionId}`, 'json') as any;
-			expect(device2StillInKV.theme).toBe('light'); // Should not be affected
-			expect(device2StillInKV.device).toBe('desktop');
-			expect(device2StillInKV.fontSize).toBe(14);
+			const device2StillInKV = await env.TASKS_KV.get<UserPreferences>(`prefs:${device2SessionId}`, 'json');
+			expect(device2StillInKV!.theme).toBe('light'); // Should not be affected
+			expect(device2StillInKV!.deviceInfo).toEqual({ device: 'desktop', fontSize: 14 });
 			
 			// STEP 9: Verify session mapping contains both devices
-			const mapping = await env.TASKS_KV.get(`session-map:${uniqueKey}`, 'json') as any;
+			const mapping = await env.TASKS_KV.get<SessionMapping>(`session-map:${uniqueKey}`, 'json');
 			expect(mapping).toBeDefined();
-			expect(mapping.sessionIds).toHaveLength(2);
-			expect(mapping.sessionIds).toContain(device1SessionId);
-			expect(mapping.sessionIds).toContain(device2SessionId);
-			expect(mapping.lastSessionId).toBe(device2SessionId); // Most recent
+			expect(mapping!.sessionIds).toHaveLength(2);
+			expect(mapping!.sessionIds).toContain(device1SessionId);
+			expect(mapping!.sessionIds).toContain(device2SessionId);
+			expect(mapping!.lastSessionId).toBe(device2SessionId); // Most recent
 			
 			// STEP 10: Verify both session infos exist
-			const device1Info = await env.TASKS_KV.get(`session-info:${device1SessionId}`, 'json') as any;
-			const device2Info = await env.TASKS_KV.get(`session-info:${device2SessionId}`, 'json') as any;
+			const device1Info = await env.TASKS_KV.get<SessionInfo>(`session-info:${device1SessionId}`, 'json');
+			const device2Info = await env.TASKS_KV.get<SessionInfo>(`session-info:${device2SessionId}`, 'json');
 			
 			expect(device1Info).toBeDefined();
-			expect(device1Info.authKey).toBe(uniqueKey);
+			expect(device1Info!.authKey).toBe(uniqueKey);
 			expect(device2Info).toBeDefined();
-			expect(device2Info.authKey).toBe(uniqueKey);
+			expect(device2Info!.authKey).toBe(uniqueKey);
 		});
 	});
 });

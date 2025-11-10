@@ -235,7 +235,7 @@ describe('Authentication Tests', () => {
 		}, env);
 		
 		expect(createTaskResponse.status).toBe(200);
-		const createTaskData: any = await createTaskResponse.json();
+		const createTaskData = await createTaskResponse.json<{ ok: boolean }>();
 		expect(createTaskData.ok).toBe(true);
 		
 		// Verify the task exists by fetching boards
@@ -245,7 +245,7 @@ describe('Authentication Tests', () => {
 		}, env);
 		
 		expect(getBoardsResponse.status).toBe(200);
-		const boardsData: any = await getBoardsResponse.json();
+		const boardsData = await getBoardsResponse.json<{ boards: any[] }>();
 		
 		// Find Erin's board
 		const erinBoard = boardsData.boards.find((b: any) => b.id === boardId);

@@ -50,29 +50,21 @@ describe('Data Isolation Tests', () => {
 			const adminListRes = await app.request('/task/api/boards', {
 				headers: adminHeaders
 			}, env);
-			const adminData = await adminListRes.json() as any;
+			const adminData = await adminListRes.json<{ boards: { id: string }[] }>();
 
 			// Friend lists their boards
 			const friendListRes = await app.request('/task/api/boards', {
 				headers: friendHeaders
 			}, env);
-			const friendData = await friendListRes.json() as any;
+			const friendData = await friendListRes.json<{ boards: { id: string }[] }>();
 
 			// Admin should see their board but not friend's
-			expect(
-				adminData.boards.some((b: any) => b.id === adminBoardId)
-			).toBe(true);
-			expect(
-				adminData.boards.some((b: any) => b.id === friendBoardId)
-			).toBe(false);
+			expect(adminData.boards.some((b) => b.id === adminBoardId)).toBe(true);
+			expect(adminData.boards.some((b) => b.id === friendBoardId)).toBe(false);
 
 			// Friend should see their board but not admin's
-			expect(
-				friendData.boards.some((b: any) => b.id === friendBoardId)
-			).toBe(true);
-			expect(
-				friendData.boards.some((b: any) => b.id === adminBoardId)
-			).toBe(false);
+			expect(friendData.boards.some((b) => b.id === friendBoardId)).toBe(true);
+			expect(friendData.boards.some((b) => b.id === adminBoardId)).toBe(false);
 		});
 
 		it('should isolate boards from public users', async () => {
@@ -89,19 +81,15 @@ describe('Data Isolation Tests', () => {
 			const adminListRes = await app.request('/task/api/boards', {
 				headers: adminHeaders
 			}, env);
-			const adminData = await adminListRes.json() as any;
-			expect(
-				adminData.boards.some((b: any) => b.id === adminBoardId)
-			).toBe(true);
+			const adminData = await adminListRes.json<{ boards: { id: string }[] }>();
+			expect(adminData.boards.some((b) => b.id === adminBoardId)).toBe(true);
 
 			// Public user shouldn't see admin's board
 			const publicListRes = await app.request('/task/api/boards', {
 				headers: publicHeaders
 			}, env);
-			const publicData = await publicListRes.json() as any;
-			expect(
-				publicData.boards.some((b: any) => b.id === adminBoardId)
-			).toBe(false);
+			const publicData = await publicListRes.json<{ boards: { id: string }[] }>();
+			expect(publicData.boards.some((b) => b.id === adminBoardId)).toBe(false);
 		});
 	});
 
@@ -150,31 +138,23 @@ describe('Data Isolation Tests', () => {
 			const adminListRes = await app.request('/task/api/boards', {
 				headers: adminHeaders
 			}, env);
-			const adminData = await adminListRes.json() as any;
-			const adminBoard = adminData.boards.find((b: any) => b.id === boardId);
+			const adminData = await adminListRes.json<{ boards: { id: string, tasks: { id: string }[] }[] }>();
+			const adminBoard = adminData.boards.find((b) => b.id === boardId);
 
 			// Friend lists boards
 			const friendListRes = await app.request('/task/api/boards', {
 				headers: friendHeaders
 			}, env);
-			const friendData = await friendListRes.json() as any;
-			const friendBoard = friendData.boards.find((b: any) => b.id === boardId);
+			const friendData = await friendListRes.json<{ boards: { id: string, tasks: { id: string }[] }[] }>();
+			const friendBoard = friendData.boards.find((b) => b.id === boardId);
 
 			// Admin should see only their task
-			expect(
-				adminBoard.tasks.some((t: any) => t.id === adminTaskId)
-			).toBe(true);
-			expect(
-				adminBoard.tasks.some((t: any) => t.id === friendTaskId)
-			).toBe(false);
+			expect(adminBoard!.tasks.some((t) => t.id === adminTaskId)).toBe(true);
+			expect(adminBoard!.tasks.some((t) => t.id === friendTaskId)).toBe(false);
 
 			// Friend should see only their task
-			expect(
-				friendBoard.tasks.some((t: any) => t.id === friendTaskId)
-			).toBe(true);
-			expect(
-				friendBoard.tasks.some((t: any) => t.id === adminTaskId)
-			).toBe(false);
+			expect(friendBoard!.tasks.some((t) => t.id === friendTaskId)).toBe(true);
+			expect(friendBoard!.tasks.some((t) => t.id === adminTaskId)).toBe(false);
 		});
 	});
 
@@ -230,11 +210,11 @@ describe('Data Isolation Tests', () => {
 			const adminListRes = await app.request('/task/api/boards', {
 				headers: adminHeaders
 			}, env);
-			const adminData = await adminListRes.json() as any;
-			const adminBoard = adminData.boards.find((b: any) => b.id === boardId);
+			const adminData = await adminListRes.json<{ boards: { id: string, tasks: { id: string }[] }[] }>();
+			const adminBoard = adminData.boards.find((b) => b.id === boardId);
 
-			expect(adminBoard.tasks.length).toBe(1);
-			expect(adminBoard.tasks[0].id).toBe(adminTaskId);
+			expect(adminBoard!.tasks.length).toBe(1);
+			expect(adminBoard!.tasks[0].id).toBe(adminTaskId);
 		});
 	});
 });

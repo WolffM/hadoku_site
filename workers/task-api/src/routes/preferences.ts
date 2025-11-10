@@ -123,26 +123,9 @@ export function createPreferencesRoutes() {
 				lastUpdated: new Date().toISOString()
 			};
 
-			// Save merged preferences for current session
+			// Save merged preferences for current session ONLY
+			// Each device maintains its own independent preferences
 			await savePreferencesBySessionId(c.env.TASKS_KV, sessionId, updated);
-
-			// Also update lastSessionId preferences so new sessions get latest preferences
-			// This ensures cross-device preference sync
-			const authKey = auth.key || auth.sessionId;
-			if (authKey) {
-				const { getSessionMapping } = await import('../session');
-				const mapping = await getSessionMapping(c.env.TASKS_KV, authKey);
-
-				if (mapping && mapping.lastSessionId && mapping.lastSessionId !== sessionId) {
-					// Update lastSessionId preferences to match current session
-					await savePreferencesBySessionId(c.env.TASKS_KV, mapping.lastSessionId, updated);
-
-					logRequest('PUT', '/task/api/preferences', {
-						note: 'Synced to lastSessionId',
-						lastSessionId: maskSessionId(mapping.lastSessionId)
-					});
-				}
-			}
 
 			return c.json({ ok: true, message: 'Preferences saved', preferences: updated });
 		} catch (error: any) {

@@ -46,16 +46,16 @@ import type { ContextExtractionConfig } from './types.js';
  * );
  * ```
  */
-export function extractField(
+export function extractField<T = string>(
 	c: Context,
 	sources: string[],
-	defaultValue?: any,
-	transform?: (value: any) => any
-): any {
+	defaultValue?: T,
+	transform?: (value: string) => T
+): T | undefined {
 	for (const source of sources) {
 		const [type, key] = source.split(':');
-		let value: any;
-		
+		let value: string | undefined;
+
 		switch (type.toLowerCase()) {
 			case 'header':
 				value = c.req.header(key);
@@ -72,28 +72,28 @@ export function extractField(
 			case 'param':
 				value = c.req.param(key);
 				break;
-		case 'cookie': {
+			case 'cookie': {
 				const cookieHeader = c.req.header('Cookie');
 				if (cookieHeader) {
 					const cookies = Object.fromEntries(
-						cookieHeader.split(';').map(cookie => {
+						cookieHeader.split(';').map((cookie) => {
 							const [k, v] = cookie.trim().split('=');
 							return [k, v];
 						})
 					);
 					value = cookies[key];
 				}
-			break;
-		}
+				break;
+			}
 			default:
 				continue;
 		}
-		
+
 		if (value !== undefined && value !== null && value !== '') {
-			return transform ? transform(value) : value;
+			return transform ? transform(value) : (value as unknown as T);
 		}
 	}
-	
+
 	return defaultValue;
 }
 
@@ -125,20 +125,20 @@ export function extractField(
  * });
  * ```
  */
-export function extractContext(
+export function extractContext<T extends Record<string, any>>(
 	c: Context,
 	config: ContextExtractionConfig
-): Record<string, any> {
+): T {
 	const result: Record<string, any> = {};
-	
+
 	for (const [fieldName, sources] of Object.entries(config.fields)) {
 		const defaultValue = config.defaults?.[fieldName];
 		const transform = config.transforms?.[fieldName];
-		
+
 		result[fieldName] = extractField(c, sources, defaultValue, transform);
 	}
-	
-	return result;
+
+	return result as T;
 }
 
 /**
@@ -166,10 +166,10 @@ export function extractContext(
  * });
  * ```
  */
-export function createContextExtractor(
+export function createContextExtractor<T extends Record<string, any>>(
 	config: ContextExtractionConfig
-): (c: Context) => Record<string, any> {
-	return (c: Context) => extractContext(c, config);
+): (c: Context) => T {
+	return (c: Context) => extractContext<T>(c, config);
 }
 
 /**
@@ -242,9 +242,18 @@ export const extractSorting = createContextExtractor({
  * // { ip: '1.2.3.4', userAgent: 'Mozilla/5.0...', country: 'US', ... }
  * ```
  */
-export function getRequestMetadata(c: Context): Record<string, any> {
+export function getRequestMetadata(c: Context): {
+	ip: string | undefined;
+	userAgent: string | undefined;
+	country: string | undefined;
+	city: string | undefined;
+	region: string | undefined;
+	timezone: string | undefined;
+	colo: string | undefined;
+	requestId: string;
+} {
 	const cf = c.req.raw.cf as any;
-	
+
 	return {
 		ip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
 		userAgent: c.req.header('User-Agent'),
@@ -313,23 +322,23 @@ export function getFullContext(
 		includeSorting = false,
 		authContextKey = 'authContext'
 	} = options;
-	
+
 	const context: Record<string, any> = {
 		auth: c.get(authContextKey),
 		user: extractUserContext(c)
 	};
-	
+
 	if (includeMetadata) {
 		context.metadata = getRequestMetadata(c);
 	}
-	
+
 	if (includePagination) {
 		context.pagination = extractPagination(c);
 	}
-	
+
 	if (includeSorting) {
 		context.sorting = extractSorting(c);
 	}
-	
+
 	return context;
 }

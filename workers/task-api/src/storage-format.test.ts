@@ -38,7 +38,7 @@ describe('Storage Format Tests', () => {
 			// Verify the KV entry exists with correct key format
 			// Key format should be: boards:{sessionId} where sessionId is the auth key
 			const kvKey = `boards:test-admin-key`;
-			const boardsData = await env.TASKS_KV.get(kvKey, 'json') as any;
+			const boardsData = await env.TASKS_KV.get<{ version: number; boards: any[]; updatedAt: string }>(kvKey, 'json');
 
 			expect(boardsData).toBeDefined();
 			expect(boardsData).toHaveProperty('version');
@@ -58,14 +58,14 @@ describe('Storage Format Tests', () => {
 			}, env);
 
 			// Verify structure
-			const boardsData = await env.TASKS_KV.get('boards:test-admin-key', 'json') as any;
+			const boardsData = await env.TASKS_KV.get<{ version: number; boards: any[]; updatedAt: string }>('boards:test-admin-key', 'json');
 
-			expect(boardsData.version).toBe(1);
-			expect(Array.isArray(boardsData.boards)).toBe(true);
-			expect(boardsData.boards.length).toBeGreaterThan(0);
+			expect(boardsData!.version).toBe(1);
+			expect(Array.isArray(boardsData!.boards)).toBe(true);
+			expect(boardsData!.boards.length).toBeGreaterThan(0);
 
 			// Find our board
-			const board = boardsData.boards.find((b: any) => b.id === boardId);
+			const board = boardsData!.boards.find((b: any) => b.id === boardId);
 			expect(board).toBeDefined();
 			expect(board.name).toBe(boardName);
 			expect(board).toHaveProperty('id');
@@ -84,8 +84,8 @@ describe('Storage Format Tests', () => {
 			}, env);
 
 			// Check timestamp
-			const boardsData = await env.TASKS_KV.get('boards:test-admin-key', 'json') as any;
-			const timestamp = boardsData.updatedAt;
+			const boardsData = await env.TASKS_KV.get<{ updatedAt: string }>('boards:test-admin-key', 'json');
+			const timestamp = boardsData!.updatedAt;
 
 			// Should be valid ISO 8601
 			expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
@@ -115,7 +115,7 @@ describe('Storage Format Tests', () => {
 
 			// Verify KV key format: tasks:{sessionId}:{boardId}
 			const kvKey = `tasks:test-admin-key:${boardId}`;
-			const tasksData = await env.TASKS_KV.get(kvKey, 'json') as any;
+			const tasksData = await env.TASKS_KV.get<{ version: number; tasks: any[]; updatedAt: string }>(kvKey, 'json');
 
 			expect(tasksData).toBeDefined();
 			expect(tasksData).toHaveProperty('version');
@@ -142,12 +142,12 @@ describe('Storage Format Tests', () => {
 			}, env);
 
 			// Verify task data
-			const tasksData = await env.TASKS_KV.get(`tasks:test-admin-key:${boardId}`, 'json') as any;
+			const tasksData = await env.TASKS_KV.get<{ version: number; tasks: any[]; updatedAt: string }>(`tasks:test-admin-key:${boardId}`, 'json');
 
-			expect(tasksData.version).toBe(1);
-			expect(Array.isArray(tasksData.tasks)).toBe(true);
+			expect(tasksData!.version).toBe(1);
+			expect(Array.isArray(tasksData!.tasks)).toBe(true);
 
-			const task = tasksData.tasks.find((t: any) => t.id === taskId);
+			const task = tasksData!.tasks.find((t: any) => t.id === taskId);
 			expect(task).toBeDefined();
 			expect(task.title).toBe(taskTitle);
 			expect(task).toHaveProperty('id');
@@ -189,14 +189,14 @@ describe('Storage Format Tests', () => {
 			}, env);
 
 			// Verify they're in separate KV entries
-			const tasks1 = await env.TASKS_KV.get(`tasks:test-admin-key:${boardId1}`, 'json') as any;
-			const tasks2 = await env.TASKS_KV.get(`tasks:test-admin-key:${boardId2}`, 'json') as any;
+			const tasks1 = await env.TASKS_KV.get<{ tasks: any[] }>(`tasks:test-admin-key:${boardId1}`, 'json');
+			const tasks2 = await env.TASKS_KV.get<{ tasks: any[] }>(`tasks:test-admin-key:${boardId2}`, 'json');
 
-			expect(tasks1.tasks.some((t: any) => t.id === taskId1)).toBe(true);
-			expect(tasks1.tasks.some((t: any) => t.id === taskId2)).toBe(false);
+			expect(tasks1!.tasks.some((t: any) => t.id === taskId1)).toBe(true);
+			expect(tasks1!.tasks.some((t: any) => t.id === taskId2)).toBe(false);
 
-			expect(tasks2.tasks.some((t: any) => t.id === taskId1)).toBe(false);
-			expect(tasks2.tasks.some((t: any) => t.id === taskId2)).toBe(true);
+			expect(tasks2!.tasks.some((t: any) => t.id === taskId1)).toBe(false);
+			expect(tasks2!.tasks.some((t: any) => t.id === taskId2)).toBe(true);
 		});
 	});
 
@@ -215,11 +215,11 @@ describe('Storage Format Tests', () => {
 
 			// Verify KV key format: prefs:{sessionId}
 			const kvKey = 'prefs:test-admin-key';
-			const prefsData = await env.TASKS_KV.get(kvKey, 'json') as any;
+			const prefsData = await env.TASKS_KV.get<{ theme: string; notifications: boolean }>(kvKey, 'json');
 
 			expect(prefsData).toBeDefined();
-			expect(prefsData.theme).toBe('dark');
-			expect(prefsData.notifications).toBe(true);
+			expect(prefsData!.theme).toBe('dark');
+			expect(prefsData!.notifications).toBe(true);
 		});
 
 		it('should preserve preference values exactly', async () => {
@@ -238,13 +238,13 @@ describe('Storage Format Tests', () => {
 			}, env);
 
 			// Verify exact preservation (excluding auto-added lastUpdated)
-			const prefsData = await env.TASKS_KV.get('prefs:test-admin-key', 'json') as any;
+			const prefsData = await env.TASKS_KV.get<any>('prefs:test-admin-key', 'json');
 
-			expect(prefsData.theme).toBe(prefs.theme);
-			expect(prefsData.notifications).toBe(prefs.notifications);
-			expect(prefsData.language).toBe(prefs.language);
-			expect(prefsData.custom).toEqual(prefs.custom);
-			expect(prefsData.lastUpdated).toBeDefined(); // Auto-added by server
+			expect(prefsData!.theme).toBe(prefs.theme);
+			expect(prefsData!.notifications).toBe(prefs.notifications);
+			expect(prefsData!.language).toBe(prefs.language);
+			expect(prefsData!.custom).toEqual(prefs.custom);
+			expect(prefsData!.lastUpdated).toBeDefined(); // Auto-added by server
 		});
 	});
 
@@ -271,19 +271,19 @@ describe('Storage Format Tests', () => {
 			expect(friendResponse.status).toBe(200);
 
 			// Verify they're stored in separate KV entries
-			const adminBoardsData = await env.TASKS_KV.get('boards:test-admin-key', 'json') as any;
-			const friendBoardsData = await env.TASKS_KV.get('boards:test-friend-key', 'json') as any;
+			const adminBoardsData = await env.TASKS_KV.get<{ boards: any[] }>('boards:test-admin-key', 'json');
+			const friendBoardsData = await env.TASKS_KV.get<{ boards: any[] }>('boards:test-friend-key', 'json');
 
 			expect(adminBoardsData).toBeDefined();
 			expect(friendBoardsData).toBeDefined();
 
 			// Admin should only see their board
-			expect(adminBoardsData.boards.some((b: any) => b.id === 'admin-board')).toBe(true);
-			expect(adminBoardsData.boards.some((b: any) => b.id === 'friend-board')).toBe(false);
+			expect(adminBoardsData!.boards.some((b: any) => b.id === 'admin-board')).toBe(true);
+			expect(adminBoardsData!.boards.some((b: any) => b.id === 'friend-board')).toBe(false);
 
 			// Friend should only see their board
-			expect(friendBoardsData.boards.some((b: any) => b.id === 'admin-board')).toBe(false);
-			expect(friendBoardsData.boards.some((b: any) => b.id === 'friend-board')).toBe(true);
+			expect(friendBoardsData!.boards.some((b: any) => b.id === 'admin-board')).toBe(false);
+			expect(friendBoardsData!.boards.some((b: any) => b.id === 'friend-board')).toBe(true);
 		});
 	});
 

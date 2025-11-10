@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import app from './index';
 import { createTestEnv, createAuthHeaders } from './test-utils';
+import type { HandshakeResponse, UserPreferences, SessionMapping, SessionInfo } from './session';
 
 describe('Session Handshake Tests', () => {
 	const env = createTestEnv();
@@ -24,7 +25,7 @@ describe('Session Handshake Tests', () => {
 			}, env);
 
 			expect(response.status).toBe(200);
-			const data: any = await response.json();
+			const data = await response.json<HandshakeResponse>();
 			
 			expect(data.sessionId).toBe('session-new-device-001');
 			expect(data.preferences).toBeDefined();
@@ -72,7 +73,7 @@ describe('Session Handshake Tests', () => {
 			}, env);
 
 			expect(response.status).toBe(200);
-			const data: any = await response.json();
+			const data = await response.json<HandshakeResponse>();
 			
 			expect(data.sessionId).toBe(newSessionId);
 			expect(data.preferences.theme).toBe('dark');
@@ -82,13 +83,13 @@ describe('Session Handshake Tests', () => {
 
 			// 4. Verify preferences were MOVED (not copied)
 			// Old sessionId preferences should be DELETED
-			const oldPrefs = await env.TASKS_KV.get(`prefs:${oldSessionId}`, 'json') as any;
-			const newPrefs = await env.TASKS_KV.get(`prefs:${newSessionId}`, 'json') as any;
+			const oldPrefs = await env.TASKS_KV.get<UserPreferences>(`prefs:${oldSessionId}`, 'json');
+			const newPrefs = await env.TASKS_KV.get<UserPreferences>(`prefs:${newSessionId}`, 'json');
 			
 			expect(oldPrefs).toBeNull(); // Old prefs deleted
 			expect(newPrefs).toBeDefined(); // New prefs exist
-			expect(newPrefs.theme).toBe('dark');
-			expect(newPrefs.customField).toBe('test-value');
+			expect(newPrefs!.theme).toBe('dark');
+			expect(newPrefs!.customField).toBe('test-value');
 			
 			// Old session info should also be deleted
 			const oldSessionInfo = await env.TASKS_KV.get(`session-info:${oldSessionId}`, 'json');
@@ -117,7 +118,7 @@ describe('Session Handshake Tests', () => {
 					...adminHeaders,
 					'X-Session-Id': phoneSessionId
 				},
-				body: JSON.stringify({ theme: 'dark', device: 'phone' })
+				body: JSON.stringify({ theme: 'dark', deviceInfo: { device: 'phone' } })
 			}, env);
 
 			// Device 2: Desktop with light theme
@@ -137,18 +138,18 @@ describe('Session Handshake Tests', () => {
 					...adminHeaders,
 					'X-Session-Id': desktopSessionId
 				},
-				body: JSON.stringify({ theme: 'light', device: 'desktop' })
+				body: JSON.stringify({ theme: 'light', deviceInfo: { device: 'desktop' } })
 			}, env);
 
 			// Verify phone preferences
-			const phonePrefs = await env.TASKS_KV.get(`prefs:${phoneSessionId}`, 'json') as any;
-			expect(phonePrefs.theme).toBe('dark');
-			expect(phonePrefs.device).toBe('phone');
+			const phonePrefs = await env.TASKS_KV.get<UserPreferences>(`prefs:${phoneSessionId}`, 'json');
+			expect(phonePrefs!.theme).toBe('dark');
+			expect(phonePrefs!.deviceInfo!.device).toBe('phone');
 
 			// Verify desktop preferences
-			const desktopPrefs = await env.TASKS_KV.get(`prefs:${desktopSessionId}`, 'json') as any;
-			expect(desktopPrefs.theme).toBe('light');
-			expect(desktopPrefs.device).toBe('desktop');
+			const desktopPrefs = await env.TASKS_KV.get<UserPreferences>(`prefs:${desktopSessionId}`, 'json');
+			expect(desktopPrefs!.theme).toBe('light');
+			expect(desktopPrefs!.deviceInfo!.device).toBe('desktop');
 		});
 
 		it('should track multiple sessionIds per authKey', async () => {
@@ -186,13 +187,13 @@ describe('Session Handshake Tests', () => {
 			}
 
 			// Verify session mapping tracks all sessions
-			const mapping = await env.TASKS_KV.get(`session-map:${authKey}`, 'json') as any;
+			const mapping = await env.TASKS_KV.get<SessionMapping>(`session-map:${authKey}`, 'json');
 			expect(mapping).toBeDefined();
-			expect(mapping.sessionIds).toHaveLength(3);
-			expect(mapping.sessionIds).toContain('session-multi-001');
-			expect(mapping.sessionIds).toContain('session-multi-002');
-			expect(mapping.sessionIds).toContain('session-multi-003');
-			expect(mapping.lastSessionId).toBe('session-multi-003'); // Most recent
+			expect(mapping!.sessionIds).toHaveLength(3);
+			expect(mapping!.sessionIds).toContain('session-multi-001');
+			expect(mapping!.sessionIds).toContain('session-multi-002');
+			expect(mapping!.sessionIds).toContain('session-multi-003');
+			expect(mapping!.lastSessionId).toBe('session-multi-003'); // Most recent
 		});
 
 		it('should remove old sessionId from mapping when migrating', async () => {
@@ -222,9 +223,9 @@ describe('Session Handshake Tests', () => {
 			}, env);
 
 			// Verify initial mapping
-			let mapping = await env.TASKS_KV.get(`session-map:${authKey}`, 'json') as any;
-			expect(mapping.sessionIds).toHaveLength(1);
-			expect(mapping.sessionIds).toContain(oldSessionId);
+			let mapping = await env.TASKS_KV.get<SessionMapping>(`session-map:${authKey}`, 'json');
+			expect(mapping!.sessionIds).toHaveLength(1);
+			expect(mapping!.sessionIds).toContain(oldSessionId);
 
 			// Migrate to new session
 			const newSessionId = 'session-new-001';
@@ -238,11 +239,11 @@ describe('Session Handshake Tests', () => {
 			}, env);
 
 			// Verify mapping updated: old removed, new added
-			mapping = await env.TASKS_KV.get(`session-map:${authKey}`, 'json') as any;
-			expect(mapping.sessionIds).toHaveLength(1);
-			expect(mapping.sessionIds).not.toContain(oldSessionId); // Old removed
-			expect(mapping.sessionIds).toContain(newSessionId); // New added
-			expect(mapping.lastSessionId).toBe(newSessionId);
+			mapping = await env.TASKS_KV.get<SessionMapping>(`session-map:${authKey}`, 'json');
+			expect(mapping!.sessionIds).toHaveLength(1);
+			expect(mapping!.sessionIds).not.toContain(oldSessionId); // Old removed
+			expect(mapping!.sessionIds).toContain(newSessionId); // New added
+			expect(mapping!.lastSessionId).toBe(newSessionId);
 		});
 	});
 
@@ -263,13 +264,13 @@ describe('Session Handshake Tests', () => {
 			}, env);
 
 			// Verify session info was created
-			const sessionInfo = await env.TASKS_KV.get(`session-info:${sessionId}`, 'json') as any;
+			const sessionInfo = await env.TASKS_KV.get<SessionInfo>(`session-info:${sessionId}`, 'json');
 			expect(sessionInfo).toBeDefined();
-			expect(sessionInfo.sessionId).toBe(sessionId);
-			expect(sessionInfo.authKey).toBe(authKey); // Should match actual auth key
-			expect(sessionInfo.userType).toBe('admin');
-			expect(sessionInfo.createdAt).toBeDefined();
-			expect(sessionInfo.lastAccessedAt).toBeDefined();
+			expect(sessionInfo!.sessionId).toBe(sessionId);
+			expect(sessionInfo!.authKey).toBe(authKey); // Should match actual auth key
+			expect(sessionInfo!.userType).toBe('admin');
+			expect(sessionInfo!.createdAt).toBeDefined();
+			expect(sessionInfo!.lastAccessedAt).toBeDefined();
 		});
 	});
 
@@ -315,7 +316,7 @@ describe('Session Handshake Tests', () => {
 			}, env);
 
 			expect(response.status).toBe(200);
-			const data: any = await response.json();
+			const data = await response.json<HandshakeResponse>();
 			
 			// Should return default preferences when old session not found
 			// Since this is a truly fresh user (new unique key), theme should be default

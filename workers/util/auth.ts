@@ -76,11 +76,11 @@ function extractCredential(c: Context, source: string): string | undefined {
  * @param config - Authentication configuration
  * @returns Hono middleware handler
  */
-export function createAuthMiddleware<TEnv = any>(
-	config: AuthConfig<TEnv>
-): MiddlewareHandler {
+export function createAuthMiddleware<
+	TEnv extends { [key: string]: any } = { [key: string]: any }
+>(config: AuthConfig<TEnv>): MiddlewareHandler {
 	const contextKey = config.contextKey || 'authContext';
-	
+
 	return async (c: Context, next: Next) => {
 		// Extract credential from sources (in priority order)
 		let credential: string | undefined;
@@ -88,10 +88,10 @@ export function createAuthMiddleware<TEnv = any>(
 			credential = extractCredential(c, source);
 			if (credential) break;
 		}
-		
+
 		// Resolve auth context
 		const resolved = config.resolver(credential, c.env as TEnv);
-		
+
 		// Build auth context
 		let authContext: AuthContext;
 		if (typeof resolved === 'string') {
@@ -99,16 +99,16 @@ export function createAuthMiddleware<TEnv = any>(
 		} else {
 			authContext = resolved;
 		}
-		
+
 		// Add additional fields if configured
 		if (config.additionalFields) {
 			const additional = config.additionalFields(c, c.env as TEnv);
 			authContext = { ...authContext, ...additional };
 		}
-		
+
 		// Store in context
 		c.set(contextKey, authContext);
-		
+
 		await next();
 	};
 }
@@ -192,7 +192,9 @@ export function parseKeysFromEnv(
  * ));
  * ```
  */
-export function createKeyAuth<TEnv = any>(
+export function createKeyAuth<
+	TEnv extends { [key: string]: any } = { [key: string]: any }
+>(
 	keyMap: (env: TEnv) => Record<string, string>,
 	options: {
 		sources?: string[];
@@ -207,26 +209,25 @@ export function createKeyAuth<TEnv = any>(
 		contextKey = 'authContext',
 		includeHelpers = true
 	} = options;
-	
+
 	return createAuthMiddleware({
 		sources,
 		contextKey,
 		resolver: (credential, env) => {
-			const keys = keyMap(env);
-			const userType = credential && keys[credential] 
-				? keys[credential] 
-				: defaultUserType;
-			
+			const keys = keyMap(env as TEnv);
+			const userType =
+				credential && keys[credential] ? keys[credential] : defaultUserType;
+
 			// Build auth context with optional helpers
 			const authContext: AuthContext = { userType };
-			
+
 			if (includeHelpers) {
 				// Add common boolean helpers
 				authContext.isPublic = userType === 'public';
 				authContext.isFriend = userType === 'friend';
 				authContext.isAdmin = userType === 'admin';
 			}
-			
+
 			return authContext;
 		}
 	});

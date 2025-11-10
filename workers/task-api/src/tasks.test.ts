@@ -28,13 +28,13 @@ describe('Task CRUD Operations', () => {
 		const { taskId, response: createRes } = await createTestTask(app, env, adminHeaders, boardId);
 
 		expect(createRes.status).toBe(200);
-		const created: any = await createRes.json();
+		const created: { ok: boolean } = await createRes.json();
 		expect(created.ok).toBe(true);
 
 		// 2. Delete task
 		const deleteRes = await deleteTask(app, env, adminHeaders, taskId, boardId);
 		expect(deleteRes.status).toBe(200);
-		const deleted: any = await deleteRes.json();
+		const deleted: { ok: boolean } = await deleteRes.json();
 		expect(deleted.ok).toBe(true);
 
 		// Cleanup
@@ -51,12 +51,12 @@ describe('Task CRUD Operations', () => {
 		// 2. Complete task
 		const completeRes = await completeTask(app, env, adminHeaders, taskId, boardId);
 		expect(completeRes.status).toBe(200);
-		const completed: any = await completeRes.json();
+		const completed: { ok: boolean } = await completeRes.json();
 		expect(completed.ok).toBe(true);
 
 		// Verify task is removed from board (completed tasks are removed)
 		const boardsRes = await getBoards(app, env, adminHeaders);
-		const boardsData: any = await boardsRes.json();
+		const boardsData: { boards: any[] } = await boardsRes.json();
 		const board = boardsData.boards.find((b: any) => b.id === boardId);
 		
 		// Task should be removed from tasks array when completed

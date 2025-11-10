@@ -41,7 +41,7 @@ describe('Tag Lifecycle Tests', () => {
 		// Verify tag was assigned
 		let boardsRes = await getBoards(app, env, adminHeaders);
 
-		let boardsData: any = await boardsRes.json();
+		let boardsData: { boards: any[] } = await boardsRes.json();
 		let board = boardsData.boards.find((b: any) => b.id === boardId);
 		let task = board.tasks.find((t: any) => t.id === taskId);
 		expect(task.tag).toContain(newTag);

@@ -34,7 +34,7 @@ describe('Route Collision Tests', () => {
 		]);
 
 		expect(batchRes.status).toBe(200);
-		const batchData: any = await batchRes.json();
+		const batchData = await batchRes.json<{ ok: boolean }>();
 		expect(batchData.ok).toBe(true);
 
 		// Test 2: Updating task with id="batch-tag" should fail with 404
@@ -63,13 +63,13 @@ describe('Route Collision Tests', () => {
 		);
 
 		expect(batchRes.status).toBe(200);
-		const batchData: any = await batchRes.json();
+		const batchData = await batchRes.json<{ ok: boolean }>();
 		expect(batchData.ok).toBe(true);
 
 		// Verify all tasks have the tag
 		const boardsRes = await getBoards(app, env, adminHeaders);
 
-		const boardsData: any = await boardsRes.json();
+		const boardsData = await boardsRes.json<{ boards: any[] }>();
 		const board = boardsData.boards.find((b: any) => b.id === boardId);
 		expect(board).toBeDefined();
 
@@ -91,13 +91,13 @@ describe('Route Collision Tests', () => {
 		]);
 
 		expect(legacyRes.status).toBe(200);
-		const legacyData: any = await legacyRes.json();
+		const legacyData = await legacyRes.json<{ ok: boolean }>();
 		expect(legacyData.ok).toBe(true);
 
 		// Verify tag was applied
 		const boardsRes = await getBoards(app, env, adminHeaders);
 
-		const boardsData: any = await boardsRes.json();
+		const boardsData = await boardsRes.json<{ boards: any[] }>();
 		const board = boardsData.boards.find((b: any) => b.id === boardId);
 		const task = board.tasks.find((t: any) => t.id === taskId);
 		// Note: tasks use 'tag' (string), not 'tags' (array)

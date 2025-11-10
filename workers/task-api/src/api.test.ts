@@ -62,12 +62,12 @@ describe('Task API - Smoke Tests', () => {
 			}, env);
 			
 			expect(listRes.status).toBe(200);
-			const data = await listRes.json();
+			const data = await listRes.json<{ boards: { id: string; name: string }[] }>();
 			expect(data).toHaveProperty('boards');
 			expect(Array.isArray(data.boards)).toBe(true);
 			
 			// Should contain our created board
-			const board = data.boards.find((b: any) => b.id === boardId);
+			const board = data.boards.find((b) => b.id === boardId);
 			expect(board).toBeDefined();
 			expect(board?.name).toBe('Test Board');
 		});
