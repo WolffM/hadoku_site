@@ -71,19 +71,16 @@ document.addEventListener('DOMContentLoaded', async () => {
               const validationResponse = await fetch('/task/api/validate-key', {
                 method: 'POST',
                 headers: { 
-                  'Content-Type': 'application/json',
                   'X-User-Key': key
-                },
-                body: JSON.stringify({ key })
+                }
               });
               
               if (validationResponse.ok) {
                 const validation = await validationResponse.json();
                 
                 if (validation.valid) {
-                  // Key is valid - the backend will determine userType via auth middleware
-                  // We'll get the actual userType from the session handshake response
-                  userType = 'friend'; // Temporary - will be corrected by handshake
+                  // Key is valid - use the userType from the auth middleware
+                  userType = validation.userType; // 'admin' or 'friend'
                   userId = key;
                 } else {
                   // Key is invalid - clear it and go to public mode

@@ -6,9 +6,8 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
-import { healthCheck, logRequest, parseKeysFromEnv } from '../../../util';
+import { healthCheck, logRequest } from '../../../util';
 import { handleOperation } from './route-utils';
-import { validateKeyAndGetType } from '../request-utils';
 
 type Env = {
 	TASKS_KV: KVNamespace;
@@ -33,31 +32,24 @@ export function createMiscRoutes() {
 	 *
 	 * POST /validate-key
 	 *
-	 * Checks if a provided key is valid (exists in ADMIN_KEYS or FRIEND_KEYS)
+	 * Checks if the key provided in X-User-Key header is valid
+	 * Returns the validation result from the auth middleware
 	 */
 	app.post('/validate-key', async (c: Context) => {
-		const body = await c.req.json();
-		const { key } = body;
-
-		if (!key || typeof key !== 'string') {
-			return c.json({ valid: false, error: 'Key is required' }, 400);
-		}
-
-		// Parse key mappings from env (can be Set for arrays or Record for objects)
-		const adminKeys = parseKeysFromEnv(c.env.ADMIN_KEYS);
-		const friendKeys = parseKeysFromEnv(c.env.FRIEND_KEYS);
-
-		// Use centralized validation logic
-		const validation = validateKeyAndGetType(key, adminKeys, friendKeys);
+		// Auth middleware has already validated the key and set authContext
+		const authContext = c.get('authContext');
+		const userType = authContext.userType;
+		
+		// If userType is 'public', the key was invalid or not provided
+		const valid = userType !== 'public';
 
 		logRequest('POST', '/task/api/validate-key', {
-			keyProvided: !!key,
-			valid: validation.valid,
-			userType: validation.userType,
-			keyPreview: key.substring(0, 4) + '...' // Log first 4 chars only for security
+			valid,
+			userType,
+			hasKey: !!authContext.key
 		});
 
-		return c.json({ valid: validation.valid });
+		return c.json({ valid, userType });
 	});
 
 	/**
