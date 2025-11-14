@@ -24,23 +24,25 @@ Child package must export from `@wolffm/{app-name}/api`:
 ```typescript
 // 1. Handlers object (pure functions)
 export const AppHandlers = {
-  handlerName: (storage, auth, ...args) => Promise<ReturnType>
-}
+  handlerName: (storage, auth, ...args) => Promise<ReturnType>,
+};
 
 // 2. Storage interface
 export interface AppStorage {
-  getFile<T>(path: string): Promise<T>
-  saveFile(path: string, data: unknown): Promise<void>
+  getFile<T>(path: string): Promise<T>;
+  saveFile(path: string, data: unknown): Promise<void>;
 }
 
 // 3. Auth context
 export interface AuthContext {
-  userType: 'admin' | 'friend' | 'public'  // Permission level
-  userId?: string                            // Data scoping identifier
+  userType: 'admin' | 'friend' | 'public'; // Permission level
+  userId?: string; // Data scoping identifier
 }
 
 // 4. Data types (app-specific)
-export interface DataType { /* ... */ }
+export interface DataType {
+  /* ... */
+}
 ```
 
 ---
@@ -48,13 +50,14 @@ export interface DataType { /* ... */ }
 ## Handler Signature
 
 **Always:**
+
 1. First parameter: `storage: AppStorage`
 2. Second parameter: `auth: AuthContext`
 3. Additional parameters: request-specific data
 4. Return type: `Promise<T>`
 
 ```typescript
-handlerName: (storage: AppStorage, auth: AuthContext, ...args) => Promise<T>
+handlerName: (storage: AppStorage, auth: AuthContext, ...args) => Promise<T>;
 ```
 
 ---
@@ -63,28 +66,31 @@ handlerName: (storage: AppStorage, auth: AuthContext, ...args) => Promise<T>
 
 ### Success
 
-| Return | HTTP Status | Example |
-|--------|-------------|---------|
-| `T[]` or `T` | 200 | Get/list items |
-| `T` | 201 | Create item |
-| `void` | 204 | Delete item |
+| Return       | HTTP Status | Example        |
+| ------------ | ----------- | -------------- |
+| `T[]` or `T` | 200         | Get/list items |
+| `T`          | 201         | Create item    |
+| `void`       | 204         | Delete item    |
 
 ### Not Found
 
 Return `null` or `undefined` - parent converts to 404:
+
 ```typescript
-const item = items.find(i => i.id === id) ?? null
+const item = items.find((i) => i.id === id) ?? null;
 ```
 
 ### Errors
 
 Throw `Error` - parent maps to HTTP status:
+
 ```typescript
-if (!data.title) throw new Error('Title is required')  // → 400
-if (auth.userType === 'public') throw new Error('Unauthorized')  // → 401
+if (!data.title) throw new Error('Title is required'); // → 400
+if (auth.userType === 'public') throw new Error('Unauthorized'); // → 401
 ```
 
 **Error mapping keywords:**
+
 - `'unauthorized'` or `'forbidden'` → 401
 - `'not found'` → 404
 - `'required'` or `'invalid'` → 400
@@ -96,14 +102,16 @@ if (auth.userType === 'public') throw new Error('Unauthorized')  // → 401
 ## Storage Contract
 
 **Child defines interface:**
+
 ```typescript
 export interface AppStorage {
-  getFile<T>(path: string): Promise<T>
-  saveFile(path: string, data: unknown): Promise<void>
+  getFile<T>(path: string): Promise<T>;
+  saveFile(path: string, data: unknown): Promise<void>;
 }
 ```
 
 **Parent implements:**
+
 - `getFile()` - Fetches and parses JSON
 - `saveFile()` - Commits JSON atomically
 - Throws if file doesn't exist
@@ -114,61 +122,74 @@ export interface AppStorage {
 ## Auth Flow (Session-Based)
 
 ### 1. Page Load
+
 Parent creates session from URL key:
+
 ```javascript
 const sessionId = await fetch('/session/create', {
   method: 'POST',
-  body: JSON.stringify({ key })
-}).then(r => r.json())
+  body: JSON.stringify({ key }),
+}).then((r) => r.json());
 
-mount(element, { userType, userId, sessionId })
+mount(element, { userType, userId, sessionId });
 ```
 
 ### 2. Child Makes Request
+
 Child sends sessionId (not key):
+
 ```javascript
 fetch('/app/api/endpoint', {
-  headers: { 'X-Session-Id': props.sessionId }
-})
+  headers: { 'X-Session-Id': props.sessionId },
+});
 ```
 
 ### 3. Edge Router Injects Key
+
 Edge router resolves session → injects key:
+
 ```typescript
-const key = await getKeyFromSession(sessionId)
-request.headers.set('X-User-Key', key)
+const key = await getKeyFromSession(sessionId);
+request.headers.set('X-User-Key', key);
 // Proxy to API worker
 ```
 
 ### 4. API Worker Authenticates
+
 Parent validates key, creates AuthContext:
+
 ```typescript
 // Middleware extracts userType from key
-app.use('/api/*', createKeyAuth((env) => ({
-  [env.ADMIN_KEY]: 'admin',
-  [env.FRIEND_KEY]: 'friend'
-})))
+app.use(
+  '/api/*',
+  createKeyAuth((env) => ({
+    [env.ADMIN_KEY]: 'admin',
+    [env.FRIEND_KEY]: 'friend',
+  }))
+);
 
 // Route creates auth context, calls handler
 app.get('/endpoint', async (c) => {
-  const { userId } = extractUserContext(c)
-  const auth = { userType: c.get('userType'), userId }
-  const result = await AppHandlers.handlerName(storage, auth)
-  return c.json(result)
-})
+  const { userId } = extractUserContext(c);
+  const auth = { userType: c.get('userType'), userId };
+  const result = await AppHandlers.handlerName(storage, auth);
+  return c.json(result);
+});
 ```
 
 ### 5. Child Handler Uses Auth
+
 Handlers use auth for permissions and data scoping:
+
 ```typescript
 handlerName: async (storage, auth) => {
   // Permission check
-  if (auth.userType === 'public') throw new Error('Unauthorized')
-  
+  if (auth.userType === 'public') throw new Error('Unauthorized');
+
   // Data scoping with userId
-  const path = `data/${auth.userType}/${auth.userId}/file.json`
-  return await storage.getFile(path)
-}
+  const path = `data/${auth.userType}/${auth.userId}/file.json`;
+  return await storage.getFile(path);
+};
 ```
 
 **Security:** Child never sees the key. Parent validates key → creates auth context → passes to handler.
@@ -181,16 +202,16 @@ Parent extracts from request, passes to handler:
 
 ```typescript
 // Path parameters
-const id = c.req.param('id')
+const id = c.req.param('id');
 
 // Query parameters
-const page = c.req.query('page')
+const page = c.req.query('page');
 
 // Body (JSON)
-const data = await c.req.json()
+const data = await c.req.json();
 
 // Pass to handler
-const result = await AppHandlers.handlerName(storage, auth, id, data)
+const result = await AppHandlers.handlerName(storage, auth, id, data);
 ```
 
 ---
@@ -198,31 +219,33 @@ const result = await AppHandlers.handlerName(storage, auth, id, data)
 ## Validation
 
 **Child validates input:**
+
 ```typescript
 handlerName: async (storage, auth, data) => {
   // Required fields
-  if (!data.field) throw new Error('Field is required')
-  
+  if (!data.field) throw new Error('Field is required');
+
   // Type validation
-  if (typeof data.field !== 'string') throw new Error('Field must be string')
-  
+  if (typeof data.field !== 'string') throw new Error('Field must be string');
+
   // Constraints
-  if (data.field.length > 100) throw new Error('Field must be ≤100 chars')
-  
+  if (data.field.length > 100) throw new Error('Field must be ≤100 chars');
+
   // ... proceed
-}
+};
 ```
 
 **Parent catches errors:**
+
 ```typescript
 try {
-  const result = await AppHandlers.handlerName(storage, auth, data)
-  return c.json(result, 201)
+  const result = await AppHandlers.handlerName(storage, auth, data);
+  return c.json(result, 201);
 } catch (error) {
   if (error.message.includes('required')) {
-    return c.json({ error: error.message }, 400)
+    return c.json({ error: error.message }, 400);
   }
-  throw error
+  throw error;
 }
 ```
 
@@ -236,44 +259,52 @@ try {
 export const AppHandlers = {
   // List all
   list: async (storage, auth) => {
-    const data = await storage.getFile('data.json')
-    return data.items
+    const data = await storage.getFile('data.json');
+    return data.items;
   },
-  
+
   // Get single (return null if not found)
   get: async (storage, auth, id) => {
-    const data = await storage.getFile('data.json')
-    return data.items.find(i => i.id === id) ?? null
+    const data = await storage.getFile('data.json');
+    return data.items.find((i) => i.id === id) ?? null;
   },
-  
+
   // Create (generate ID)
   create: async (storage, auth, input) => {
-    const item = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...input }
-    const data = await storage.getFile('data.json')
-    data.items.push(item)
-    await storage.saveFile('data.json', data)
-    return item
+    const item = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      ...input,
+    };
+    const data = await storage.getFile('data.json');
+    data.items.push(item);
+    await storage.saveFile('data.json', data);
+    return item;
   },
-  
+
   // Update (return null if not found)
   update: async (storage, auth, id, changes) => {
-    const data = await storage.getFile('data.json')
-    const index = data.items.findIndex(i => i.id === id)
-    if (index === -1) return null
-    data.items[index] = { ...data.items[index], ...changes, updatedAt: new Date().toISOString() }
-    await storage.saveFile('data.json', data)
-    return data.items[index]
+    const data = await storage.getFile('data.json');
+    const index = data.items.findIndex((i) => i.id === id);
+    if (index === -1) return null;
+    data.items[index] = {
+      ...data.items[index],
+      ...changes,
+      updatedAt: new Date().toISOString(),
+    };
+    await storage.saveFile('data.json', data);
+    return data.items[index];
   },
-  
+
   // Delete (return null if not found)
   delete: async (storage, auth, id) => {
-    const data = await storage.getFile('data.json')
-    const filtered = data.items.filter(i => i.id !== id)
-    if (filtered.length === data.items.length) return null
-    data.items = filtered
-    await storage.saveFile('data.json', data)
-  }
-}
+    const data = await storage.getFile('data.json');
+    const filtered = data.items.filter((i) => i.id !== id);
+    if (filtered.length === data.items.length) return null;
+    data.items = filtered;
+    await storage.saveFile('data.json', data);
+  },
+};
 ```
 
 ---
@@ -281,6 +312,7 @@ export const AppHandlers = {
 ## Response Formats
 
 ### Success
+
 ```typescript
 // Single resource
 { id: '123', field: 'value' }
@@ -296,6 +328,7 @@ null
 ```
 
 ### Error
+
 ```typescript
 // Simple
 { error: 'Human-readable message' }
@@ -309,6 +342,7 @@ null
 ## Checklist
 
 **Child package:**
+
 - [ ] Export `AppHandlers` with pure functions
 - [ ] Export `AppStorage` interface
 - [ ] Export `AuthContext` interface
@@ -319,6 +353,7 @@ null
 - [ ] Validate input, throw descriptive errors
 
 **Parent worker:**
+
 - [ ] Implement `AppStorage` interface
 - [ ] Create `AuthContext` from request
 - [ ] Extract params, pass to handlers

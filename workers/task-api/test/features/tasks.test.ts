@@ -1,19 +1,19 @@
 /**
  * Task CRUD Tests
- * 
+ *
  * Covers basic task lifecycle operations.
  */
 import { describe, it, expect } from 'vitest';
 import app from '../../src/index';
-import { 
-	createTestEnv, 
-	createAuthHeaders, 
-	createTestBoard, 
+import {
+	createTestEnv,
+	createAuthHeaders,
+	createTestBoard,
 	createTestTask,
 	deleteTask,
 	deleteBoard,
 	completeTask,
-	getBoards
+	getBoards,
 } from '../__helpers__/test-utils';
 
 describe('Task CRUD Operations', () => {
@@ -56,14 +56,15 @@ describe('Task CRUD Operations', () => {
 
 		// Verify task is removed from board (completed tasks are removed)
 		const boardsRes = await getBoards(app, env, adminHeaders);
-		const boardsData: { boards: any[] } = await boardsRes.json();
-		const board = boardsData.boards.find((b: any) => b.id === boardId);
-		
-		// Task should be removed from tasks array when completed
-		const task = board.tasks.find((t: any) => t.id === taskId);
-		expect(task).toBeUndefined();
+		interface BoardsData {
+			boards: Array<{ id: string; tasks: Array<{ id: string }> }>;
+		}
+		const boardsData = (await boardsRes.json()) as BoardsData;
+		const board = boardsData.boards.find((b) => b.id === boardId);
 
-		// Stats are now in D1 (tested separately)
+		// Task should be removed from tasks array when completed
+		const task = board?.tasks.find((t) => t.id === taskId);
+		expect(task).toBeUndefined(); // Stats are now in D1 (tested separately)
 
 		// No cleanup needed - task is already removed
 		await deleteBoard(app, env, adminHeaders, boardId);

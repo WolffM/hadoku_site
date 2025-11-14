@@ -8,15 +8,15 @@
 import { throttleKey, incidentsKey, blacklistKey } from './kv-keys';
 
 export interface ThrottleConfig {
-	windowMs: number;  // Time window in milliseconds
-	maxRequests: number;  // Max requests per window
+	windowMs: number; // Time window in milliseconds
+	maxRequests: number; // Max requests per window
 }
 
 export interface ThrottleState {
 	count: number;
-	windowStart: number;  // Timestamp when window started
-	violations: number;  // Total violations count
-	lastViolation?: number;  // Timestamp of last violation
+	windowStart: number; // Timestamp when window started
+	violations: number; // Total violations count
+	lastViolation?: number; // Timestamp of last violation
 }
 
 export interface ThrottleLimits {
@@ -31,7 +31,7 @@ export interface IncidentRecord {
 	sessionId: string;
 	authKey?: string;
 	userType: string;
-	details: Record<string, any>;
+	details: Record<string, unknown>;
 }
 
 /**
@@ -39,17 +39,17 @@ export interface IncidentRecord {
  */
 export const DEFAULT_THROTTLE_LIMITS: ThrottleLimits = {
 	admin: {
-		windowMs: 60 * 1000,  // 1 minute
-		maxRequests: 300  // 300 requests per minute (5 req/sec)
+		windowMs: 60 * 1000, // 1 minute
+		maxRequests: 300, // 300 requests per minute (5 req/sec)
 	},
 	friend: {
-		windowMs: 60 * 1000,  // 1 minute
-		maxRequests: 120  // 120 requests per minute (2 req/sec)
+		windowMs: 60 * 1000, // 1 minute
+		maxRequests: 120, // 120 requests per minute (2 req/sec)
 	},
 	public: {
-		windowMs: 60 * 1000,  // 1 minute
-		maxRequests: 60  // 60 requests per minute (1 req/sec)
-	}
+		windowMs: 60 * 1000, // 1 minute
+		maxRequests: 60, // 60 requests per minute (1 req/sec)
+	},
 };
 
 /**
@@ -60,19 +60,19 @@ export const THROTTLE_THRESHOLDS = {
 	BLACKLIST_VIOLATION_COUNT: 3,
 
 	// How long to keep throttle state (cleanup)
-	STATE_TTL_MS: 5 * 60 * 1000,  // 5 minutes
+	STATE_TTL_MS: 5 * 60 * 1000, // 5 minutes
 
 	// How long to keep incident records
-	INCIDENT_TTL_SECONDS: 24 * 60 * 60,  // 24 hours
+	INCIDENT_TTL_SECONDS: 24 * 60 * 60, // 24 hours
 
 	// Max incidents to store per sessionId
 	MAX_INCIDENTS_PER_SESSION: 100,
 
 	// Suspicious pattern detection thresholds
-	MAX_SESSIONS_PER_AUTH: 10,  // Flag if more than this many sessions per auth key
-	MAX_TOTAL_VIOLATIONS: 20,   // Flag if total violations exceed this
-	MAX_RECENT_VIOLATIONS: 50,  // Flag if violations in last hour exceed this
-	RECENT_WINDOW_MS: 60 * 60 * 1000  // Time window for recent violations (1 hour)
+	MAX_SESSIONS_PER_AUTH: 10, // Flag if more than this many sessions per auth key
+	MAX_TOTAL_VIOLATIONS: 20, // Flag if total violations exceed this
+	MAX_RECENT_VIOLATIONS: 50, // Flag if violations in last hour exceed this
+	RECENT_WINDOW_MS: 60 * 60 * 1000, // Time window for recent violations (1 hour)
 };
 
 /**
@@ -87,98 +87,92 @@ export async function checkThrottle(
 ): Promise<{ allowed: boolean; state: ThrottleState; reason?: string }> {
 	const now = Date.now();
 	const config = limits[userType];
-	
+
 	// Check blacklist first
 	const isBlacklisted = await isSessionBlacklisted(kv, sessionId);
 	if (isBlacklisted) {
 		return {
 			allowed: false,
 			state: { count: 0, windowStart: now, violations: 999 },
-			reason: 'Session is blacklisted'
+			reason: 'Session is blacklisted',
 		};
 	}
-	
+
 	// Get current throttle state
 	const key = throttleKey(sessionId);
-	const stateData = await kv.get(key, 'json') as ThrottleState | null;
-	
+	const stateData = (await kv.get(key, 'json')) as ThrottleState | null;
+
 	let state: ThrottleState;
-	
+
 	if (!stateData || now - stateData.windowStart >= config.windowMs) {
 		// Start new window
 		state = {
 			count: 1,
 			windowStart: now,
-			violations: stateData?.violations || 0
+			violations: stateData?.violations || 0,
 		};
 	} else {
 		// Update existing window
 		state = {
 			...stateData,
-			count: stateData.count + 1
+			count: stateData.count + 1,
 		};
 	}
-	
+
 	// Check if over limit
 	if (state.count > config.maxRequests) {
 		// Violation!
 		state.violations++;
 		state.lastViolation = now;
-		
+
 		// Save updated state
 		await kv.put(key, JSON.stringify(state), {
-			expirationTtl: Math.ceil(THROTTLE_THRESHOLDS.STATE_TTL_MS / 1000)
+			expirationTtl: Math.ceil(THROTTLE_THRESHOLDS.STATE_TTL_MS / 1000),
 		});
-		
+
 		return {
 			allowed: false,
 			state,
-			reason: `Rate limit exceeded: ${state.count}/${config.maxRequests} requests in ${config.windowMs}ms window`
+			reason: `Rate limit exceeded: ${state.count}/${config.maxRequests} requests in ${config.windowMs}ms window`,
 		};
 	}
-	
+
 	// Save updated state
 	await kv.put(key, JSON.stringify(state), {
-		expirationTtl: Math.ceil(THROTTLE_THRESHOLDS.STATE_TTL_MS / 1000)
+		expirationTtl: Math.ceil(THROTTLE_THRESHOLDS.STATE_TTL_MS / 1000),
 	});
-	
+
 	return { allowed: true, state };
 }
 
 /**
  * Record an incident for a sessionId
  */
-export async function recordIncident(
-	kv: KVNamespace,
-	incident: IncidentRecord
-): Promise<void> {
+export async function recordIncident(kv: KVNamespace, incident: IncidentRecord): Promise<void> {
 	const key = incidentsKey(incident.sessionId);
-	
+
 	// Get existing incidents
-	const existing = await kv.get(key, 'json') as IncidentRecord[] | null;
+	const existing = (await kv.get(key, 'json')) as IncidentRecord[] | null;
 	const incidents = existing || [];
-	
+
 	// Add new incident
 	incidents.push(incident);
-	
+
 	// Keep only last N incidents
 	const trimmed = incidents.slice(-THROTTLE_THRESHOLDS.MAX_INCIDENTS_PER_SESSION);
-	
+
 	// Save with TTL
 	await kv.put(key, JSON.stringify(trimmed), {
-		expirationTtl: THROTTLE_THRESHOLDS.INCIDENT_TTL_SECONDS
+		expirationTtl: THROTTLE_THRESHOLDS.INCIDENT_TTL_SECONDS,
 	});
 }
 
 /**
  * Get incidents for a sessionId
  */
-export async function getIncidents(
-	kv: KVNamespace,
-	sessionId: string
-): Promise<IncidentRecord[]> {
+export async function getIncidents(kv: KVNamespace, sessionId: string): Promise<IncidentRecord[]> {
 	const key = incidentsKey(sessionId);
-	const data = await kv.get(key, 'json') as IncidentRecord[] | null;
+	const data = (await kv.get(key, 'json')) as IncidentRecord[] | null;
 	return data || [];
 }
 
@@ -196,14 +190,14 @@ export async function blacklistSession(
 		sessionId,
 		reason,
 		authKey,
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
 	};
-	
+
 	// Blacklist for 24 hours
 	await kv.put(key, JSON.stringify(data), {
-		expirationTtl: 24 * 60 * 60
+		expirationTtl: 24 * 60 * 60,
 	});
-	
+
 	// Record incident
 	await recordIncident(kv, {
 		timestamp: data.timestamp,
@@ -211,17 +205,14 @@ export async function blacklistSession(
 		sessionId,
 		authKey,
 		userType: 'unknown',
-		details: { reason }
+		details: { reason },
 	});
 }
 
 /**
  * Check if a sessionId is blacklisted
  */
-export async function isSessionBlacklisted(
-	kv: KVNamespace,
-	sessionId: string
-): Promise<boolean> {
+export async function isSessionBlacklisted(kv: KVNamespace, sessionId: string): Promise<boolean> {
 	const key = blacklistKey(sessionId);
 	const data = await kv.get(key);
 	return data !== null;
@@ -230,10 +221,7 @@ export async function isSessionBlacklisted(
 /**
  * Remove a sessionId from blacklist
  */
-export async function unblacklistSession(
-	kv: KVNamespace,
-	sessionId: string
-): Promise<void> {
+export async function unblacklistSession(kv: KVNamespace, sessionId: string): Promise<void> {
 	const key = blacklistKey(sessionId);
 	await kv.delete(key);
 }
@@ -246,17 +234,14 @@ export async function getThrottleState(
 	sessionId: string
 ): Promise<ThrottleState | null> {
 	const key = throttleKey(sessionId);
-	const data = await kv.get(key, 'json') as ThrottleState | null;
+	const data = (await kv.get(key, 'json')) as ThrottleState | null;
 	return data;
 }
 
 /**
  * Reset throttle state for a sessionId
  */
-export async function resetThrottleState(
-	kv: KVNamespace,
-	sessionId: string
-): Promise<void> {
+export async function resetThrottleState(kv: KVNamespace, sessionId: string): Promise<void> {
 	const key = throttleKey(sessionId);
 	await kv.delete(key);
 }
@@ -278,9 +263,7 @@ export async function checkSuspiciousPatterns(
 	}
 
 	// Pattern 2: Check for high violation rates across sessions
-	const states = await Promise.all(
-		sessionIds.map(sessionId => getThrottleState(kv, sessionId))
-	);
+	const states = await Promise.all(sessionIds.map((sessionId) => getThrottleState(kv, sessionId)));
 	const totalViolations = states.reduce((sum, state) => sum + (state?.violations || 0), 0);
 
 	if (totalViolations > THROTTLE_THRESHOLDS.MAX_TOTAL_VIOLATIONS) {
@@ -289,21 +272,22 @@ export async function checkSuspiciousPatterns(
 
 	// Pattern 3: Check recent incidents
 	const incidentArrays = await Promise.all(
-		sessionIds.slice(0, 5).map(sessionId => getIncidents(kv, sessionId))
+		sessionIds.slice(0, 5).map((sessionId) => getIncidents(kv, sessionId))
 	);
 	const recentIncidents = incidentArrays.flat();
 
 	const recentViolations = recentIncidents.filter(
-		i => i.type === 'throttle_violation' &&
-		Date.now() - new Date(i.timestamp).getTime() < THROTTLE_THRESHOLDS.RECENT_WINDOW_MS
+		(i) =>
+			i.type === 'throttle_violation' &&
+			Date.now() - new Date(i.timestamp).getTime() < THROTTLE_THRESHOLDS.RECENT_WINDOW_MS
 	);
 
 	if (recentViolations.length > THROTTLE_THRESHOLDS.MAX_RECENT_VIOLATIONS) {
 		reasons.push(`High recent violation rate: ${recentViolations.length} in last hour`);
 	}
-	
+
 	return {
 		suspicious: reasons.length > 0,
-		reasons
+		reasons,
 	};
 }

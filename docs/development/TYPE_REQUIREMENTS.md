@@ -16,6 +16,7 @@ This document tracks all types that need to be imported from the `@wolffm/task` 
 ### Core Entity Types
 
 #### Task Types
+
 ```typescript
 Task - The main task interface with all properties
 TaskState - 'Active' | 'Completed' | 'Deleted'
@@ -23,6 +24,7 @@ TaskPriority - Task priority levels (if used)
 ```
 
 #### Board Types
+
 ```typescript
 Board - The main board interface
 BoardWithTasks - Board with tasks array included
@@ -30,6 +32,7 @@ BoardSummary - Lightweight board info (if exists)
 ```
 
 #### Tag Types
+
 ```typescript
 Tag - Tag interface
 TagOperation - For batch tag operations
@@ -38,6 +41,7 @@ TagOperation - For batch tag operations
 ### API Response Types
 
 #### CRUD Operation Responses
+
 ```typescript
 TaskResponse - Response from task creation/update
 BoardResponse - Response from board creation/update
@@ -46,6 +50,7 @@ MoveTaskResponse - Response from task movement
 ```
 
 #### Batch Operation Responses
+
 ```typescript
 BatchOperationResponse - Response for batch operations
 BatchTagUpdateResponse - Specific to batch tag updates
@@ -53,6 +58,7 @@ BatchResult - Individual operation result in batch
 ```
 
 #### List/Query Responses
+
 ```typescript
 BoardListResponse - Response with boards array
 TaskListResponse - Response with tasks array (if exists)
@@ -69,6 +75,7 @@ TaskMetadata - Task metadata fields
 ## Files Requiring External Types
 
 ### Test Files (High Priority)
+
 1. **test-utils.ts** (~30 `any` types)
    - Helper functions return `Task`, `Board`, `TaskResponse`, `BoardResponse`
    - Need proper return types for all CRUD helpers
@@ -116,6 +123,7 @@ TaskMetadata - Task metadata fields
     - Minimal - mostly authentication testing
 
 ### Production Files (Lower Priority)
+
 - **request-utils.ts** (~5 `any` types) - Helper function parameters
 - **throttle.ts** (~2 `any` types) - Incident record details
 
@@ -146,18 +154,22 @@ TaskMetadata - Task metadata fields
 - Consider adding eslint rule exceptions for unavoidable cases (ReadableStream processing)
 
 ### Task Types
+
 - `Task` - The main task interface
 - `TaskState` - 'Active' | 'Completed' | 'Deleted'
 - `TaskPriority` - Task priority levels
 
 ### Board Types
+
 - `Board` - The main board interface
 - `BoardWithTasks` - Board with tasks array
 
 ### Tag Types
+
 - `Tag` - Tag interface
 
 ### API Response Types
+
 - `TaskResponse` - Response when creating/updating a task
 - `BoardResponse` - Response when creating/updating a board
 - `BatchOperationResponse` - Response for batch operations

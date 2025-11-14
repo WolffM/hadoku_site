@@ -11,10 +11,10 @@
 export const USER_TYPES = {
 	ADMIN: 'admin',
 	FRIEND: 'friend',
-	PUBLIC: 'public'
+	PUBLIC: 'public',
 } as const;
 
-export type UserType = typeof USER_TYPES[keyof typeof USER_TYPES];
+export type UserType = (typeof USER_TYPES)[keyof typeof USER_TYPES];
 
 // ============================================================================
 // Session & Board Defaults
@@ -33,7 +33,7 @@ export const THEMES = {
 	LIGHT: 'light',
 	DARK: 'dark',
 	STRAWBERRY: 'strawberry',
-	STRAWBERRY_DARK: 'strawberry-dark'
+	STRAWBERRY_DARK: 'strawberry-dark',
 } as const;
 
 export const DEFAULT_THEME = THEMES.SYSTEM;
@@ -47,7 +47,7 @@ export const KV_PREFIXES = {
 	TASKS: 'tasks',
 	PREFS: 'prefs',
 	SESSION_INFO: 'session-info',
-	SESSION_MAP: 'session-map'
+	SESSION_MAP: 'session-map',
 } as const;
 
 // ============================================================================
@@ -62,7 +62,7 @@ export const DEFAULT_PREFERENCES = {
 	theme: DEFAULT_THEME,
 	buttons: {},
 	experimentalFlags: {},
-	layout: {}
+	layout: {},
 } as const;
 
 /**
@@ -72,7 +72,7 @@ export const DEFAULT_BOARD = {
 	id: DEFAULT_BOARD_ID,
 	name: DEFAULT_BOARD_NAME,
 	tags: [],
-	tasks: []
+	tasks: [],
 } as const;
 
 // ============================================================================
@@ -81,7 +81,7 @@ export const DEFAULT_BOARD = {
 
 export const RATE_LIMITS = {
 	MAX_OPERATIONS_PER_SECOND: 10,
-	THROTTLE_DELAY_MS: 100
+	THROTTLE_DELAY_MS: 100,
 } as const;
 
 // ============================================================================
@@ -94,7 +94,7 @@ export const VALIDATION_LIMITS = {
 	MAX_BOARD_NAME_LENGTH: 100,
 	MAX_TAGS_PER_BOARD: 100,
 	MAX_TASKS_PER_BOARD: 10000,
-	MAX_BOARDS_PER_USER: 100
+	MAX_BOARDS_PER_USER: 100,
 } as const;
 
 // ============================================================================
@@ -110,7 +110,7 @@ export const HTTP_STATUS = {
 	NOT_FOUND: 404,
 	CONFLICT: 409,
 	TOO_MANY_REQUESTS: 429,
-	INTERNAL_SERVER_ERROR: 500
+	INTERNAL_SERVER_ERROR: 500,
 } as const;
 
 // ============================================================================
@@ -124,7 +124,7 @@ export const ERROR_MESSAGES = {
 	TASK_NOT_FOUND: 'Task not found',
 	TAG_NOT_FOUND: 'Tag not found',
 	UNAUTHORIZED: 'Unauthorized',
-	RATE_LIMITED: 'Too many requests'
+	RATE_LIMITED: 'Too many requests',
 } as const;
 
 // ============================================================================

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Shared types for worker utilities
  */
@@ -11,7 +12,7 @@ export type UserType = string; // 'admin' | 'friend' | 'public' | custom types
 
 export interface AuthContext {
 	userType: UserType;
-	[key: string]: any; // Allow additional custom fields
+	[key: string]: unknown; // Allow additional custom fields
 }
 
 export interface AuthConfig<TEnv = any> {
@@ -20,7 +21,7 @@ export interface AuthConfig<TEnv = any> {
 	 * @example ['header:X-User-Key', 'query:key', 'cookie:auth_token']
 	 */
 	sources: string[];
-	
+
 	/**
 	 * Function to resolve userType from the extracted credential
 	 * @param credential - The extracted auth credential
@@ -28,13 +29,13 @@ export interface AuthConfig<TEnv = any> {
 	 * @returns UserType or AuthContext object
 	 */
 	resolver: (credential: string | undefined, env: TEnv) => UserType | AuthContext;
-	
+
 	/**
 	 * Variable name to store auth context in Hono context
 	 * @default 'authContext'
 	 */
 	contextKey?: string;
-	
+
 	/**
 	 * Additional fields to add to auth context
 	 */
@@ -51,18 +52,18 @@ export interface ContextExtractionConfig {
 	 * @example { userId: ['header:X-User-Id', 'query:userId'], sessionId: ['header:X-Session-Id'] }
 	 */
 	fields: Record<string, string[]>;
-	
+
 	/**
 	 * Default values for fields if not found
 	 * @example { userId: 'anonymous', boardId: 'main' }
 	 */
 	defaults?: Record<string, any>;
-	
+
 	/**
 	 * Transform functions for extracted values
 	 * @example { userId: (val) => val?.toLowerCase() }
 	 */
-	transforms?: Record<string, (value: any) => any>;
+	transforms?: Record<string, (value: unknown) => any>;
 }
 
 // ============================================================================
@@ -76,7 +77,7 @@ export interface ValidationRule {
 	minLength?: number;
 	maxLength?: number;
 	pattern?: RegExp;
-	custom?: (value: any) => boolean | string; // Return true or error message
+	custom?: (value: unknown) => boolean | string; // Return true or error message
 }
 
 export interface ValidationResult {
@@ -103,19 +104,19 @@ export interface LoggerConfig {
 	 * @default 'info'
 	 */
 	minLevel?: LogLevel;
-	
+
 	/**
 	 * Include timestamp in logs
 	 * @default true
 	 */
 	includeTimestamp?: boolean;
-	
+
 	/**
 	 * Prefix for all log messages
 	 * @example '[task-api]'
 	 */
 	prefix?: string;
-	
+
 	/**
 	 * Custom formatter for log output
 	 */
@@ -128,7 +129,7 @@ export interface LoggerConfig {
 
 export interface ErrorResponse {
 	error: string;
-	details?: any;
+	details?: unknown;
 	timestamp?: string;
 }
 
@@ -155,29 +156,29 @@ export interface CORSConfig {
 	 * Allowed origins (supports wildcards like 'http://localhost:*')
 	 */
 	origins: string[];
-	
+
 	/**
 	 * Allowed HTTP methods
 	 * @default ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 	 */
 	methods?: string[];
-	
+
 	/**
 	 * Allowed headers
 	 */
 	allowedHeaders?: string[];
-	
+
 	/**
 	 * Exposed headers
 	 */
 	exposedHeaders?: string[];
-	
+
 	/**
 	 * Allow credentials
 	 * @default true
 	 */
 	credentials?: boolean;
-	
+
 	/**
 	 * Max age for preflight cache
 	 * @default 86400 (24 hours)

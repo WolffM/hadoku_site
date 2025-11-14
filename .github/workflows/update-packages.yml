@@ -21,21 +21,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.HADOKU_SITE_TOKEN }}
-      
+
       - uses: pnpm/action-setup@v3
         with:
           version: 9
-      
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-      
+
       - name: Create .npmrc for GitHub Packages
         run: |
           echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
-      
+
       - name: Parse packages to update
         id: parse
         run: |
@@ -46,10 +46,10 @@ jobs:
             IFS=',' read -ra PKG_ARRAY <<< "${{ github.event.inputs.packages }}"
             PACKAGES=$(printf '%s\n' "${PKG_ARRAY[@]}" | jq -R . | jq -s . | jq -c .)
           fi
-          
+
           echo "📦 Packages to update: $PACKAGES"
           echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
-          
+
           # Check if task package needs update
           if echo "$PACKAGES" | jq -e 'map(select(. == "@wolffm/task")) | length > 0' > /dev/null; then
             echo "update_task=true" >> $GITHUB_OUTPUT
@@ -57,7 +57,7 @@ jobs:
           else
             echo "update_task=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Check if themes package needs update
           if echo "$PACKAGES" | jq -e 'map(select(. == "@wolffm/themes")) | length > 0' > /dev/null; then
             echo "update_themes=true" >> $GITHUB_OUTPUT
@@ -65,7 +65,7 @@ jobs:
           else
             echo "update_themes=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Check if watchparty package needs update
           if echo "$PACKAGES" | jq -e 'map(select(. == "@wolffm/watchparty-ui")) | length > 0' > /dev/null; then
             echo "update_watchparty=true" >> $GITHUB_OUTPUT
@@ -81,7 +81,7 @@ jobs:
           else
             echo "update_ui_components=false" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Backup KV namespace before package update
         if: steps.parse.outputs.update_task == 'true'
         id: backup
@@ -92,15 +92,15 @@ jobs:
           CLOUDFLARE_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_NAMESPACE_ID }}
         run: |
           echo "📦 Creating KV backup before @wolffm/task package update..."
-          
+
           # Install wrangler globally
           npm install -g wrangler
-          
+
           # Get current version before update
           CURRENT_VERSION=$(node -p "try { require('./workers/task-api/package.json').dependencies['@wolffm/task'] } catch { 'none' }")
           echo "Current version: $CURRENT_VERSION"
           echo "current-version=$CURRENT_VERSION" >> $GITHUB_ENV
-          
+
           # Run fast backup script (file only for speed in CI)
           pip install requests
           if python scripts/backup-kv.py fast-backup; then
@@ -110,7 +110,7 @@ jobs:
             echo "backup-success=false" >> $GITHUB_OUTPUT
             echo "❌ Backup failed! Flush step will be skipped."
           fi
-      
+
       - name: Upload KV backup as artifact
         if: steps.backup.outputs.backup-success == 'true'
         continue-on-error: true
@@ -120,7 +120,7 @@ jobs:
           path: scripts/backups/*.json
           retention-days: 90
           if-no-files-found: error
-      
+
       # Flush step disabled - run manually when needed with: python scripts/administration.py kv-flush
       # - name: Flush KV namespace (only if backup succeeded)
       #   if: steps.backup.outputs.backup-success == 'true' && github.event.client_payload.flush_kv == 'true'
@@ -131,16 +131,16 @@ jobs:
       #   run: |
       #     echo "🗑️  Flushing KV namespace (backup created successfully)..."
       #     echo "⚠️  This will delete all existing data"
-      #     
+      #
       #     python scripts/administration.py kv-flush --force
-      #     
+      #
       #     echo "✅ KV namespace flushed - ready for new storage structure"
-      
+
       - name: Update packages
         run: |
           PACKAGES='${{ steps.parse.outputs.packages }}'
           echo "📦 Updating packages..."
-          
+
           echo "$PACKAGES" | jq -r '.[]' | while read -r package; do
             echo "Updating $package to latest version..."
             
@@ -156,9 +156,9 @@ jobs:
               echo "✅ Updated $package in workers/task-api"
             fi
           done
-          
+
           echo "✅ All package updates complete"
-      
+
       - name: Update task bundle
         if: steps.parse.outputs.update_task == 'true'
         run: |
@@ -166,12 +166,12 @@ jobs:
           echo "📦 Updating task micro-frontend bundle..."
           pnpm run update-task-bundle
           echo "✅ Updated public/mf/task/ bundle files"
-          
+
           # Regenerate registry with new version numbers for cache busting
           echo "📦 Regenerating registry with cache-busting version..."
           pnpm run generate-registry
           echo "✅ Updated public/mf/registry.json with new versions"
-      
+
       - name: Update watchparty bundle
         if: steps.parse.outputs.update_watchparty == 'true'
         run: |
@@ -179,12 +179,12 @@ jobs:
           echo "📦 Updating watchparty micro-frontend bundle..."
           pnpm run update-watchparty-bundle
           echo "✅ Updated public/mf/watchparty/ bundle files"
-          
+
           # Regenerate registry with new version numbers for cache busting
           echo "📦 Regenerating registry with cache-busting version..."
           pnpm run generate-registry
           echo "✅ Updated public/mf/registry.json with new versions"
-      
+
       - name: Update themes bundle
         if: steps.parse.outputs.update_themes == 'true'
         run: |
@@ -286,7 +286,7 @@ jobs:
             } catch (e) {
               console.log('No backup files found');
             }
-            
+
             // Get the latest commit (the one we just pushed)
             const { data: commits } = await github.rest.repos.listCommits({
               owner: context.repo.owner,
@@ -294,15 +294,15 @@ jobs:
               per_page: 1
             });
             const latestCommit = commits[0].sha;
-            
+
             const packages = '${{ steps.parse.outputs.packages }}';
             const packageList = JSON.parse(packages).join(', ');
-            
+
             const taskUpdated = '${{ steps.parse.outputs.update_task }}' === 'true';
-            
+
             let body = `## � Package Update${packageList.includes(',') ? 's' : ''}\n\n`;
             body += `**Updated Packages:** ${packageList}\n\n`;
-            
+
             if (taskUpdated) {
               body += `**@wolffm/task Version**\n`;
               body += `- Old version: \`${{ env.current-version }}\`\n`;
@@ -327,14 +327,14 @@ jobs:
               body += `python scripts/administration.py kv-flush --force\n`;
               body += `\`\`\``;
             }
-            
+
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: latestCommit,
               body
             });
-      
+
       - name: Trigger deployment
         if: success()
         run: |

@@ -13,6 +13,7 @@ Uses **Cloudflare Workers Analytics Engine** for zero-setup request tracking.
 ## Data Structure
 
 Each request logs:
+
 - **Blobs** (strings): path, userAgent
 - **Doubles** (numbers): duration (ms), status
 - **Indexes** (filterable): backend, method, timestamp
@@ -20,6 +21,7 @@ Each request logs:
 ## Viewing Logs
 
 ### Cloudflare Dashboard (Recommended)
+
 1. Go to: https://dash.cloudflare.com
 2. Select your account
 3. Go to **Workers & Pages** → **edge-router**
@@ -29,8 +31,9 @@ Each request logs:
 ### Example Queries
 
 **Backend distribution:**
+
 ```sql
-SELECT 
+SELECT
   index1 as backend,
   COUNT(*) as requests
 FROM ANALYTICS_ENGINE
@@ -40,8 +43,9 @@ ORDER BY requests DESC
 ```
 
 **Average duration by backend:**
+
 ```sql
-SELECT 
+SELECT
   index1 as backend,
   AVG(double1) as avg_duration_ms
 FROM ANALYTICS_ENGINE
@@ -50,8 +54,9 @@ GROUP BY backend
 ```
 
 **Error rate:**
+
 ```sql
-SELECT 
+SELECT
   COUNT(*) as total,
   SUM(CASE WHEN double2 >= 400 THEN 1 ELSE 0 END) as errors,
   (SUM(CASE WHEN double2 >= 400 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as error_rate
@@ -60,8 +65,9 @@ WHERE timestamp > NOW() - INTERVAL '24' HOUR
 ```
 
 **Top slow paths:**
+
 ```sql
-SELECT 
+SELECT
   blob1 as path,
   AVG(double1) as avg_duration,
   COUNT(*) as count
@@ -92,11 +98,13 @@ LIMIT 10
 ## Monitoring
 
 View analytics at:
+
 ```
 https://dash.cloudflare.com/<account_id>/workers/services/view/edge-router/analytics
 ```
 
 Or use the Cloudflare API:
+
 ```bash
 curl "https://api.cloudflare.com/client/v4/accounts/<account_id>/analytics_engine/sql" \
   -H "Authorization: Bearer <token>" \
@@ -106,11 +114,13 @@ curl "https://api.cloudflare.com/client/v4/accounts/<account_id>/analytics_engin
 ## Troubleshooting
 
 **Not seeing data?**
+
 1. Wait 1-2 minutes for data to appear (slight delay)
 2. Check Worker is deployed: `wrangler deployments list edge-router`
 3. Verify requests are hitting the Worker
 4. Check browser dev tools for X-Backend-Source header
 
 **Need more detail?**
+
 - Analytics Engine is for metrics/aggregation
 - For detailed request logs, use `wrangler tail edge-router --format=pretty`

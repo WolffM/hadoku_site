@@ -1,16 +1,16 @@
 /**
  * @hadoku/worker-utils
- * 
+ *
  * Shared utilities for Cloudflare Workers using Hono
- * 
+ *
  * @example
  * ```typescript
  * // Import everything
  * import * as utils from '../util';
- * 
+ *
  * // Import specific modules
  * import { createKeyAuth, extractUserContext, ok, badRequest } from '../util';
- * 
+ *
  * // Import from specific files
  * import { createKeyAuth } from '../util/auth';
  * import { validateFields } from '../util/validation';
@@ -25,7 +25,7 @@ export {
 	getAuthContext,
 	hasUserType,
 	requireUserType,
-	validateKeyAndGetType
+	validateKeyAndGetType,
 } from './auth.js';
 
 // Context extraction
@@ -38,7 +38,7 @@ export {
 	extractSorting,
 	getRequestMetadata,
 	parseBody,
-	getFullContext
+	getFullContext,
 } from './context.js';
 
 // Validation
@@ -49,7 +49,7 @@ export {
 	CommonRules,
 	requireFields,
 	isNonEmptyString,
-	sanitizeString
+	sanitizeString,
 } from './validation.js';
 
 // CORS
@@ -60,7 +60,7 @@ export {
 	isOriginAllowed,
 	getCorsHeaders,
 	CORSPresets,
-	DEFAULT_HADOKU_ORIGINS
+	DEFAULT_HADOKU_ORIGINS,
 } from './cors.js';
 
 // Logging
@@ -73,16 +73,11 @@ export {
 	formatError,
 	startTimer,
 	redactFields,
-	SENSITIVE_FIELDS
+	SENSITIVE_FIELDS,
 } from './logging.js';
 
 // Masking (data sanitization for logs)
-export {
-	maskKey,
-	maskSessionId,
-	maskEmail,
-	MASKING
-} from './masking.js';
+export { maskKey, maskSessionId, maskEmail, MASKING } from './masking.js';
 
 // Responses
 export {
@@ -96,7 +91,7 @@ export {
 	conflict,
 	serverError,
 	validationError,
-	healthCheck
+	healthCheck,
 } from './responses.js';
 
 // Types
@@ -113,5 +108,5 @@ export type {
 	ErrorResponse,
 	SuccessResponse,
 	HealthCheckResponse,
-	CORSConfig
+	CORSConfig,
 } from './types.js';

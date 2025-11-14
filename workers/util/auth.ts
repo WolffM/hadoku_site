@@ -1,11 +1,11 @@
 /**
  * Generic authentication middleware for Cloudflare Workers using Hono
- * 
+ *
  * Supports multiple authentication strategies:
  * - Header-based (X-User-Key, Authorization, etc.)
  * - Query parameter-based (key, token, etc.)
  * - Cookie-based (auth_token, session, etc.)
- * 
+ *
  * @example
  * ```typescript
  * // Simple key-based auth
@@ -17,7 +17,7 @@
  *     return 'public';
  *   }
  * }));
- * 
+ *
  * // Advanced auth with custom context
  * app.use('*', createAuthMiddleware({
  *   sources: ['header:Authorization', 'cookie:session'],
@@ -39,14 +39,14 @@ import type { AuthConfig, AuthContext } from './types.js';
 
 /**
  * Extract credential from request based on source specification
- * 
+ *
  * @param c - Hono context
  * @param source - Source specification (e.g., 'header:X-User-Key', 'query:key', 'cookie:token')
  * @returns Extracted credential or undefined
  */
 function extractCredential(c: Context, source: string): string | undefined {
 	const [type, key] = source.split(':');
-	
+
 	switch (type.toLowerCase()) {
 		case 'header':
 			return c.req.header(key);
@@ -72,12 +72,12 @@ function extractCredential(c: Context, source: string): string | undefined {
 
 /**
  * Create authentication middleware
- * 
+ *
  * @param config - Authentication configuration
  * @returns Hono middleware handler
  */
 export function createAuthMiddleware<
-	TEnv extends { [key: string]: any } = { [key: string]: any }
+	TEnv extends Record<string, unknown> = Record<string, unknown>,
 >(config: AuthConfig<TEnv>): MiddlewareHandler {
 	const contextKey = config.contextKey || 'authContext';
 
@@ -115,15 +115,15 @@ export function createAuthMiddleware<
 
 /**
  * Parse JSON keys from environment variable
- * 
+ *
  * @param jsonString - JSON string from environment variable (e.g., '{"key1": "user1", "key2": "user2"}')
  * @returns Map of keys to user types/IDs
- * 
+ *
  * @example
  * ```typescript
  * const keys = parseKeysFromEnv('{"abc123": "admin", "def456": "admin2"}');
  * // Returns: { "abc123": "admin", "def456": "admin2" }
- * 
+ *
  * const keys = parseKeysFromEnv(undefined);
  * // Returns: {}
  * ```
@@ -134,16 +134,16 @@ export function parseKeysFromEnv(
 	if (!jsonString) {
 		return {};
 	}
-	
+
 	try {
 		const parsed = JSON.parse(jsonString);
-		
+
 		// Handle array format: ["key1", "key2", "key3"]
 		// Return as Set for membership checking
 		if (Array.isArray(parsed)) {
-			return new Set(parsed.filter(key => typeof key === 'string'));
+			return new Set(parsed.filter((key) => typeof key === 'string'));
 		}
-		
+
 		// Handle object format: {"key1": "userId1", "key2": "userId2"}
 		if (typeof parsed === 'object' && parsed !== null) {
 			return parsed as Record<string, string>;
@@ -151,17 +151,17 @@ export function parseKeysFromEnv(
 	} catch (error) {
 		console.warn('Failed to parse keys JSON:', error);
 	}
-	
+
 	return {};
 }
 
 /**
  * Create a simple key-based auth middleware (common pattern)
- * 
+ *
  * @param keyMap - Function that returns a map of keys to user types
  * @param options - Additional options
  * @returns Hono middleware handler
- * 
+ *
  * @example
  * ```typescript
  * // Parse JSON key objects from environment
@@ -177,7 +177,7 @@ export function parseKeysFromEnv(
  *     includeHelpers: true
  *   }
  * ));
- * 
+ *
  * // Or use a static map
  * app.use('*', createKeyAuth(
  *   (env) => ({
@@ -192,9 +192,7 @@ export function parseKeysFromEnv(
  * ));
  * ```
  */
-export function createKeyAuth<
-	TEnv extends { [key: string]: any } = { [key: string]: any }
->(
+export function createKeyAuth<TEnv extends Record<string, unknown> = Record<string, unknown>>(
 	keyMap: (env: TEnv) => Record<string, string>,
 	options: {
 		sources?: string[];
@@ -207,7 +205,7 @@ export function createKeyAuth<
 		sources = ['header:X-User-Key', 'query:key'],
 		defaultUserType = 'public',
 		contextKey = 'authContext',
-		includeHelpers = true
+		includeHelpers = true,
 	} = options;
 
 	return createAuthMiddleware({
@@ -215,8 +213,7 @@ export function createKeyAuth<
 		contextKey,
 		resolver: (credential, env) => {
 			const keys = keyMap(env as TEnv);
-			const userType =
-				credential && keys[credential] ? keys[credential] : defaultUserType;
+			const userType = credential && keys[credential] ? keys[credential] : defaultUserType;
 
 			// Build auth context with optional helpers
 			const authContext: AuthContext = { userType };
@@ -229,13 +226,13 @@ export function createKeyAuth<
 			}
 
 			return authContext;
-		}
+		},
 	});
 }
 
 /**
  * Get auth context from Hono context
- * 
+ *
  * @param c - Hono context
  * @param contextKey - Key where auth context is stored
  * @returns Auth context
@@ -246,7 +243,7 @@ export function getAuthContext(c: Context, contextKey = 'authContext'): AuthCont
 
 /**
  * Check if user has required user type
- * 
+ *
  * @param c - Hono context
  * @param allowedTypes - Array of allowed user types
  * @param contextKey - Key where auth context is stored
@@ -263,11 +260,11 @@ export function hasUserType(
 
 /**
  * Create middleware to require specific user types
- * 
+ *
  * @param allowedTypes - Array of allowed user types
  * @param options - Options for error response
  * @returns Hono middleware handler
- * 
+ *
  * @example
  * ```typescript
  * app.post('/admin/*', requireUserType(['admin']));
@@ -285,12 +282,13 @@ export function requireUserType(
 	const {
 		contextKey = 'authContext',
 		errorMessage = 'Insufficient permissions',
-		errorStatus = 403
+		errorStatus = 403,
 	} = options;
-	
+
 	return async (c: Context, next: Next) => {
 		if (!hasUserType(c, allowedTypes, contextKey)) {
-			return c.json({ error: errorMessage }, errorStatus as any);
+			// Type assertion needed - errorStatus is validated to be 401 or 403
+			return c.json({ error: errorMessage }, errorStatus as 401 | 403);
 		}
 		await next();
 	};
@@ -298,7 +296,7 @@ export function requireUserType(
 
 /**
  * Validate a key and determine userType
- * 
+ *
  * Generic utility for checking if a key exists in admin/friend key sets/maps
  * and returning the appropriate user type.
  *
@@ -306,18 +304,18 @@ export function requireUserType(
  * @param adminKeys - Admin keys (Set or Record)
  * @param friendKeys - Friend keys (Set or Record)
  * @returns Validation result with userType
- * 
+ *
  * @example
  * ```typescript
  * const adminKeys = new Set(['admin-key-1', 'admin-key-2']);
  * const friendKeys = { 'friend-1': 'user1', 'friend-2': 'user2' };
- * 
+ *
  * const result = validateKeyAndGetType('admin-key-1', adminKeys, friendKeys);
  * // Returns: { valid: true, userType: 'admin' }
- * 
+ *
  * const result2 = validateKeyAndGetType('friend-1', adminKeys, friendKeys);
  * // Returns: { valid: true, userType: 'friend' }
- * 
+ *
  * const result3 = validateKeyAndGetType('invalid', adminKeys, friendKeys);
  * // Returns: { valid: false, userType: 'public' }
  * ```

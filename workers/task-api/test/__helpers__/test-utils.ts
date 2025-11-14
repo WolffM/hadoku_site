@@ -1,8 +1,9 @@
 /**
  * Test utilities for Task API
- * 
+ *
  * Provides helpers for creating test environments and mocking KV storage.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * Create a mock KV namespace for testing.
@@ -10,18 +11,18 @@
  */
 export function createMockKV(): KVNamespace {
 	const _store = new Map<string, string>();
-	
+
 	return {
 		async get(key: string, type?: 'text' | 'json' | 'arrayBuffer' | 'stream') {
 			const value = _store.get(key);
 			if (!value) return null;
-			
+
 			if (type === 'json') {
 				return JSON.parse(value);
 			}
 			return value as any;
 		},
-		
+
 		async put(key: string, value: string | ArrayBuffer | ReadableStream) {
 			if (typeof value === 'string') {
 				_store.set(key, value);
@@ -32,6 +33,8 @@ export function createMockKV(): KVNamespace {
 				const reader = value.getReader();
 				const chunks: Uint8Array[] = [];
 				while (true) {
+					// Stream reading MUST be sequential - cannot parallelize
+					// eslint-disable-next-line no-await-in-loop
 					const { done, value: chunk } = await reader.read();
 					if (done) break;
 					chunks.push(chunk);
@@ -45,19 +48,19 @@ export function createMockKV(): KVNamespace {
 				_store.set(key, new TextDecoder().decode(combined));
 			}
 		},
-		
+
 		async delete(key: string) {
 			_store.delete(key);
 		},
-		
+
 		async list() {
 			return {
-				keys: Array.from(_store.keys()).map(name => ({ name })),
+				keys: Array.from(_store.keys()).map((name) => ({ name })),
 				list_complete: true,
 				cursor: '',
 			} as any;
 		},
-		
+
 		// Additional methods required by KVNamespace interface
 		getWithMetadata: async () => ({ value: null, metadata: null }),
 		async putWithMetadata() {},
@@ -66,7 +69,7 @@ export function createMockKV(): KVNamespace {
 
 /**
  * Create a test environment with mock KV storage.
- * 
+ *
  * @param overrides - Optional environment overrides
  * @returns Test environment with mocked KV and keys
  */
@@ -124,12 +127,14 @@ function createMockD1(): D1Database {
 	} as any;
 }
 
-export function createTestEnv(overrides: Partial<{
-	ADMIN_KEYS: string;
-	FRIEND_KEYS: string;
-	TASKS_KV: KVNamespace;
-	DB: D1Database;
-}> = {}) {
+export function createTestEnv(
+	overrides: Partial<{
+		ADMIN_KEYS: string;
+		FRIEND_KEYS: string;
+		TASKS_KV: KVNamespace;
+		DB: D1Database;
+	}> = {}
+) {
 	return {
 		// JSON key objects for testing
 		ADMIN_KEYS: JSON.stringify({ 'test-admin-key': 'admin' }),
@@ -142,7 +147,7 @@ export function createTestEnv(overrides: Partial<{
 
 /**
  * Generate a unique ID for test isolation.
- * 
+ *
  * @returns 8-character hex string
  */
 export function uniqueId(): string {
@@ -151,7 +156,7 @@ export function uniqueId(): string {
 
 /**
  * Extract the first admin key from the test environment.
- * 
+ *
  * @param env - Test environment
  * @returns First admin key from ADMIN_KEYS JSON
  */
@@ -167,22 +172,20 @@ function getTestAdminKey(env: ReturnType<typeof createTestEnv>): string {
 /**
  * Create request headers with authentication.
  * Uses the test admin key by default.
- * 
+ *
  * @param userKey - User key (or test environment to auto-extract admin key)
  * @param userId - User ID (e.g., 'automated_testing_admin' or 'automated_testing_friend')
  * @param extraHeaders - Additional headers to include
  * @returns Headers object with authentication
  */
 export function createAuthHeaders(
-	userKeyOrEnv: string | ReturnType<typeof createTestEnv>, 
-	userId: string = 'automated_testing_admin', 
+	userKeyOrEnv: string | ReturnType<typeof createTestEnv>,
+	userId: string = 'automated_testing_admin',
 	extraHeaders: Record<string, string> = {}
 ) {
 	// If passed an env object, extract the admin key
-	const userKey = typeof userKeyOrEnv === 'string' 
-		? userKeyOrEnv 
-		: getTestAdminKey(userKeyOrEnv);
-	
+	const userKey = typeof userKeyOrEnv === 'string' ? userKeyOrEnv : getTestAdminKey(userKeyOrEnv);
+
 	return {
 		'X-User-Key': userKey,
 		'X-User-Id': userId,
@@ -205,11 +208,15 @@ export async function createBoard(
 	boardId: string,
 	name: string
 ) {
-	return app.request('/task/api/boards', {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ id: boardId, name }),
-	}, env);
+	return app.request(
+		'/task/api/boards',
+		{
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ id: boardId, name }),
+		},
+		env
+	);
 }
 
 /**
@@ -223,11 +230,15 @@ export async function createTask(
 	taskId: string,
 	title: string
 ) {
-	return app.request('/task/api', {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ id: taskId, title, boardId }),
-	}, env);
+	return app.request(
+		'/task/api',
+		{
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ id: taskId, title, boardId }),
+		},
+		env
+	);
 }
 
 /**
@@ -240,11 +251,15 @@ export async function createTag(
 	boardId: string,
 	tag: string
 ) {
-	return app.request('/task/api/tags', {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ boardId, tag }),
-	}, env);
+	return app.request(
+		'/task/api/tags',
+		{
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ boardId, tag }),
+		},
+		env
+	);
 }
 
 // =============================================================================
@@ -326,10 +341,14 @@ export async function deleteBoard(
 	headers: Record<string, string>,
 	boardId: string
 ) {
-	return app.request(`/task/api/boards/${boardId}`, {
-		method: 'DELETE',
-		headers,
-	}, env);
+	return app.request(
+		`/task/api/boards/${boardId}`,
+		{
+			method: 'DELETE',
+			headers,
+		},
+		env
+	);
 }
 
 /**
@@ -355,11 +374,15 @@ export async function updateTask(
 	updates: any,
 	boardId: string = 'main'
 ) {
-	return app.request(`/task/api/${taskId}`, {
-		method: 'PATCH',
-		headers,
-		body: JSON.stringify({ ...updates, boardId }),
-	}, env);
+	return app.request(
+		`/task/api/${taskId}`,
+		{
+			method: 'PATCH',
+			headers,
+			body: JSON.stringify({ ...updates, boardId }),
+		},
+		env
+	);
 }
 
 /**
@@ -372,11 +395,15 @@ export async function completeTask(
 	taskId: string,
 	boardId: string = 'main'
 ) {
-	return app.request(`/task/api/${taskId}/complete`, {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ boardId }),
-	}, env);
+	return app.request(
+		`/task/api/${taskId}/complete`,
+		{
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ boardId }),
+		},
+		env
+	);
 }
 
 /**
@@ -389,11 +416,15 @@ export async function deleteTask(
 	taskId: string,
 	boardId: string = 'main'
 ) {
-	return app.request(`/task/api/${taskId}`, {
-		method: 'DELETE',
-		headers,
-		body: JSON.stringify({ boardId }),
-	}, env);
+	return app.request(
+		`/task/api/${taskId}`,
+		{
+			method: 'DELETE',
+			headers,
+			body: JSON.stringify({ boardId }),
+		},
+		env
+	);
 }
 
 /**
@@ -406,11 +437,15 @@ export async function deleteTag(
 	boardId: string,
 	tag: string
 ) {
-	return app.request('/task/api/tags/delete', {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ boardId, tag }),
-	}, env);
+	return app.request(
+		'/task/api/tags/delete',
+		{
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ boardId, tag }),
+		},
+		env
+	);
 }
 
 /**
@@ -423,11 +458,15 @@ export async function batchUpdateTags(
 	boardId: string,
 	updates: Array<{ taskId: string; tag: string }>
 ) {
-	return app.request(`/task/api/boards/${boardId}/tasks/batch/update-tags`, {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ boardId, updates }),
-	}, env);
+	return app.request(
+		`/task/api/boards/${boardId}/tasks/batch/update-tags`,
+		{
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ boardId, updates }),
+		},
+		env
+	);
 }
 
 /**
@@ -440,11 +479,15 @@ export async function batchUpdateTagsLegacy(
 	boardId: string,
 	updates: Array<{ taskId: string; tag: string }>
 ) {
-	return app.request('/task/api/batch-tag', {
-		method: 'PATCH',
-		headers,
-		body: JSON.stringify({ boardId, updates }),
-	}, env);
+	return app.request(
+		'/task/api/batch-tag',
+		{
+			method: 'PATCH',
+			headers,
+			body: JSON.stringify({ boardId, updates }),
+		},
+		env
+	);
 }
 
 /**
@@ -458,11 +501,15 @@ export async function batchMoveTasks(
 	targetBoardId: string,
 	taskIds: string[]
 ) {
-	return app.request('/task/api/batch-move', {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ sourceBoardId, targetBoardId, taskIds }),
-	}, env);
+	return app.request(
+		'/task/api/batch-move',
+		{
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ sourceBoardId, targetBoardId, taskIds }),
+		},
+		env
+	);
 }
 
 /**
@@ -476,11 +523,15 @@ export async function batchClearTag(
 	tag: string,
 	taskIds: string[]
 ) {
-	return app.request('/task/api/batch-clear-tag', {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ boardId, tag, taskIds }),
-	}, env);
+	return app.request(
+		'/task/api/batch-clear-tag',
+		{
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ boardId, tag, taskIds }),
+		},
+		env
+	);
 }
 
 /**
@@ -503,11 +554,15 @@ export async function savePreferences(
 	headers: Record<string, string>,
 	preferences: any
 ) {
-	return app.request('/task/api/preferences', {
-		method: 'PUT',
-		headers,
-		body: JSON.stringify(preferences),
-	}, env);
+	return app.request(
+		'/task/api/preferences',
+		{
+			method: 'PUT',
+			headers,
+			body: JSON.stringify(preferences),
+		},
+		env
+	);
 }
 
 /**

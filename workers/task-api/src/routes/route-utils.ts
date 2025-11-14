@@ -4,10 +4,22 @@
  * Shared helper functions for route handlers
  */
 import type { Context } from 'hono';
-import type { TaskStorage, AuthContext as TaskAuthContext, UserType, TasksFile, StatsFile } from '@wolffm/task/api';
+import type {
+	TaskStorage,
+	AuthContext as TaskAuthContext,
+	UserType,
+	TasksFile,
+	StatsFile,
+	BoardsFile,
+} from '@wolffm/task/api';
 import { boardsKey, tasksKey } from '../kv-keys';
 import { DEFAULT_BOARD_ID, DEFAULT_BOARD_NAME } from '../constants';
-import { getBoardStats as getD1BoardStats, getBoardTimeline, deleteBoardEvents, logTaskEvent } from '../events';
+import {
+	getBoardStats as getD1BoardStats,
+	getBoardTimeline,
+	deleteBoardEvents,
+	logTaskEvent,
+} from '../events';
 
 type Env = {
 	TASKS_KV: KVNamespace;
@@ -28,9 +40,9 @@ type AppContext = {
 export function createKVStorage(env: Env): TaskStorage {
 	return {
 		// --- Boards ---
-		async getBoards(userType: UserType, sessionId?: string) {
+		async getBoards(userType: UserType, sessionId?: string): Promise<BoardsFile> {
 			const kvKey = boardsKey(sessionId);
-			const data = await env.TASKS_KV.get(kvKey, 'json') as any | null;
+			const data = (await env.TASKS_KV.get(kvKey, 'json')) as BoardsFile | null;
 			if (data) return data;
 			// Default with a single default board
 			return {
@@ -39,16 +51,14 @@ export function createKVStorage(env: Env): TaskStorage {
 				updatedAt: new Date().toISOString(),
 			};
 		},
-		async saveBoards(userType: UserType, boards: any, sessionId?: string) {
+		async saveBoards(userType: UserType, boards: BoardsFile, sessionId?: string): Promise<void> {
 			const kvKey = boardsKey(sessionId);
 			await env.TASKS_KV.put(kvKey, JSON.stringify(boards));
-		},
-
-		// --- Tasks (board scoped) ---
+		}, // --- Tasks (board scoped) ---
 		async getTasks(userType: UserType, sessionId?: string, boardId?: string) {
 			if (!boardId) boardId = DEFAULT_BOARD_ID;
 			const kvKey = tasksKey(sessionId, boardId);
-			const data = await env.TASKS_KV.get(kvKey, 'json') as TasksFile | null;
+			const data = (await env.TASKS_KV.get(kvKey, 'json')) as TasksFile | null;
 			if (data) return data;
 			return {
 				version: 1,
@@ -56,14 +66,19 @@ export function createKVStorage(env: Env): TaskStorage {
 				updatedAt: new Date().toISOString(),
 			};
 		},
-		async saveTasks(userType: UserType, sessionId: string | undefined, boardId: string | undefined, tasks: TasksFile) {
+		async saveTasks(
+			userType: UserType,
+			sessionId: string | undefined,
+			boardId: string | undefined,
+			tasks: TasksFile
+		) {
 			if (!boardId) boardId = DEFAULT_BOARD_ID;
 			const kvKey = tasksKey(sessionId, boardId);
 			await env.TASKS_KV.put(kvKey, JSON.stringify(tasks));
 		},
 
 		// --- Stats (board scoped) - NOW USING D1 ---
-		async getStats(userType: UserType, sessionId?: string, boardId?: string) {
+		async getStats(userType: UserType, sessionId?: string, boardId?: string): Promise<StatsFile> {
 			if (!boardId) boardId = DEFAULT_BOARD_ID;
 			const userKey = sessionId || 'public';
 
@@ -74,12 +89,21 @@ export function createKVStorage(env: Env): TaskStorage {
 			return {
 				version: 2,
 				counters,
-				timeline,
-				tasks: {},  // Deprecated - no longer storing full task history
+				timeline: timeline.map((event) => ({
+					t: event.timestamp,
+					event: event.event as 'created' | 'completed' | 'edited' | 'deleted',
+					id: event.id,
+				})),
+				tasks: {}, // Deprecated - no longer storing full task history
 				updatedAt: new Date().toISOString(),
 			};
 		},
-		async saveStats(userType: UserType, sessionId: string | undefined, boardId: string | undefined, stats: StatsFile) {
+		async saveStats(
+			userType: UserType,
+			sessionId: string | undefined,
+			boardId: string | undefined,
+			stats: StatsFile
+		): Promise<void> {
 			// Extract new events from stats.timeline and log to D1
 			// The @wolffm/task package passes stats with timeline, we extract the latest event
 			if (!boardId) boardId = DEFAULT_BOARD_ID;
@@ -93,22 +117,20 @@ export function createKVStorage(env: Env): TaskStorage {
 				await logTaskEvent(env.DB, {
 					userKey,
 					boardId,
-					taskId: latestEvent.id,
-					eventType: latestEvent.event as any,
-					metadata: latestEvent.metadata
+					taskId: latestEvent.id || '',
+					eventType: latestEvent.event,
+					metadata: undefined,
 				});
 			}
-		},
-
-		// --- Delete board data ---
+		}, // --- Delete board data ---
 		async deleteBoardData(userType: UserType, sessionId: string, boardId: string) {
 			// Delete tasks from KV and events from D1
 			const taskKey = tasksKey(sessionId, boardId);
 			await Promise.all([
 				env.TASKS_KV.delete(taskKey),
-				deleteBoardEvents(env.DB, sessionId, boardId)
+				deleteBoardEvents(env.DB, sessionId, boardId),
 			]);
-		}
+		},
 	};
 }
 
@@ -135,31 +157,28 @@ export async function handleOperation<T>(
 
 /**
  * Simple in-memory lock to prevent concurrent writes to the same board
- * 
+ *
  * IMPORTANT LIMITATION:
  * These locks are per-worker instance, NOT globally coordinated across all
  * Cloudflare Worker instances. This means:
- * 
+ *
  * - ✅ Prevents race conditions within a single worker instance
  * - ❌ Does NOT prevent race conditions across multiple worker instances
  * - ✅ Acceptable for personal use (single user, low traffic)
  * - ❌ Not suitable for production multi-user deployments without Durable Objects
- * 
+ *
  * For production deployments with multiple concurrent users, consider:
  * 1. Durable Objects - Provides true global coordination with single instance per board
  * 2. Optimistic locking - Use version numbers/ETags in KV metadata
  * 3. Accept eventual consistency - Document limitation and monitor for conflicts
- * 
+ *
  * Current approach trades strong consistency for simplicity and cost (free tier).
- * 
+ *
  * @see https://developers.cloudflare.com/durable-objects/ for global coordination
  */
-const boardLocks = new Map<string, Promise<any>>();
+const boardLocks = new Map<string, Promise<unknown>>();
 
-export async function withBoardLock<T>(
-	boardsKey: string,
-	operation: () => Promise<T>
-): Promise<T> {
+export async function withBoardLock<T>(boardsKey: string, operation: () => Promise<T>): Promise<T> {
 	// Wait for any existing operation on this board to complete
 	const existingLock = boardLocks.get(boardsKey);
 	if (existingLock) {
@@ -205,8 +224,12 @@ export async function handleBoardOperation<T>(
 export async function handleBatchOperation<T>(
 	c: Context<AppContext>,
 	requiredFields: string[],
-	operation: (storage: TaskStorage, auth: TaskAuthContext, body: any) => Promise<T>,
-	getBoardKeys?: (body: any, userType: string, sessionId: string) => string[]
+	operation: (
+		storage: TaskStorage,
+		auth: TaskAuthContext,
+		body: Record<string, unknown>
+	) => Promise<T>,
+	getBoardKeys?: (body: Record<string, unknown>, userType: string, sessionId: string) => string[]
 ): Promise<Response> {
 	const { storage, auth } = getContext(c);
 	const body = await c.req.json();

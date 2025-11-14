@@ -11,6 +11,7 @@
 This codebase is **well-structured overall** with good separation of concerns, comprehensive testing, and clean utility abstractions. However, there are significant opportunities for improvement:
 
 **Key Metrics:**
+
 - ✅ **14 test files** with comprehensive coverage
 - ❌ **970-line main handler** needs decomposition
 - ⚠️ **93-line complex function** requires breaking down
@@ -18,6 +19,7 @@ This codebase is **well-structured overall** with good separation of concerns, c
 - ❌ **DEBUG code still in production**
 
 **Immediate Actions Required:**
+
 1. Remove DEBUG/TEMPORARY logging statements
 2. Split 970-line index.ts into route modules
 3. Centralize KV key generation patterns
@@ -68,12 +70,14 @@ workers/
 ### Assessment
 
 **✅ Strengths:**
+
 - Clear separation between workers, utilities, and admin tools
 - Comprehensive test coverage (14 test files)
 - Shared utilities are well-organized and reusable
 - Good worker isolation (task-api, edge-router)
 
 **❌ Issues:**
+
 - Main `index.ts` is too large (970 lines) - violates Single Responsibility Principle
 - Session handshake function is overly complex (93 lines)
 - No clear route organization within index.ts
@@ -87,30 +91,33 @@ workers/
 **Problem:** KV key generation logic is duplicated across multiple files with inconsistent patterns.
 
 #### Location 1: `workers/task-api/src/index.ts` (lines 233-235)
+
 ```typescript
 const boardKey = (sessionId?: string) => `boards:${sessionId || 'public'}`;
 const tasksKey = (sessionId: string | undefined, boardId: string) =>
-    `tasks:${sessionId || 'public'}:${boardId}`;
+  `tasks:${sessionId || 'public'}:${boardId}`;
 const statsKey = (sessionId: string | undefined, boardId: string) =>
-    `stats:${sessionId || 'public'}:${boardId}`;
+  `stats:${sessionId || 'public'}:${boardId}`;
 ```
 
 #### Location 2: `workers/task-api/src/session.ts` (lines 53-69)
+
 ```typescript
 function preferencesKey(sessionId: string): string {
-    return `prefs:${sessionId}`;
+  return `prefs:${sessionId}`;
 }
 
 function sessionInfoKey(sessionId: string): string {
-    return `session-info:${sessionId}`;
+  return `session-info:${sessionId}`;
 }
 
 function sessionMappingKey(authKey: string): string {
-    return `session-map:${authKey}`;
+  return `session-map:${authKey}`;
 }
 ```
 
 #### Location 3: `workers/task-api/src/throttle.ts` (lines 73-75)
+
 ```typescript
 const throttleKey = (sessionId: string) => `throttle:${sessionId}`;
 const incidentsKey = (sessionId: string) => `incidents:${sessionId}`;
@@ -124,22 +131,22 @@ Create centralized KV key management:
 ```typescript
 // workers/util/kv-keys.ts
 export const KVKeys = {
-    // Board & Task data
-    boards: (sessionId: string = 'public') => `boards:${sessionId}`,
-    tasks: (sessionId: string = 'public', boardId: string) =>
-        `tasks:${sessionId}:${boardId}`,
-    stats: (sessionId: string = 'public', boardId: string) =>
-        `stats:${sessionId}:${boardId}`,
+  // Board & Task data
+  boards: (sessionId: string = 'public') => `boards:${sessionId}`,
+  tasks: (sessionId: string = 'public', boardId: string) =>
+    `tasks:${sessionId}:${boardId}`,
+  stats: (sessionId: string = 'public', boardId: string) =>
+    `stats:${sessionId}:${boardId}`,
 
-    // Session data
-    preferences: (sessionId: string) => `prefs:${sessionId}`,
-    sessionInfo: (sessionId: string) => `session-info:${sessionId}`,
-    sessionMapping: (authKey: string) => `session-map:${authKey}`,
+  // Session data
+  preferences: (sessionId: string) => `prefs:${sessionId}`,
+  sessionInfo: (sessionId: string) => `session-info:${sessionId}`,
+  sessionMapping: (authKey: string) => `session-map:${authKey}`,
 
-    // Throttle data
-    throttle: (sessionId: string) => `throttle:${sessionId}`,
-    incidents: (sessionId: string) => `incidents:${sessionId}`,
-    blacklist: (sessionId: string) => `blacklist:${sessionId}`
+  // Throttle data
+  throttle: (sessionId: string) => `throttle:${sessionId}`,
+  incidents: (sessionId: string) => `incidents:${sessionId}`,
+  blacklist: (sessionId: string) => `blacklist:${sessionId}`,
 } as const;
 
 // Usage:
@@ -158,14 +165,14 @@ const boardsData = await kv.get(KVKeys.boards(sessionId), 'json');
 
 ```typescript
 export function maskKey(key: string, length: number = 8): string {
-    if (!key || key.length <= length) {
-        return key;
-    }
-    return key.substring(0, length) + '...';
+  if (!key || key.length <= length) {
+    return key;
+  }
+  return key.substring(0, length) + '...';
 }
 
 export function maskSessionId(id: string): string {
-    return maskKey(id, 12);
+  return maskKey(id, 12);
 }
 ```
 
@@ -176,19 +183,19 @@ export function maskSessionId(id: string): string {
 ```typescript
 // workers/util/masking.ts
 export function maskString(str: string, visibleLength: number = 8): string {
-    if (!str || str.length <= visibleLength) {
-        return str;
-    }
-    return str.substring(0, visibleLength) + '...';
+  if (!str || str.length <= visibleLength) {
+    return str;
+  }
+  return str.substring(0, visibleLength) + '...';
 }
 
 export const Maskers = {
-    key: (key: string) => maskString(key, 8),
-    sessionId: (id: string) => maskString(id, 12),
-    email: (email: string) => {
-        const [local, domain] = email.split('@');
-        return `${local.substring(0, 2)}***@${domain}`;
-    }
+  key: (key: string) => maskString(key, 8),
+  sessionId: (id: string) => maskString(id, 12),
+  email: (email: string) => {
+    const [local, domain] = email.split('@');
+    return `${local.substring(0, 2)}***@${domain}`;
+  },
 } as const;
 ```
 
@@ -204,17 +211,17 @@ export const Maskers = {
 
 ```typescript
 export function validateTaskId(id: string | null): string | null {
-    if (!id || id.trim() === '') {
-        return 'Missing required parameter: task ID';
-    }
-    return null;
+  if (!id || id.trim() === '') {
+    return 'Missing required parameter: task ID';
+  }
+  return null;
 }
 
 export function validateBoardId(id: string | null): string | null {
-    if (!id || id.trim() === '') {
-        return 'Missing required parameter: board ID';
-    }
-    return null;
+  if (!id || id.trim() === '') {
+    return 'Missing required parameter: board ID';
+  }
+  return null;
 }
 ```
 
@@ -225,20 +232,20 @@ export function validateBoardId(id: string | null): string | null {
 ```typescript
 // Generic validator
 function validateRequiredParam(
-    value: string | null | undefined,
-    paramName: string
+  value: string | null | undefined,
+  paramName: string
 ): string | null {
-    if (!value || value.trim() === '') {
-        return `Missing required parameter: ${paramName}`;
-    }
-    return null;
+  if (!value || value.trim() === '') {
+    return `Missing required parameter: ${paramName}`;
+  }
+  return null;
 }
 
 // Specific validators (if needed)
 export const validateTaskId = (id: string | null) =>
-    validateRequiredParam(id, 'task ID');
+  validateRequiredParam(id, 'task ID');
 export const validateBoardId = (id: string | null) =>
-    validateRequiredParam(id, 'board ID');
+  validateRequiredParam(id, 'board ID');
 ```
 
 ---
@@ -248,6 +255,7 @@ export const validateBoardId = (id: string | null) =>
 **Location:** `scripts/admin/` directory
 
 Multiple Python scripts share similar patterns:
+
 - `inspect_kv.py` (lines 40-55): Cloudflare API request wrapper
 - `cleanup_dead_kv.py`: Uses same API patterns
 - `kv_fetch.py`, `kv_cleanup.py`, etc.: Similar initialization
@@ -291,12 +299,14 @@ class CloudflareKVClient:
 **Location:** `workers/task-api/src/index.ts` (970 lines)
 
 **Analysis:**
+
 - Single file contains ALL route handlers, middleware, and business logic
 - Violates Single Responsibility Principle
 - Difficult to navigate and maintain
 - Hard for new developers to understand
 
 **Breakdown:**
+
 - Lines 62-87: `validateKeyAndGetType` - should be in auth module
 - Lines 110-133: Board locking logic - should be extracted
 - Lines 389-660: Route handlers - should be in separate files
@@ -347,29 +357,25 @@ import { withBoardLock } from '../middleware/locking';
 import { validateRequest } from '../middleware/validation';
 
 export function createBoardRoutes(boardService: BoardService) {
-    const app = new Hono();
+  const app = new Hono();
 
-    // GET /task/api/boards
-    app.get('/', async (c) => {
-        const { auth } = getContext(c);
-        const sessionId = getSessionIdFromRequest(c, auth);
+  // GET /task/api/boards
+  app.get('/', async (c) => {
+    const { auth } = getContext(c);
+    const sessionId = getSessionIdFromRequest(c, auth);
 
-        const boards = await boardService.getBoards(sessionId);
-        return c.json(boards);
-    });
+    const boards = await boardService.getBoards(sessionId);
+    return c.json(boards);
+  });
 
-    // POST /task/api/boards
-    app.post('/',
-        validateRequest(['id', 'name']),
-        withBoardLock(),
-        async (c) => {
-            const body = c.get('validatedBody');
-            const result = await boardService.createBoard(body);
-            return c.json(result);
-        }
-    );
+  // POST /task/api/boards
+  app.post('/', validateRequest(['id', 'name']), withBoardLock(), async (c) => {
+    const body = c.get('validatedBody');
+    const result = await boardService.createBoard(body);
+    return c.json(result);
+  });
 
-    return app;
+  return app;
 }
 ```
 
@@ -384,12 +390,14 @@ export function createBoardRoutes(boardService: BoardService) {
 **Location:** `workers/task-api/src/session.ts` - `handleSessionHandshake` (lines 248-341)
 
 **Issues:**
+
 - 93 lines long (recommended max: 50)
 - Multiple nested conditionals (4+ levels deep)
 - Complex migration logic with 4+ code paths
 - Difficult to test individual scenarios
 
 **Current Structure:**
+
 ```typescript
 async function handleSessionHandshake(...) {
     // Path 1: Check oldSessionId
@@ -454,139 +462,151 @@ async function handleSessionHandshake(...) {
 // workers/task-api/src/services/session-service.ts
 
 interface PreferenceMigrationResult {
-    preferences: UserPreferences;
-    migratedFrom?: string;
-    isNewSession: boolean;
-    sessionToCleanup?: string;
+  preferences: UserPreferences;
+  migratedFrom?: string;
+  isNewSession: boolean;
+  sessionToCleanup?: string;
 }
 
 class SessionService {
-    constructor(private kv: KVNamespace) {}
+  constructor(private kv: KVNamespace) {}
 
-    async handleHandshake(
-        authKey: string,
-        userType: UserType,
-        request: HandshakeRequest
-    ): Promise<HandshakeResponse> {
-        const migration = await this.migratePreferences(authKey, request);
-        await this.saveNewSession(request.newSessionId, migration.preferences, authKey, userType);
+  async handleHandshake(
+    authKey: string,
+    userType: UserType,
+    request: HandshakeRequest
+  ): Promise<HandshakeResponse> {
+    const migration = await this.migratePreferences(authKey, request);
+    await this.saveNewSession(
+      request.newSessionId,
+      migration.preferences,
+      authKey,
+      userType
+    );
 
-        if (migration.sessionToCleanup) {
-            await this.cleanupOldSession(authKey, migration.sessionToCleanup);
-        }
-
-        return this.buildHandshakeResponse(request.newSessionId, migration);
+    if (migration.sessionToCleanup) {
+      await this.cleanupOldSession(authKey, migration.sessionToCleanup);
     }
 
-    private async migratePreferences(
-        authKey: string,
-        request: HandshakeRequest
-    ): Promise<PreferenceMigrationResult> {
-        // Try each migration strategy in order
-        const strategies = [
-            () => this.findPrefsFromOldSession(request.oldSessionId),
-            () => this.findPrefsFromMapping(authKey),
-            () => this.findPrefsFromLegacy(authKey),
-            () => this.useDefaults()
-        ];
+    return this.buildHandshakeResponse(request.newSessionId, migration);
+  }
 
-        for (const strategy of strategies) {
-            const result = await strategy();
-            if (result) return result;
-        }
+  private async migratePreferences(
+    authKey: string,
+    request: HandshakeRequest
+  ): Promise<PreferenceMigrationResult> {
+    // Try each migration strategy in order
+    const strategies = [
+      () => this.findPrefsFromOldSession(request.oldSessionId),
+      () => this.findPrefsFromMapping(authKey),
+      () => this.findPrefsFromLegacy(authKey),
+      () => this.useDefaults(),
+    ];
 
-        throw new Error('Failed to determine preferences');
+    for (const strategy of strategies) {
+      const result = await strategy();
+      if (result) return result;
     }
 
-    private async findPrefsFromOldSession(oldSessionId: string | null) {
-        if (!oldSessionId) return null;
+    throw new Error('Failed to determine preferences');
+  }
 
-        const prefs = await getPreferencesBySessionId(this.kv, oldSessionId);
-        if (!prefs) return null;
+  private async findPrefsFromOldSession(oldSessionId: string | null) {
+    if (!oldSessionId) return null;
 
-        return {
-            preferences: prefs,
-            migratedFrom: oldSessionId,
-            isNewSession: false,
-            sessionToCleanup: oldSessionId
-        };
-    }
+    const prefs = await getPreferencesBySessionId(this.kv, oldSessionId);
+    if (!prefs) return null;
 
-    private async findPrefsFromMapping(authKey: string) {
-        const mapping = await getSessionMapping(this.kv, authKey);
-        if (!mapping?.lastSessionId) return null;
+    return {
+      preferences: prefs,
+      migratedFrom: oldSessionId,
+      isNewSession: false,
+      sessionToCleanup: oldSessionId,
+    };
+  }
 
-        const prefs = await getPreferencesBySessionId(this.kv, mapping.lastSessionId);
-        if (!prefs) return null;
+  private async findPrefsFromMapping(authKey: string) {
+    const mapping = await getSessionMapping(this.kv, authKey);
+    if (!mapping?.lastSessionId) return null;
 
-        return {
-            preferences: prefs,
-            migratedFrom: mapping.lastSessionId,
-            isNewSession: false
-            // No cleanup - might be another device
-        };
-    }
+    const prefs = await getPreferencesBySessionId(
+      this.kv,
+      mapping.lastSessionId
+    );
+    if (!prefs) return null;
 
-    private async findPrefsFromLegacy(authKey: string) {
-        const legacyKey = preferencesKey(authKey);
-        const prefs = await this.kv.get(legacyKey, 'json') as UserPreferences | null;
+    return {
+      preferences: prefs,
+      migratedFrom: mapping.lastSessionId,
+      isNewSession: false,
+      // No cleanup - might be another device
+    };
+  }
 
-        if (!prefs) return null;
+  private async findPrefsFromLegacy(authKey: string) {
+    const legacyKey = preferencesKey(authKey);
+    const prefs = (await this.kv.get(
+      legacyKey,
+      'json'
+    )) as UserPreferences | null;
 
-        return {
-            preferences: prefs,
-            migratedFrom: authKey,
-            isNewSession: false
-        };
-    }
+    if (!prefs) return null;
 
-    private async useDefaults() {
-        return {
-            preferences: { ...DEFAULT_PREFERENCES },
-            isNewSession: true
-        };
-    }
+    return {
+      preferences: prefs,
+      migratedFrom: authKey,
+      isNewSession: false,
+    };
+  }
 
-    private async saveNewSession(
-        sessionId: string,
-        preferences: UserPreferences,
-        authKey: string,
-        userType: UserType
-    ) {
-        await savePreferencesBySessionId(this.kv, sessionId, preferences);
+  private async useDefaults() {
+    return {
+      preferences: { ...DEFAULT_PREFERENCES },
+      isNewSession: true,
+    };
+  }
 
-        const sessionInfo: SessionInfo = {
-            sessionId,
-            authKey,
-            userType,
-            createdAt: new Date().toISOString(),
-            lastAccessedAt: new Date().toISOString()
-        };
-        await saveSessionInfo(this.kv, sessionInfo);
-        await updateSessionMapping(this.kv, authKey, sessionId);
-    }
+  private async saveNewSession(
+    sessionId: string,
+    preferences: UserPreferences,
+    authKey: string,
+    userType: UserType
+  ) {
+    await savePreferencesBySessionId(this.kv, sessionId, preferences);
 
-    private async cleanupOldSession(authKey: string, sessionId: string) {
-        await this.kv.delete(preferencesKey(sessionId));
-        await this.kv.delete(sessionInfoKey(sessionId));
-        await removeSessionFromMapping(this.kv, authKey, sessionId);
-    }
+    const sessionInfo: SessionInfo = {
+      sessionId,
+      authKey,
+      userType,
+      createdAt: new Date().toISOString(),
+      lastAccessedAt: new Date().toISOString(),
+    };
+    await saveSessionInfo(this.kv, sessionInfo);
+    await updateSessionMapping(this.kv, authKey, sessionId);
+  }
 
-    private buildHandshakeResponse(
-        sessionId: string,
-        migration: PreferenceMigrationResult
-    ): HandshakeResponse {
-        return {
-            sessionId,
-            preferences: migration.preferences,
-            isNewSession: migration.isNewSession,
-            migratedFrom: migration.migratedFrom
-        };
-    }
+  private async cleanupOldSession(authKey: string, sessionId: string) {
+    await this.kv.delete(preferencesKey(sessionId));
+    await this.kv.delete(sessionInfoKey(sessionId));
+    await removeSessionFromMapping(this.kv, authKey, sessionId);
+  }
+
+  private buildHandshakeResponse(
+    sessionId: string,
+    migration: PreferenceMigrationResult
+  ): HandshakeResponse {
+    return {
+      sessionId,
+      preferences: migration.preferences,
+      isNewSession: migration.isNewSession,
+      migratedFrom: migration.migratedFrom,
+    };
+  }
 }
 ```
 
 **Benefits:**
+
 - Each function has single responsibility
 - Easy to test individual strategies
 - Clear separation of concerns
@@ -614,10 +634,20 @@ Multiple levels of nested conditionals for determining deletion eligibility. Cou
 
 ```typescript
 // DEBUG: Log what we parsed (TEMPORARY - REMOVE AFTER DEBUGGING)
-console.log('[AUTH DEBUG] ADMIN_KEYS type:', typeof ADMIN_KEYS, 'length:', ADMIN_KEYS?.length);
-console.log('[AUTH DEBUG] FRIEND_KEYS type:', typeof FRIEND_KEYS, 'length:', FRIEND_KEYS?.length);
+console.log(
+  '[AUTH DEBUG] ADMIN_KEYS type:',
+  typeof ADMIN_KEYS,
+  'length:',
+  ADMIN_KEYS?.length
+);
+console.log(
+  '[AUTH DEBUG] FRIEND_KEYS type:',
+  typeof FRIEND_KEYS,
+  'length:',
+  FRIEND_KEYS?.length
+);
 if (credential) {
-    console.log('[AUTH DEBUG] Checking key:', credential.substring(0, 8) + '...');
+  console.log('[AUTH DEBUG] Checking key:', credential.substring(0, 8) + '...');
 }
 ```
 
@@ -640,6 +670,7 @@ console.log('[DEBUG createTask] body:', body, 'boardId:', boardId);
 ```
 
 **Impact of Removal:**
+
 - Cleaner code
 - Better performance (no unnecessary logging)
 - Prevents accidental data leakage in logs
@@ -659,21 +690,28 @@ console.log('[DEBUG createTask] body:', body, 'boardId:', boardId);
 // It was used to migrate from old userId-based storage to sessionId-based storage
 // Clients should use session handshake instead
 app.post('/task/api/migrate-userid', async (c) => {
-    return c.json({
-        error: 'This endpoint is deprecated. Please use session handshake instead.',
-        deprecated: true,
-        version: '3.0.39+',
-        migrateInstructions: 'Use POST /task/api/session/handshake with your userId'
-    }, 410);
+  return c.json(
+    {
+      error:
+        'This endpoint is deprecated. Please use session handshake instead.',
+      deprecated: true,
+      version: '3.0.39+',
+      migrateInstructions:
+        'Use POST /task/api/session/handshake with your userId',
+    },
+    410
+  );
 });
 ```
 
 **Analysis:**
+
 - Returns 410 Gone (correct HTTP status)
 - Clear deprecation message
 - Instructs users on migration path
 
 **Recommendation:**
+
 - If no clients are using it (check logs): ✅ **REMOVE**
 - If still getting requests: ⏳ **Keep for 1-2 more months**, then remove
 - Add monitoring to track usage before removal
@@ -683,6 +721,7 @@ app.post('/task/api/migrate-userid', async (c) => {
 ### 4.3 Commented Code Blocks
 
 Search for commented-out code that should be removed. Example patterns:
+
 ```typescript
 // Old implementation
 // function oldFunction() { ... }
@@ -704,9 +743,9 @@ code block here
 
 ```typescript
 // workers/task-api/src/index.ts
-boardId: extractField(c, ['query:boardId'], 'main')  // Line 454
-const { boardId = 'main', ...input } = body;         // Line 469
-if (!boardId) boardId = 'main';                      // Line 257
+boardId: extractField(c, ['query:boardId'], 'main'); // Line 454
+const { boardId = 'main', ...input } = body; // Line 469
+if (!boardId) boardId = 'main'; // Line 257
 // ... many more occurrences
 ```
 
@@ -769,29 +808,29 @@ const incidentTTL = 24 * 60 * 60;   // 24 hours in seconds
 ```typescript
 // workers/util/time-constants.ts
 export const Time = {
-    ONE_SECOND: 1000,
-    ONE_MINUTE: 60 * 1000,
-    ONE_HOUR: 60 * 60 * 1000,
-    ONE_DAY: 24 * 60 * 60 * 1000,
+  ONE_SECOND: 1000,
+  ONE_MINUTE: 60 * 1000,
+  ONE_HOUR: 60 * 60 * 1000,
+  ONE_DAY: 24 * 60 * 60 * 1000,
 
-    // In seconds (for KV TTL)
-    ONE_MINUTE_SECONDS: 60,
-    FIVE_MINUTES_SECONDS: 5 * 60,
-    ONE_HOUR_SECONDS: 60 * 60,
-    ONE_DAY_SECONDS: 24 * 60 * 60
+  // In seconds (for KV TTL)
+  ONE_MINUTE_SECONDS: 60,
+  FIVE_MINUTES_SECONDS: 5 * 60,
+  ONE_HOUR_SECONDS: 60 * 60,
+  ONE_DAY_SECONDS: 24 * 60 * 60,
 } as const;
 
 // workers/util/throttle-constants.ts
 import { Time } from './time-constants';
 
 export const ThrottleConfig = {
-    WINDOW_MS: Time.ONE_MINUTE,
-    MAX_REQUESTS: 300,
-    BLACKLIST_TTL: Time.ONE_DAY_SECONDS,
-    THROTTLE_STATE_TTL: Time.FIVE_MINUTES_SECONDS,
-    INCIDENT_TTL: Time.ONE_DAY_SECONDS,
-    MAX_INCIDENTS: 100,
-    MAX_VIOLATIONS_BEFORE_BLACKLIST: 3
+  WINDOW_MS: Time.ONE_MINUTE,
+  MAX_REQUESTS: 300,
+  BLACKLIST_TTL: Time.ONE_DAY_SECONDS,
+  THROTTLE_STATE_TTL: Time.FIVE_MINUTES_SECONDS,
+  INCIDENT_TTL: Time.ONE_DAY_SECONDS,
+  MAX_INCIDENTS: 100,
+  MAX_VIOLATIONS_BEFORE_BLACKLIST: 3,
 } as const;
 ```
 
@@ -806,11 +845,13 @@ export const ThrottleConfig = {
 **Issue:** Mixed camelCase and snake_case across codebase
 
 **Examples:**
+
 - TypeScript: `sessionId`, `authKey`, `userType` (camelCase) ✅
 - Python scripts: Mix of `session_id`, `authKey`, `sessionId`
 - KV keys: Mix of formats
 
 **Recommendation:**
+
 - TypeScript/JavaScript: **camelCase** (already mostly followed)
 - Python: **snake_case** (standardize)
 - KV keys: **kebab-case** or **colon-separated** (already used)
@@ -826,18 +867,18 @@ export const ThrottleConfig = {
 
 ```typescript
 app.post('/task/api', async (c) => {
-    const { auth } = getContext(c);
-    const body = await parseBodySafely(c);
+  const { auth } = getContext(c);
+  const body = await parseBodySafely(c);
 
-    // Validation
-    const error = requireFields(body, ['id', 'title']);
-    if (error) {
-        logError('POST', '/task/api', error);
-        return badRequest(c, error);
-    }
+  // Validation
+  const error = requireFields(body, ['id', 'title']);
+  if (error) {
+    logError('POST', '/task/api', error);
+    return badRequest(c, error);
+  }
 
-    // Business logic
-    // ...
+  // Business logic
+  // ...
 });
 ```
 
@@ -848,28 +889,25 @@ app.post('/task/api', async (c) => {
 import { Context, Next } from 'hono';
 
 export function validateRequest(requiredFields: string[]) {
-    return async (c: Context, next: Next) => {
-        const body = await parseBodySafely(c);
-        const error = requireFields(body, requiredFields);
+  return async (c: Context, next: Next) => {
+    const body = await parseBodySafely(c);
+    const error = requireFields(body, requiredFields);
 
-        if (error) {
-            logError(c.req.method, c.req.path, error);
-            return badRequest(c, error);
-        }
+    if (error) {
+      logError(c.req.method, c.req.path, error);
+      return badRequest(c, error);
+    }
 
-        c.set('validatedBody', body);
-        await next();
-    };
+    c.set('validatedBody', body);
+    await next();
+  };
 }
 
 // Usage:
-app.post('/task/api',
-    validateRequest(['id', 'title']),
-    async (c) => {
-        const body = c.get('validatedBody');
-        // Business logic - no need for validation boilerplate
-    }
-);
+app.post('/task/api', validateRequest(['id', 'title']), async (c) => {
+  const body = c.get('validatedBody');
+  // Business logic - no need for validation boilerplate
+});
 ```
 
 **Advanced Version with Zod:**
@@ -878,39 +916,39 @@ app.post('/task/api',
 import { z } from 'zod';
 
 const TaskSchema = z.object({
-    id: z.string().min(1),
-    title: z.string().min(1).max(200),
-    state: z.enum(['Active', 'Completed']).optional(),
-    tag: z.string().optional()
+  id: z.string().min(1),
+  title: z.string().min(1).max(200),
+  state: z.enum(['Active', 'Completed']).optional(),
+  tag: z.string().optional(),
 });
 
 export function validateSchema<T>(schema: z.Schema<T>) {
-    return async (c: Context, next: Next) => {
-        try {
-            const body = await c.req.json();
-            const validated = schema.parse(body);
-            c.set('validatedBody', validated);
-            await next();
-        } catch (error) {
-            if (error instanceof z.ZodError) {
-                return c.json({
-                    error: 'Validation failed',
-                    details: error.errors
-                }, 400);
-            }
-            throw error;
-        }
-    };
+  return async (c: Context, next: Next) => {
+    try {
+      const body = await c.req.json();
+      const validated = schema.parse(body);
+      c.set('validatedBody', validated);
+      await next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            error: 'Validation failed',
+            details: error.errors,
+          },
+          400
+        );
+      }
+      throw error;
+    }
+  };
 }
 
 // Usage:
-app.post('/task/api',
-    validateSchema(TaskSchema),
-    async (c) => {
-        const task = c.get('validatedBody'); // Fully typed!
-        // ...
-    }
-);
+app.post('/task/api', validateSchema(TaskSchema), async (c) => {
+  const task = c.get('validatedBody'); // Fully typed!
+  // ...
+});
 ```
 
 **Impact:** Eliminates boilerplate, improves type safety
@@ -930,22 +968,22 @@ app.post('/task/api',
 const boardLocks = new Map<string, Promise<any>>();
 
 async function withBoardLock<T>(
-    boardKey: string,
-    operation: () => Promise<T>
+  boardKey: string,
+  operation: () => Promise<T>
 ): Promise<T> {
-    const existingLock = boardLocks.get(boardKey);
-    if (existingLock) {
-        await existingLock;
-    }
+  const existingLock = boardLocks.get(boardKey);
+  if (existingLock) {
+    await existingLock;
+  }
 
-    const newLock = operation();
-    boardLocks.set(boardKey, newLock);
+  const newLock = operation();
+  boardLocks.set(boardKey, newLock);
 
-    try {
-        return await newLock;
-    } finally {
-        boardLocks.delete(boardKey);
-    }
+  try {
+    return await newLock;
+  } finally {
+    boardLocks.delete(boardKey);
+  }
 }
 ```
 
@@ -956,128 +994,127 @@ async function withBoardLock<T>(
 ```typescript
 // workers/task-api/src/services/board-lock-manager.ts
 export interface LockOptions {
-    timeout?: number;
-    retryDelay?: number;
-    maxRetries?: number;
+  timeout?: number;
+  retryDelay?: number;
+  maxRetries?: number;
 }
 
 export class BoardLockManager {
-    private locks = new Map<string, Promise<any>>();
-    private lockTimestamps = new Map<string, number>();
+  private locks = new Map<string, Promise<any>>();
+  private lockTimestamps = new Map<string, number>();
 
-    constructor(private options: LockOptions = {}) {
-        this.options = {
-            timeout: 30000,      // 30 seconds
-            retryDelay: 100,     // 100ms
-            maxRetries: 3,
-            ...options
-        };
+  constructor(private options: LockOptions = {}) {
+    this.options = {
+      timeout: 30000, // 30 seconds
+      retryDelay: 100, // 100ms
+      maxRetries: 3,
+      ...options,
+    };
+  }
+
+  async withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
+    await this.acquireLock(key);
+
+    try {
+      return await this.executeWithTimeout(operation);
+    } finally {
+      this.releaseLock(key);
+    }
+  }
+
+  async withMultipleLocks<T>(
+    keys: string[],
+    operation: () => Promise<T>
+  ): Promise<T> {
+    // Sort keys to prevent deadlocks
+    const sortedKeys = [...keys].sort();
+
+    for (const key of sortedKeys) {
+      await this.acquireLock(key);
     }
 
-    async withLock<T>(
-        key: string,
-        operation: () => Promise<T>
-    ): Promise<T> {
-        await this.acquireLock(key);
+    try {
+      return await this.executeWithTimeout(operation);
+    } finally {
+      sortedKeys.forEach((key) => this.releaseLock(key));
+    }
+  }
 
-        try {
-            return await this.executeWithTimeout(operation);
-        } finally {
-            this.releaseLock(key);
-        }
+  private async acquireLock(key: string): Promise<void> {
+    let retries = 0;
+
+    while (retries < this.options.maxRetries!) {
+      const existingLock = this.locks.get(key);
+
+      if (!existingLock) {
+        // No lock exists, acquire it
+        const lockTimestamp = Date.now();
+        this.lockTimestamps.set(key, lockTimestamp);
+        return;
+      }
+
+      // Check for stale lock
+      const lockAge = Date.now() - (this.lockTimestamps.get(key) || 0);
+      if (lockAge > this.options.timeout!) {
+        console.warn(`[Lock] Forcing release of stale lock: ${key}`);
+        this.releaseLock(key);
+        continue;
+      }
+
+      // Wait for existing lock
+      await existingLock.catch(() => {});
+      await this.delay(this.options.retryDelay!);
+      retries++;
     }
 
-    async withMultipleLocks<T>(
-        keys: string[],
-        operation: () => Promise<T>
-    ): Promise<T> {
-        // Sort keys to prevent deadlocks
-        const sortedKeys = [...keys].sort();
+    throw new Error(
+      `Failed to acquire lock for ${key} after ${retries} retries`
+    );
+  }
 
-        for (const key of sortedKeys) {
-            await this.acquireLock(key);
-        }
+  private releaseLock(key: string): void {
+    this.locks.delete(key);
+    this.lockTimestamps.delete(key);
+  }
 
-        try {
-            return await this.executeWithTimeout(operation);
-        } finally {
-            sortedKeys.forEach(key => this.releaseLock(key));
-        }
-    }
+  private async executeWithTimeout<T>(operation: () => Promise<T>): Promise<T> {
+    return Promise.race([operation(), this.timeoutPromise()]);
+  }
 
-    private async acquireLock(key: string): Promise<void> {
-        let retries = 0;
+  private timeoutPromise(): Promise<never> {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(`Operation timed out after ${this.options.timeout}ms`)
+        );
+      }, this.options.timeout);
+    });
+  }
 
-        while (retries < this.options.maxRetries!) {
-            const existingLock = this.locks.get(key);
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
-            if (!existingLock) {
-                // No lock exists, acquire it
-                const lockTimestamp = Date.now();
-                this.lockTimestamps.set(key, lockTimestamp);
-                return;
-            }
+  // Diagnostics
+  getActiveLocks(): string[] {
+    return Array.from(this.locks.keys());
+  }
 
-            // Check for stale lock
-            const lockAge = Date.now() - (this.lockTimestamps.get(key) || 0);
-            if (lockAge > this.options.timeout!) {
-                console.warn(`[Lock] Forcing release of stale lock: ${key}`);
-                this.releaseLock(key);
-                continue;
-            }
-
-            // Wait for existing lock
-            await existingLock.catch(() => {});
-            await this.delay(this.options.retryDelay!);
-            retries++;
-        }
-
-        throw new Error(`Failed to acquire lock for ${key} after ${retries} retries`);
-    }
-
-    private releaseLock(key: string): void {
-        this.locks.delete(key);
-        this.lockTimestamps.delete(key);
-    }
-
-    private async executeWithTimeout<T>(
-        operation: () => Promise<T>
-    ): Promise<T> {
-        return Promise.race([
-            operation(),
-            this.timeoutPromise()
-        ]);
-    }
-
-    private timeoutPromise(): Promise<never> {
-        return new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error(`Operation timed out after ${this.options.timeout}ms`));
-            }, this.options.timeout);
-        });
-    }
-
-    private delay(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    // Diagnostics
-    getActiveLocks(): string[] {
-        return Array.from(this.locks.keys());
-    }
-
-    getLockAge(key: string): number | null {
-        const timestamp = this.lockTimestamps.get(key);
-        return timestamp ? Date.now() - timestamp : null;
-    }
+  getLockAge(key: string): number | null {
+    const timestamp = this.lockTimestamps.get(key);
+    return timestamp ? Date.now() - timestamp : null;
+  }
 }
 
 // Usage:
 const lockManager = new BoardLockManager();
 
-async function handleBoardOperation(sessionId: string, operation: () => Promise<any>) {
-    const boardKey = KVKeys.boards(sessionId);
-    return lockManager.withLock(boardKey, operation);
+async function handleBoardOperation(
+  sessionId: string,
+  operation: () => Promise<any>
+) {
+  const boardKey = KVKeys.boards(sessionId);
+  return lockManager.withLock(boardKey, operation);
 }
 ```
 
@@ -1096,96 +1133,97 @@ async function handleBoardOperation(sessionId: string, operation: () => Promise<
 ```typescript
 // workers/task-api/src/repositories/board-repository.ts
 export interface BoardRepository {
-    getBoards(sessionId: string): Promise<BoardsFile>;
-    saveBoards(sessionId: string, boards: BoardsFile): Promise<void>;
-    deleteBoards(sessionId: string): Promise<void>;
+  getBoards(sessionId: string): Promise<BoardsFile>;
+  saveBoards(sessionId: string, boards: BoardsFile): Promise<void>;
+  deleteBoards(sessionId: string): Promise<void>;
 }
 
 export class KVBoardRepository implements BoardRepository {
-    constructor(
-        private kv: KVNamespace,
-        private lockManager: BoardLockManager
-    ) {}
+  constructor(
+    private kv: KVNamespace,
+    private lockManager: BoardLockManager
+  ) {}
 
-    async getBoards(sessionId: string): Promise<BoardsFile> {
-        const key = KVKeys.boards(sessionId);
-        const data = await this.kv.get(key, 'json');
+  async getBoards(sessionId: string): Promise<BoardsFile> {
+    const key = KVKeys.boards(sessionId);
+    const data = await this.kv.get(key, 'json');
 
-        if (!data) {
-            return this.getDefaultBoards();
-        }
-
-        return data as BoardsFile;
+    if (!data) {
+      return this.getDefaultBoards();
     }
 
-    async saveBoards(sessionId: string, boards: BoardsFile): Promise<void> {
-        const key = KVKeys.boards(sessionId);
+    return data as BoardsFile;
+  }
 
-        await this.lockManager.withLock(key, async () => {
-            boards.updatedAt = new Date().toISOString();
-            await this.kv.put(key, JSON.stringify(boards));
-        });
-    }
+  async saveBoards(sessionId: string, boards: BoardsFile): Promise<void> {
+    const key = KVKeys.boards(sessionId);
 
-    async deleteBoards(sessionId: string): Promise<void> {
-        const key = KVKeys.boards(sessionId);
-        await this.kv.delete(key);
-    }
+    await this.lockManager.withLock(key, async () => {
+      boards.updatedAt = new Date().toISOString();
+      await this.kv.put(key, JSON.stringify(boards));
+    });
+  }
 
-    private getDefaultBoards(): BoardsFile {
-        return {
-            version: 1,
-            boards: [
-                {
-                    id: DEFAULT_BOARD_ID,
-                    name: DEFAULT_BOARD_ID,
-                    tags: [],
-                    tasks: []
-                }
-            ],
-            updatedAt: new Date().toISOString()
-        };
-    }
+  async deleteBoards(sessionId: string): Promise<void> {
+    const key = KVKeys.boards(sessionId);
+    await this.kv.delete(key);
+  }
+
+  private getDefaultBoards(): BoardsFile {
+    return {
+      version: 1,
+      boards: [
+        {
+          id: DEFAULT_BOARD_ID,
+          name: DEFAULT_BOARD_ID,
+          tags: [],
+          tasks: [],
+        },
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+  }
 }
 
 // workers/task-api/src/repositories/task-repository.ts
 export class KVTaskRepository {
-    constructor(
-        private kv: KVNamespace,
-        private lockManager: BoardLockManager
-    ) {}
+  constructor(
+    private kv: KVNamespace,
+    private lockManager: BoardLockManager
+  ) {}
 
-    async getTasks(sessionId: string, boardId: string): Promise<TasksFile> {
-        const key = KVKeys.tasks(sessionId, boardId);
-        const data = await this.kv.get(key, 'json');
+  async getTasks(sessionId: string, boardId: string): Promise<TasksFile> {
+    const key = KVKeys.tasks(sessionId, boardId);
+    const data = await this.kv.get(key, 'json');
 
-        return data as TasksFile || this.getDefaultTasks();
-    }
+    return (data as TasksFile) || this.getDefaultTasks();
+  }
 
-    async saveTasks(
-        sessionId: string,
-        boardId: string,
-        tasks: TasksFile
-    ): Promise<void> {
-        const key = KVKeys.tasks(sessionId, boardId);
+  async saveTasks(
+    sessionId: string,
+    boardId: string,
+    tasks: TasksFile
+  ): Promise<void> {
+    const key = KVKeys.tasks(sessionId, boardId);
 
-        await this.lockManager.withLock(key, async () => {
-            tasks.updatedAt = new Date().toISOString();
-            await this.kv.put(key, JSON.stringify(tasks));
-        });
-    }
+    await this.lockManager.withLock(key, async () => {
+      tasks.updatedAt = new Date().toISOString();
+      await this.kv.put(key, JSON.stringify(tasks));
+    });
+  }
 
-    private getDefaultTasks(): TasksFile {
-        return {
-            version: 1,
-            tasks: [],
-            updatedAt: new Date().toISOString()
-        };
-    }
+  private getDefaultTasks(): TasksFile {
+    return {
+      version: 1,
+      tasks: [],
+      updatedAt: new Date().toISOString(),
+    };
+  }
 }
 ```
 
 **Benefits:**
+
 - Separation of concerns
 - Easy to test (mock repositories)
 - Easy to swap storage backends
@@ -1202,12 +1240,14 @@ export class KVTaskRepository {
 **Analysis:** Multiple files use `console.log` for logging, which is not ideal for production.
 
 **Files with console.log statements:**
+
 - `workers/task-api/src/index.ts` - 6+ occurrences (including DEBUG)
 - `workers/task-api/src/session.ts` - 3 occurrences
 - `workers/edge-router/src/index.ts` - 4 occurrences
 - `workers/util/auth.ts` - 2 occurrences
 
 **Current Situation:**
+
 ```typescript
 console.log('[AUTH DEBUG] Checking key:', key);
 console.log('[Session] Using authKey as sessionId fallback');
@@ -1219,66 +1259,71 @@ console.warn(`[SessionMapping] Cannot add session...`);
 ```typescript
 // workers/util/logger.ts
 export enum LogLevel {
-    DEBUG = 0,
-    INFO = 1,
-    WARN = 2,
-    ERROR = 3
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3,
 }
 
 export interface LoggerConfig {
-    prefix?: string;
-    minLevel?: LogLevel;
-    includeTimestamp?: boolean;
+  prefix?: string;
+  minLevel?: LogLevel;
+  includeTimestamp?: boolean;
 }
 
 export class Logger {
-    constructor(private config: LoggerConfig = {}) {
-        this.config = {
-            minLevel: LogLevel.INFO,
-            includeTimestamp: true,
-            ...config
-        };
+  constructor(private config: LoggerConfig = {}) {
+    this.config = {
+      minLevel: LogLevel.INFO,
+      includeTimestamp: true,
+      ...config,
+    };
+  }
+
+  debug(message: string, meta?: Record<string, any>) {
+    this.log(LogLevel.DEBUG, message, meta);
+  }
+
+  info(message: string, meta?: Record<string, any>) {
+    this.log(LogLevel.INFO, message, meta);
+  }
+
+  warn(message: string, meta?: Record<string, any>) {
+    this.log(LogLevel.WARN, message, meta);
+  }
+
+  error(message: string, error?: Error, meta?: Record<string, any>) {
+    this.log(LogLevel.ERROR, message, {
+      ...meta,
+      error: error?.message,
+      stack: error?.stack,
+    });
+  }
+
+  private log(level: LogLevel, message: string, meta?: Record<string, any>) {
+    if (level < this.config.minLevel!) {
+      return;
     }
 
-    debug(message: string, meta?: Record<string, any>) {
-        this.log(LogLevel.DEBUG, message, meta);
-    }
+    const logEntry = {
+      level: LogLevel[level],
+      timestamp: this.config.includeTimestamp
+        ? new Date().toISOString()
+        : undefined,
+      prefix: this.config.prefix,
+      message,
+      ...meta,
+    };
 
-    info(message: string, meta?: Record<string, any>) {
-        this.log(LogLevel.INFO, message, meta);
-    }
+    const logFn =
+      level >= LogLevel.ERROR
+        ? console.error
+        : level >= LogLevel.WARN
+          ? console.warn
+          : console.log;
 
-    warn(message: string, meta?: Record<string, any>) {
-        this.log(LogLevel.WARN, message, meta);
-    }
-
-    error(message: string, error?: Error, meta?: Record<string, any>) {
-        this.log(LogLevel.ERROR, message, {
-            ...meta,
-            error: error?.message,
-            stack: error?.stack
-        });
-    }
-
-    private log(level: LogLevel, message: string, meta?: Record<string, any>) {
-        if (level < this.config.minLevel!) {
-            return;
-        }
-
-        const logEntry = {
-            level: LogLevel[level],
-            timestamp: this.config.includeTimestamp ? new Date().toISOString() : undefined,
-            prefix: this.config.prefix,
-            message,
-            ...meta
-        };
-
-        const logFn = level >= LogLevel.ERROR ? console.error :
-                     level >= LogLevel.WARN ? console.warn :
-                     console.log;
-
-        logFn(JSON.stringify(logEntry));
-    }
+    logFn(JSON.stringify(logEntry));
+  }
 }
 
 // Create loggers for different modules
@@ -1294,8 +1339,8 @@ console.log('[AUTH DEBUG] Checking key:', key);
 
 // Use:
 logger.debug('Checking authentication key', {
-    keyPrefix: maskKey(key),
-    userType: auth.userType
+  keyPrefix: maskKey(key),
+  userType: auth.userType,
 });
 
 // Instead of:
@@ -1303,12 +1348,13 @@ console.warn(`[SessionMapping] Cannot add session ${sessionId}...`);
 
 // Use:
 logger.warn('Cannot add session to mapping', {
-    sessionId: maskSessionId(sessionId),
-    reason: 'No session-info exists'
+  sessionId: maskSessionId(sessionId),
+  reason: 'No session-info exists',
 });
 ```
 
 **Benefits:**
+
 - Structured, parseable logs
 - Easy to filter by level
 - Consistent format
@@ -1325,6 +1371,7 @@ logger.warn('Cannot add session to mapping', {
 ### Priority 1: Quick Wins (High Impact, Low Risk)
 
 #### 1. Remove DEBUG Code ❌ IMMEDIATE
+
 **Files:** `workers/task-api/src/index.ts`
 **Lines:** 146-151, 260, 479
 **Impact:** Cleaner code, better performance
@@ -1332,6 +1379,7 @@ logger.warn('Cannot add session to mapping', {
 **Effort:** 10 minutes
 
 **Action:**
+
 ```bash
 # Search for DEBUG comments
 grep -r "DEBUG" workers/task-api/src/
@@ -1341,12 +1389,14 @@ grep -r "DEBUG" workers/task-api/src/
 ---
 
 #### 2. Extract KV Key Generators
+
 **Create:** `workers/util/kv-keys.ts`
 **Impact:** DRY principle, easier maintenance
 **Risk:** Low (simple extraction)
 **Effort:** 1-2 hours
 
 **Steps:**
+
 1. Create centralized module
 2. Replace all inline key generation
 3. Update tests
@@ -1355,6 +1405,7 @@ grep -r "DEBUG" workers/task-api/src/
 ---
 
 #### 3. Move Masking Functions to Util
+
 **From:** `workers/task-api/src/request-utils.ts`
 **To:** `workers/util/masking.ts`
 **Impact:** Better reusability
@@ -1364,12 +1415,14 @@ grep -r "DEBUG" workers/task-api/src/
 ---
 
 #### 4. Create Constants Module
+
 **Create:** `workers/util/constants.ts`
 **Impact:** Eliminates magic strings/numbers
 **Risk:** None
 **Effort:** 1-2 hours
 
 **Action:**
+
 ```typescript
 // Create constants module
 // Replace all hardcoded "main", "public", etc.
@@ -1381,12 +1434,14 @@ grep -r "DEBUG" workers/task-api/src/
 ### Priority 2: Major Refactoring (High Impact, Medium Risk)
 
 #### 5. Split index.ts into Route Modules ⚠️
+
 **Create:** `routes/` directory with separate files
 **Impact:** MASSIVE improvement in maintainability
 **Risk:** Medium (requires careful testing)
 **Effort:** 6-8 hours
 
 **Steps:**
+
 1. Create route module structure
 2. Extract boards routes
 3. Extract tasks routes
@@ -1398,12 +1453,14 @@ grep -r "DEBUG" workers/task-api/src/
 ---
 
 #### 6. Refactor handleSessionHandshake
+
 **Create:** `services/session-service.ts`
 **Impact:** Better readability and testability
 **Risk:** Medium (complex logic)
 **Effort:** 3-4 hours
 
 **Steps:**
+
 1. Create SessionService class
 2. Break down into smaller methods
 3. Add strategy pattern for preference migration
@@ -1413,6 +1470,7 @@ grep -r "DEBUG" workers/task-api/src/
 ---
 
 #### 7. Create BoardLockManager Class
+
 **Create:** `services/board-lock-manager.ts`
 **Impact:** Better separation of concerns
 **Risk:** Low
@@ -1423,6 +1481,7 @@ grep -r "DEBUG" workers/task-api/src/
 ### Priority 3: Architecture Improvements (Medium Impact, Medium Risk)
 
 #### 8. Create Validation Middleware
+
 **Create:** `middleware/validation.ts`
 **Impact:** Less boilerplate
 **Risk:** Low
@@ -1431,6 +1490,7 @@ grep -r "DEBUG" workers/task-api/src/
 ---
 
 #### 9. Implement Repository Pattern
+
 **Create:** `repositories/` directory
 **Impact:** Better testability, cleaner architecture
 **Risk:** Medium
@@ -1439,6 +1499,7 @@ grep -r "DEBUG" workers/task-api/src/
 ---
 
 #### 10. Replace console.log with Structured Logging
+
 **Create:** `util/logger.ts`
 **Impact:** Better observability
 **Risk:** None
@@ -1450,27 +1511,27 @@ grep -r "DEBUG" workers/task-api/src/
 
 ### Current State
 
-| Metric | Current | Target | Status |
-|--------|---------|--------|--------|
-| Longest file | 970 lines | 300 lines | ❌ |
-| Longest function | 93 lines | 50 lines | ⚠️ |
-| Test coverage | Good (14 files) | Excellent | ✅ |
-| Cyclomatic complexity | Generally good | Good | ✅ |
-| Code duplication | Moderate | Low | ⚠️ |
-| Magic strings | High | None | ❌ |
-| Console.log usage | 15+ | 0 | ❌ |
-| DEBUG code | 3+ blocks | 0 | ❌ |
+| Metric                | Current         | Target    | Status |
+| --------------------- | --------------- | --------- | ------ |
+| Longest file          | 970 lines       | 300 lines | ❌     |
+| Longest function      | 93 lines        | 50 lines  | ⚠️     |
+| Test coverage         | Good (14 files) | Excellent | ✅     |
+| Cyclomatic complexity | Generally good  | Good      | ✅     |
+| Code duplication      | Moderate        | Low       | ⚠️     |
+| Magic strings         | High            | None      | ❌     |
+| Console.log usage     | 15+             | 0         | ❌     |
+| DEBUG code            | 3+ blocks       | 0         | ❌     |
 
 ### Target State (After Refactoring)
 
-| Metric | Target | Improvement |
-|--------|--------|-------------|
-| Max file length | 300 lines | 67% reduction |
-| Max function length | 50 lines | 46% reduction |
-| Code duplication | Minimal | 80% reduction |
-| Magic strings | 0 | 100% elimination |
-| Structured logging | 100% | Full adoption |
-| DEBUG code | 0 | Full removal |
+| Metric              | Target    | Improvement      |
+| ------------------- | --------- | ---------------- |
+| Max file length     | 300 lines | 67% reduction    |
+| Max function length | 50 lines  | 46% reduction    |
+| Code duplication    | Minimal   | 80% reduction    |
+| Magic strings       | 0         | 100% elimination |
+| Structured logging  | 100%      | Full adoption    |
+| DEBUG code          | 0         | Full removal     |
 
 ---
 
@@ -1502,95 +1563,102 @@ grep -r "DEBUG" workers/task-api/src/
 ### Recommendations
 
 #### 1. Extract Test Fixtures
+
 ```typescript
 // workers/task-api/src/test-fixtures.ts
 export const TestFixtures = {
-    boards: {
-        default: () => ({
-            version: 1,
-            boards: [
-                { id: 'main', name: 'main', tags: [], tasks: [] }
-            ],
-            updatedAt: new Date().toISOString()
-        }),
-        withTasks: () => ({ /* ... */ })
-    },
+  boards: {
+    default: () => ({
+      version: 1,
+      boards: [{ id: 'main', name: 'main', tags: [], tasks: [] }],
+      updatedAt: new Date().toISOString(),
+    }),
+    withTasks: () => ({
+      /* ... */
+    }),
+  },
 
-    sessions: {
-        admin: () => ({
-            sessionId: 'test-admin-session',
-            authKey: 'test-admin-key',
-            userType: 'admin'
-        }),
-        friend: () => ({ /* ... */ })
-    },
+  sessions: {
+    admin: () => ({
+      sessionId: 'test-admin-session',
+      authKey: 'test-admin-key',
+      userType: 'admin',
+    }),
+    friend: () => ({
+      /* ... */
+    }),
+  },
 
-    preferences: {
-        default: () => ({
-            theme: 'system',
-            buttons: {},
-            experimentalFlags: {},
-            layout: {}
-        }),
-        custom: (overrides: Partial<UserPreferences>) => ({ /* ... */ })
-    }
+  preferences: {
+    default: () => ({
+      theme: 'system',
+      buttons: {},
+      experimentalFlags: {},
+      layout: {},
+    }),
+    custom: (overrides: Partial<UserPreferences>) => ({
+      /* ... */
+    }),
+  },
 };
 ```
 
 #### 2. Add Integration Tests
+
 ```typescript
 // workers/task-api/src/integration.test.ts
 describe('Complete Workflow Integration Tests', () => {
-    it('should handle complete task lifecycle', async () => {
-        // 1. Session handshake
-        const session = await performHandshake();
+  it('should handle complete task lifecycle', async () => {
+    // 1. Session handshake
+    const session = await performHandshake();
 
-        // 2. Create board
-        const board = await createBoard(session);
+    // 2. Create board
+    const board = await createBoard(session);
 
-        // 3. Add task
-        const task = await addTask(session, board.id);
+    // 3. Add task
+    const task = await addTask(session, board.id);
 
-        // 4. Update task
-        await updateTask(session, task.id, { title: 'Updated' });
+    // 4. Update task
+    await updateTask(session, task.id, { title: 'Updated' });
 
-        // 5. Complete task
-        await completeTask(session, task.id);
+    // 5. Complete task
+    await completeTask(session, task.id);
 
-        // 6. Verify final state
-        const finalBoards = await getBoards(session);
-        expect(finalBoards.boards[0].tasks).toHaveLength(1);
-        expect(finalBoards.boards[0].tasks[0].state).toBe('Completed');
-    });
+    // 6. Verify final state
+    const finalBoards = await getBoards(session);
+    expect(finalBoards.boards[0].tasks).toHaveLength(1);
+    expect(finalBoards.boards[0].tasks[0].state).toBe('Completed');
+  });
 
-    it('should handle multi-device session sync', async () => {
-        // Test session migration across devices
-    });
+  it('should handle multi-device session sync', async () => {
+    // Test session migration across devices
+  });
 });
 ```
 
 #### 3. Add Performance Tests
+
 ```typescript
 // workers/task-api/src/performance.test.ts
 describe('Performance Tests', () => {
-    it('should handle concurrent board updates', async () => {
-        const promises = Array.from({ length: 10 }, () =>
-            updateBoard(sessionId, { /* ... */ })
-        );
+  it('should handle concurrent board updates', async () => {
+    const promises = Array.from({ length: 10 }, () =>
+      updateBoard(sessionId, {
+        /* ... */
+      })
+    );
 
-        await expect(Promise.all(promises)).resolves.not.toThrow();
-    });
+    await expect(Promise.all(promises)).resolves.not.toThrow();
+  });
 
-    it('should throttle excessive requests', async () => {
-        const requests = Array.from({ length: 400 }, () =>
-            makeRequest()
-        );
+  it('should throttle excessive requests', async () => {
+    const requests = Array.from({ length: 400 }, () => makeRequest());
 
-        const results = await Promise.allSettled(requests);
-        const throttled = results.filter(r => r.status === 'rejected');
+    const results = await Promise.allSettled(requests);
+    const throttled = results.filter((r) => r.status === 'rejected');
 
-        expect(throttled.length).toBeGreaterThan(0);
-    });
+    expect(throttled.length).toBeGreaterThan(0);
+  });
 });
 ```
 
@@ -1672,6 +1740,7 @@ describe('Performance Tests', () => {
 - [x] Day 4-5: Code review and testing (2-3 hours)
 
 **Deliverables:**
+
 - ✅ No DEBUG code
 - ✅ Centralized constants
 - ✅ Centralized KV keys
@@ -1692,6 +1761,7 @@ describe('Performance Tests', () => {
 - [ ] Day 5: Update and run all tests (3 hours)
 
 **Deliverables:**
+
 - ✅ `routes/boards.ts`, `routes/tasks.ts`, etc.
 - ✅ `index.ts` reduced to ~150 lines
 - ✅ All route tests passing
@@ -1712,6 +1782,7 @@ describe('Performance Tests', () => {
 - [ ] Day 5: Integration testing (2 hours)
 
 **Deliverables:**
+
 - ✅ `services/session-service.ts` with clean methods
 - ✅ `services/board-lock-manager.ts` with diagnostics
 - ✅ `middleware/validation.ts` reducing boilerplate
@@ -1732,6 +1803,7 @@ describe('Performance Tests', () => {
 - [ ] Day 4-5: Final code review and cleanup (3 hours)
 
 **Deliverables:**
+
 - ✅ Structured logging throughout
 - ✅ Integration test suite
 - ✅ Performance benchmarks
@@ -1743,6 +1815,7 @@ describe('Performance Tests', () => {
 ### Post-Refactoring (Ongoing)
 
 **Low Priority Items:**
+
 - [ ] Remove deprecated endpoint (monitor usage first)
 - [ ] Refactor Python admin scripts
 - [ ] Consider dependency injection
@@ -1754,6 +1827,7 @@ describe('Performance Tests', () => {
 ## Metrics for Success
 
 ### Before Refactoring
+
 - index.ts: 970 lines ❌
 - handleSessionHandshake: 93 lines ⚠️
 - Duplicate KV key logic: 3 files ⚠️
@@ -1761,6 +1835,7 @@ describe('Performance Tests', () => {
 - DEBUG code: 3+ blocks ❌
 
 ### After Refactoring
+
 - index.ts: ~150 lines ✅
 - Longest function: <50 lines ✅
 - Centralized KV keys: 1 file ✅

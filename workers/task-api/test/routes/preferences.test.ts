@@ -1,11 +1,16 @@
 /**
  * Preferences Tests
- * 
+ *
  * Tests user preference storage and retrieval.
  */
 import { describe, it, expect } from 'vitest';
 import app from '../../src/index';
-import { createTestEnv, createAuthHeaders, getPreferences, savePreferences } from '../__helpers__/test-utils';
+import {
+	createTestEnv,
+	createAuthHeaders,
+	getPreferences,
+	savePreferences,
+} from '../__helpers__/test-utils';
 import type { UserPreferences } from '../../src/session';
 
 describe('User Preferences Tests', () => {

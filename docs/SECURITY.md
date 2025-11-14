@@ -32,15 +32,16 @@ User → Provides X-User-Key header → Validated against Worker secrets → Ass
 
 ### User Types
 
-| UserType | Access Level | Storage Scope | Use Case |
-|----------|-------------|---------------|----------|
-| `admin` | Full access | Own sessionId data | Primary user, full CRUD |
-| `friend` | Full access | Own sessionId data | Trusted collaborators |
-| `public` | Read/Write | localStorage only | Anonymous users, offline-only |
+| UserType | Access Level | Storage Scope      | Use Case                      |
+| -------- | ------------ | ------------------ | ----------------------------- |
+| `admin`  | Full access  | Own sessionId data | Primary user, full CRUD       |
+| `friend` | Full access  | Own sessionId data | Trusted collaborators         |
+| `public` | Read/Write   | localStorage only  | Anonymous users, offline-only |
 
 ### Key Storage
 
 **Production:**
+
 - `ADMIN_KEY` - Stored as Cloudflare Worker secret
 - `FRIEND_KEY` - Stored as Cloudflare Worker secret
 - Keys are UUIDs or secure random strings
@@ -48,6 +49,7 @@ User → Provides X-User-Key header → Validated against Worker secrets → Ass
 - **Never** logged in plain text
 
 **Key Format:**
+
 ```json
 {
   "655b37cf-e0d4-4bf5-88cb-e2d1c2bd9c6b": "admin-user-1",
@@ -67,18 +69,18 @@ const friendKeys = JSON.parse(env.FRIEND_KEYS);
 
 // 3. Determine userType
 if (userKey in adminKeys) {
-    userType = 'admin';
+  userType = 'admin';
 } else if (userKey in friendKeys) {
-    userType = 'friend';
+  userType = 'friend';
 } else {
-    userType = 'public';  // Fallback to public mode
+  userType = 'public'; // Fallback to public mode
 }
 
 // 4. Create auth context
 return {
-    userType,
-    sessionId: userKey || 'public',
-    key: userKey
+  userType,
+  sessionId: userKey || 'public',
+  key: userKey,
 };
 ```
 
@@ -93,11 +95,13 @@ return {
 **Access:** localStorage only, no API calls
 
 **Restrictions:**
+
 - ❌ Cannot sync data across devices
 - ❌ No server-side storage
 - ❌ Data lost if browser cache cleared
 
 **Benefits:**
+
 - ✅ Fully offline capable
 - ✅ Zero server cost
 - ✅ Zero latency
@@ -108,12 +112,14 @@ return {
 **Access:** Full API access with Workers KV storage
 
 **Capabilities:**
+
 - ✅ Create/read/update/delete tasks
 - ✅ Manage boards and tags
 - ✅ Multi-device support
 - ✅ Data persistence in Workers KV
 
 **Restrictions:**
+
 - ❌ No admin endpoints access
 - ❌ Cannot manage throttling
 - ❌ Cannot view system logs
@@ -123,6 +129,7 @@ return {
 **Access:** Full API access + admin endpoints
 
 **Capabilities:**
+
 - ✅ All friend mode capabilities
 - ✅ Access admin endpoints
 - ✅ Manage throttling state
@@ -131,6 +138,7 @@ return {
 - ✅ Reset throttle states
 
 **Admin Endpoints:**
+
 ```
 GET  /task/api/admin/throttle/:sessionId    - View throttle state
 POST /task/api/admin/blacklist/:sessionId   - Blacklist a session
@@ -148,6 +156,7 @@ GET  /task/api/admin/incidents/:sessionId   - View incidents
 ### Purpose
 
 Rate limiting per sessionId to prevent:
+
 - API abuse
 - Accidental infinite loops in client code
 - Resource exhaustion
@@ -175,6 +184,7 @@ Rate limiting per sessionId to prevent:
 ```
 
 **Rationale:**
+
 - Admin users need higher limits for development/debugging
 - Friend users get moderate limits for normal usage
 - Public users get lowest limits (shouldn't hit API much anyway)
@@ -184,6 +194,7 @@ Rate limiting per sessionId to prevent:
 **KV Key:** `throttle:{sessionId}`
 
 **Structure:**
+
 ```json
 {
   "count": 45,
@@ -194,6 +205,7 @@ Rate limiting per sessionId to prevent:
 ```
 
 **Fields:**
+
 - `count` - Requests in current window
 - `windowStart` - Timestamp when window started (ms)
 - `violations` - Total violation count
@@ -222,10 +234,11 @@ Request → Check blacklist → Blacklisted? → 429 Too Many Requests
 **Trigger:** 3 violations in a row
 
 **Criteria:**
+
 ```typescript
 if (throttleState.violations >= THROTTLE_THRESHOLDS.BLACKLIST_VIOLATION_COUNT) {
-    await blacklistSession(kv, sessionId);
-    // Session is now permanently blacklisted until admin unblacklists
+  await blacklistSession(kv, sessionId);
+  // Session is now permanently blacklisted until admin unblacklists
 }
 ```
 
@@ -236,6 +249,7 @@ if (throttleState.violations >= THROTTLE_THRESHOLDS.BLACKLIST_VIOLATION_COUNT) {
 **KV Key:** `blacklist:{sessionId}`
 
 **Structure:**
+
 ```json
 {
   "blacklistedAt": "2025-11-06T10:30:00Z",
@@ -245,6 +259,7 @@ if (throttleState.violations >= THROTTLE_THRESHOLDS.BLACKLIST_VIOLATION_COUNT) {
 ```
 
 **Manual Management:**
+
 ```bash
 # Blacklist a session (admin only)
 POST /task/api/admin/blacklist/:sessionId
@@ -260,6 +275,7 @@ POST /task/api/admin/unblacklist/:sessionId
 ### Purpose
 
 Log security-related events for monitoring and analysis:
+
 - Throttle violations
 - Blacklist events
 - Suspicious patterns
@@ -270,6 +286,7 @@ Log security-related events for monitoring and analysis:
 **KV Key:** `incidents:{sessionId}`
 
 **Structure:**
+
 ```json
 {
   "incidents": [
@@ -299,24 +316,28 @@ Log security-related events for monitoring and analysis:
 
 ### Incident Types
 
-| Type | Trigger | Details Captured |
-|------|---------|------------------|
-| `throttle_violation` | Rate limit exceeded | Request count, limit, window |
-| `blacklist` | Auto-blacklist or manual | Reason, violation count |
-| `suspicious_pattern` | Manual flag | Description, evidence |
+| Type                 | Trigger                  | Details Captured             |
+| -------------------- | ------------------------ | ---------------------------- |
+| `throttle_violation` | Rate limit exceeded      | Request count, limit, window |
+| `blacklist`          | Auto-blacklist or manual | Reason, violation count      |
+| `suspicious_pattern` | Manual flag              | Description, evidence        |
 
 ### Viewing Incidents
 
 **Admin Endpoint:**
+
 ```bash
 GET /task/api/admin/incidents/:sessionId
 ```
 
 **Response:**
+
 ```json
 {
   "sessionId": "session-abc123",
-  "incidents": [ /* array of incidents */ ],
+  "incidents": [
+    /* array of incidents */
+  ],
   "totalIncidents": 5,
   "blacklisted": true
 }
@@ -331,6 +352,7 @@ GET /task/api/admin/incidents/:sessionId
 ### Throttle Management
 
 #### View Throttle State
+
 ```bash
 GET /task/api/admin/throttle/:sessionId
 
@@ -348,6 +370,7 @@ GET /task/api/admin/throttle/:sessionId
 ```
 
 #### Reset Throttle State
+
 ```bash
 POST /task/api/admin/reset-throttle
 Body: { "sessionId": "session-abc123" }
@@ -359,6 +382,7 @@ Body: { "sessionId": "session-abc123" }
 ### Blacklist Management
 
 #### Blacklist Session
+
 ```bash
 POST /task/api/admin/blacklist/:sessionId
 Body: { "reason": "Abusive behavior" }
@@ -368,6 +392,7 @@ Body: { "reason": "Abusive behavior" }
 ```
 
 #### Unblacklist Session
+
 ```bash
 POST /task/api/admin/unblacklist/:sessionId
 
@@ -378,6 +403,7 @@ POST /task/api/admin/unblacklist/:sessionId
 ### Incident Review
 
 #### View All Incidents for Session
+
 ```bash
 GET /task/api/admin/incidents/:sessionId
 
@@ -400,6 +426,7 @@ GET /task/api/admin/incidents/:sessionId
 ### Key Management
 
 **DO:**
+
 - ✅ Generate keys with cryptographic random source
 - ✅ Use UUIDs or 16+ character random strings
 - ✅ Store keys as Worker secrets (never in code)
@@ -407,6 +434,7 @@ GET /task/api/admin/incidents/:sessionId
 - ✅ Use different keys for different users
 
 **DON'T:**
+
 - ❌ Commit keys to git
 - ❌ Log keys in plain text
 - ❌ Share keys via insecure channels
@@ -416,12 +444,14 @@ GET /task/api/admin/incidents/:sessionId
 ### Session Management
 
 **DO:**
+
 - ✅ Generate unique sessionIds per device
 - ✅ Validate session-info exists before operations
 - ✅ Clean up abandoned sessions periodically
 - ✅ Track session creation timestamps
 
 **DON'T:**
+
 - ❌ Allow sessions without session-info
 - ❌ Reuse sessionIds across users
 - ❌ Store sensitive data in sessionId
@@ -429,6 +459,7 @@ GET /task/api/admin/incidents/:sessionId
 ### API Security
 
 **DO:**
+
 - ✅ Validate all input parameters
 - ✅ Use rate limiting for all endpoints
 - ✅ Log suspicious activity
@@ -436,6 +467,7 @@ GET /task/api/admin/incidents/:sessionId
 - ✅ Use CORS to restrict origins
 
 **DON'T:**
+
 - ❌ Trust client input without validation
 - ❌ Expose internal error details
 - ❌ Allow unlimited requests
@@ -444,12 +476,14 @@ GET /task/api/admin/incidents/:sessionId
 ### Workers KV Security
 
 **DO:**
+
 - ✅ Namespace data by sessionId (prevent cross-user access)
 - ✅ Validate KV key formats
 - ✅ Handle KV errors gracefully
 - ✅ Use consistent key naming conventions
 
 **DON'T:**
+
 - ❌ Store unencrypted sensitive data
 - ❌ Allow arbitrary KV key access
 - ❌ Assume KV writes always succeed
@@ -464,6 +498,7 @@ GET /task/api/admin/incidents/:sessionId
 **Threat:** Attacker tries many keys to find valid one
 
 **Mitigation:**
+
 - Rate limiting prevents rapid guessing
 - UUIDs have 2^122 possibilities (computationally infeasible)
 - Incident tracking logs failed attempts
@@ -476,6 +511,7 @@ GET /task/api/admin/incidents/:sessionId
 **Threat:** Client code has bug causing infinite API requests
 
 **Mitigation:**
+
 - Per-sessionId throttling (300/min for admin, 120/min for friend)
 - Auto-blacklist after 3 violations
 - Incident logging for debugging
@@ -488,6 +524,7 @@ GET /task/api/admin/incidents/:sessionId
 **Threat:** Attacker with valid key tries to access other users' data
 
 **Mitigation:**
+
 - Data isolated by sessionId
 - No cross-session queries supported
 - KV keys include sessionId (e.g., `prefs:{sessionId}`)
@@ -500,6 +537,7 @@ GET /task/api/admin/incidents/:sessionId
 **Threat:** Attacker steals sessionId and impersonates user
 
 **Mitigation:**
+
 - SessionId not sufficient alone (need authKey)
 - Session-info validates authKey matches
 - Throttling limits damage per session
@@ -514,6 +552,7 @@ GET /task/api/admin/incidents/:sessionId
 **Threat:** Many workers/clients attack simultaneously
 
 **Mitigation:**
+
 - Cloudflare edge protection (DDoS mitigation)
 - Per-session throttling (not IP-based)
 - Free tier limits (1000 writes/day) provide natural cap
@@ -528,12 +567,14 @@ GET /task/api/admin/incidents/:sessionId
 **Threat:** Admin key compromised, used maliciously
 
 **Impact:**
+
 - Can access admin endpoints
 - Can modify own data
 - Can view throttle/incident logs
 - **CANNOT** access other users' data (isolated by sessionId)
 
 **Mitigation:**
+
 - Rotate admin keys if compromised
 - Monitor Analytics Engine for suspicious admin activity
 - Incident logs provide audit trail
@@ -588,11 +629,13 @@ HAVING COUNT(*) > 10;
 ### Recommended Alerts
 
 **Critical:**
+
 - 🔴 More than 10 blacklist events per hour
 - 🔴 More than 1000 throttle violations per hour
 - 🔴 Single session > 10K requests per hour
 
 **Warning:**
+
 - 🟡 Blacklist count > 5 per day
 - 🟡 Throttle violations > 100 per hour
 - 🟡 Failed auth attempts > 50 per hour
@@ -639,4 +682,5 @@ HAVING COUNT(*) > 10;
 **Last Updated:** November 6, 2025
 **Maintained By:** Engineering Team
 **Change Log:**
+
 - 2025-11-06: Initial creation documenting authentication, throttling, and security model

@@ -8,22 +8,22 @@
 
 /* Prevent white flash - use theme CSS variables */
 html {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+	background-color: var(--color-bg);
+	color: var(--color-text);
 }
 
 /* Base styles */
 @layer base {
-  * {
-    @apply m-0 p-0 box-border;
-  }
+	* {
+		@apply m-0 p-0 box-border;
+	}
 
-  html {
-    @apply h-full overflow-hidden;
-  }
+	html {
+		@apply h-full overflow-hidden;
+	}
 
-  body {
-    @apply h-full overflow-hidden bg-bg text-text transition-colors duration-smooth;
-    font-family: var(--font-family);
-  }
+	body {
+		@apply h-full overflow-hidden bg-bg text-text transition-colors duration-smooth;
+		font-family: var(--font-family);
+	}
 }

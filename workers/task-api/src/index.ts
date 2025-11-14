@@ -14,14 +14,14 @@ import {
 	parseKeysFromEnv,
 	createCorsMiddleware,
 	DEFAULT_HADOKU_ORIGINS,
-	logError
+	logError,
 } from '../../util';
 import {
 	checkThrottle,
 	recordIncident,
 	blacklistSession,
 	THROTTLE_THRESHOLDS,
-	type IncidentRecord
+	type IncidentRecord,
 } from './throttle';
 import { USER_TYPES, DEFAULT_SESSION_ID } from './constants';
 import { validateKeyAndGetType } from './request-utils';
@@ -56,36 +56,42 @@ const app = new Hono<AppContext>();
 // ============================================================================
 
 // 1. CORS Middleware
-app.use('*', createCorsMiddleware({
-	origins: [...DEFAULT_HADOKU_ORIGINS, 'https://task-api.hadoku.me'],
-	methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-	allowedHeaders: ['Content-Type', 'X-User-Key', 'X-Session-Id'],
-	exposedHeaders: ['X-Backend-Source'],
-	credentials: true,
-	maxAge: 86400
-}));
+app.use(
+	'*',
+	createCorsMiddleware({
+		origins: [...DEFAULT_HADOKU_ORIGINS, 'https://task-api.hadoku.me'],
+		methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+		allowedHeaders: ['Content-Type', 'X-User-Key', 'X-Session-Id'],
+		exposedHeaders: ['X-Backend-Source'],
+		credentials: true,
+		maxAge: 86400,
+	})
+);
 
 // 2. Authentication Middleware
-app.use('*', createAuthMiddleware<Env>({
-	sources: ['header:X-User-Key', 'query:key'],
-	resolver: (credential, env) => {
-		// Parse key mappings
-		const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS);
-		const friendKeys = parseKeysFromEnv(env.FRIEND_KEYS);
+app.use(
+	'*',
+	createAuthMiddleware<Env>({
+		sources: ['header:X-User-Key', 'query:key'],
+		resolver: (credential, env) => {
+			// Parse key mappings
+			const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS);
+			const friendKeys = parseKeysFromEnv(env.FRIEND_KEYS);
 
-		// Validate key and determine userType
-		const { userType } = credential
-			? validateKeyAndGetType(credential, adminKeys, friendKeys)
-			: { userType: USER_TYPES.PUBLIC as 'public' };
+			// Validate key and determine userType
+			const { userType } = credential
+				? validateKeyAndGetType(credential, adminKeys, friendKeys)
+				: { userType: USER_TYPES.PUBLIC as 'public' };
 
-		// Return auth context with sessionId and key for backward compatibility
-		return {
-			userType,
-			sessionId: credential || DEFAULT_SESSION_ID,
-			key: credential // Preserve key for backward compatibility
-		};
-	}
-}));
+			// Return auth context with sessionId and key for backward compatibility
+			return {
+				userType,
+				sessionId: credential || DEFAULT_SESSION_ID,
+				key: credential, // Preserve key for backward compatibility
+			};
+		},
+	})
+);
 
 // 3. Throttle Middleware - Rate limiting per sessionId
 app.use('*', async (c, next) => {
@@ -101,11 +107,7 @@ app.use('*', async (c, next) => {
 	}
 
 	// Check throttle (only for public users)
-	const throttleResult = await checkThrottle(
-		c.env.TASKS_KV,
-		sessionId,
-		userType
-	);
+	const throttleResult = await checkThrottle(c.env.TASKS_KV, sessionId, userType);
 
 	if (!throttleResult.allowed) {
 		// Record violation incident
@@ -119,8 +121,8 @@ app.use('*', async (c, next) => {
 				reason: throttleResult.reason,
 				violations: throttleResult.state.violations,
 				path: c.req.path,
-				method: c.req.method
-			}
+				method: c.req.method,
+			},
 		};
 
 		await recordIncident(c.env.TASKS_KV, incident);
@@ -137,11 +139,14 @@ app.use('*', async (c, next) => {
 
 		logError('THROTTLE', c.req.path, `Rate limit exceeded: ${throttleResult.reason}`);
 
-		return c.json({
-			error: 'Rate limit exceeded',
-			message: throttleResult.reason,
-			retryAfter: 60  // seconds
-		}, 429);
+		return c.json(
+			{
+				error: 'Rate limit exceeded',
+				message: throttleResult.reason,
+				retryAfter: 60, // seconds
+			},
+			429
+		);
 	}
 
 	return next();

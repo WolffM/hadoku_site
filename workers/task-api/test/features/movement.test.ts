@@ -1,20 +1,20 @@
 /**
  * Task Movement Tests
- * 
+ *
  * Tests moving tasks between boards.
  */
 import { describe, it, expect } from 'vitest';
 import app from '../../src/index';
-import { 
-	createTestEnv, 
-	createAuthHeaders, 
+import {
+	createTestEnv,
+	createAuthHeaders,
 	createBoard,
 	createTask,
 	batchMoveTasks,
 	getBoards,
 	deleteBoard,
 	deleteTask,
-	uniqueId 
+	uniqueId,
 } from '../__helpers__/test-utils';
 
 describe('Task Movement Tests', () => {
@@ -30,7 +30,14 @@ describe('Task Movement Tests', () => {
 
 		// 1. Create task in main board
 		const taskId = `task-${uniqueId()}`;
-		const createRes = await createTask(app, env, adminHeaders, mainBoard, taskId, 'Movement Test Task');
+		const createRes = await createTask(
+			app,
+			env,
+			adminHeaders,
+			mainBoard,
+			taskId,
+			'Movement Test Task'
+		);
 		expect(createRes.status).toBe(200);
 
 		// 2. Move task to new board 'testBoard2'
@@ -43,19 +50,21 @@ describe('Task Movement Tests', () => {
 
 		// Verify task is in testBoard2
 		let boardsRes = await getBoards(app, env, adminHeaders);
-		let boardsData: { boards: { id: string, tasks: { id: string }[] }[] } = await boardsRes.json();
-		const board2 = boardsData.boards.find((b: { id: string; }) => b.id === testBoard2);
-		expect(board2!.tasks.find((t: { id: string; }) => t.id === taskId)).toBeDefined();
+		let boardsData: { boards: { id: string; tasks: { id: string }[] }[] } = await boardsRes.json();
+		const board2 = boardsData.boards.find((b: { id: string }) => b.id === testBoard2);
+		expect(board2?.tasks.find((t: { id: string }) => t.id === taskId)).toBeDefined();
 
 		// 3. Move task back to 'main' board
-		const moveBackRes = await batchMoveTasks(app, env, adminHeaders, testBoard2, mainBoard, [taskId]);
+		const moveBackRes = await batchMoveTasks(app, env, adminHeaders, testBoard2, mainBoard, [
+			taskId,
+		]);
 		expect(moveBackRes.status).toBe(200);
 
 		// Verify task is back in main
 		boardsRes = await getBoards(app, env, adminHeaders);
 		boardsData = await boardsRes.json();
-		const mainBoardData = boardsData.boards.find((b: { id: string; }) => b.id === mainBoard);
-		expect(mainBoardData!.tasks.find((t: { id: string; }) => t.id === taskId)).toBeDefined();
+		const mainBoardData = boardsData.boards.find((b: { id: string }) => b.id === mainBoard);
+		expect(mainBoardData?.tasks.find((t: { id: string }) => t.id === taskId)).toBeDefined();
 
 		// 4. Delete 'testBoard2'
 		const deleteBoardRes = await deleteBoard(app, env, adminHeaders, testBoard2);

@@ -31,11 +31,12 @@ The main entry point for all `hadoku.me/*` traffic. Implements intelligent fallb
 **Configuration**: Reads `ROUTE_CONFIG` from GitHub Secrets (injected at deploy time)
 
 **Example routing priority**:
+
 ```json
 {
-  "global_priority": "12",      // Try tunnel → Worker
-  "task_priority": "21",         // Try Worker → tunnel
-  "watchparty_priority": "1"     // Tunnel only
+  "global_priority": "12", // Try tunnel → Worker
+  "task_priority": "21", // Try Worker → tunnel
+  "watchparty_priority": "1" // Tunnel only
 }
 ```
 
@@ -97,6 +98,7 @@ Workers are automatically deployed via `.github/workflows/deploy-workers.yml` wh
 - `repository_dispatch` event with type `config_updated` or `deploy_workers`
 
 **Required GitHub Secrets**:
+
 - `CLOUDFLARE_API_TOKEN`: Cloudflare API token with Workers edit permissions
 - `ROUTE_CONFIG`: JSON string with routing configuration
 - `ADMIN_KEY`: Admin access key for task API

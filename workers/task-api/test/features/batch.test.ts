@@ -1,13 +1,13 @@
 /**
  * Batch Operations Tests
- * 
+ *
  * Tests batch movement, tagging, and clearing operations.
  */
 import { describe, it, expect } from 'vitest';
 import app from '../../src/index';
-import { 
-	createTestEnv, 
-	createAuthHeaders, 
+import {
+	createTestEnv,
+	createAuthHeaders,
 	createTestBoard,
 	createTestTask,
 	createTestTag,
@@ -18,7 +18,7 @@ import {
 	deleteTask,
 	deleteBoard,
 	completeTask,
-	uniqueId 
+	uniqueId,
 } from '../__helpers__/test-utils';
 
 describe('Complex Batch Operations Tests', () => {
@@ -63,18 +63,23 @@ describe('Complex Batch Operations Tests', () => {
 
 		// 4. Assign all three to existing tag 'existingTag1'
 		const tag1Res = await batchUpdateTags(
-			app, env, adminHeaders, testBoard1,
-			taskIds.map(taskId => ({ taskId, tag: existingTag }))
+			app,
+			env,
+			adminHeaders,
+			testBoard1,
+			taskIds.map((taskId) => ({ taskId, tag: existingTag }))
 		);
 		expect(tag1Res.status).toBe(200);
 
 		// Verify tags were applied
 		let boardsRes = await getBoards(app, env, adminHeaders);
-		let boardsData: { boards: any[] } = await boardsRes.json();
-		let board1 = boardsData.boards.find((b: any) => b.id === testBoard1);
-		
+		let boardsData: {
+			boards: Array<{ id: string; tasks: Array<{ id: string; tag?: string | null }> }>;
+		} = await boardsRes.json();
+		let board1 = boardsData.boards.find((b) => b.id === testBoard1);
+
 		for (const taskId of taskIds) {
-			const task = board1.tasks.find((t: any) => t.id === taskId);
+			const task = board1?.tasks.find((t) => t.id === taskId);
 			expect(task).toBeDefined();
 			// Check if tags were applied (may be broken - that's what we're testing!)
 			// expect(task.tags).toContain(existingTag);
@@ -82,8 +87,11 @@ describe('Complex Batch Operations Tests', () => {
 
 		// 5. Assign all three to new tag 'newTag1'
 		const tag2Res = await batchUpdateTags(
-			app, env, adminHeaders, testBoard1,
-			taskIds.map(taskId => ({ taskId, tag: newTag }))
+			app,
+			env,
+			adminHeaders,
+			testBoard1,
+			taskIds.map((taskId) => ({ taskId, tag: newTag }))
 		);
 		expect(tag2Res.status).toBe(200);
 
@@ -94,11 +102,11 @@ describe('Complex Batch Operations Tests', () => {
 		// Verify tag was cleared
 		boardsRes = await getBoards(app, env, adminHeaders);
 		boardsData = await boardsRes.json();
-		board1 = boardsData.boards.find((b: any) => b.id === testBoard1);
-		
+		board1 = boardsData.boards.find((b) => b.id === testBoard1);
+
 		for (const taskId of taskIds) {
-			const task = board1.tasks.find((t: any) => t.id === taskId);
-			expect(task.tags || []).not.toContain(newTag);
+			const task = board1?.tasks.find((t) => t.id === taskId);
+			expect(task?.tag || null).not.toBe(newTag);
 		}
 
 		// 7. Delete the first two tasks manually, complete the third manually

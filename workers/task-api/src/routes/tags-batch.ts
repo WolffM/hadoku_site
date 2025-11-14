@@ -41,12 +41,10 @@ export function createTagsBatchRoutes() {
 		logRequest('POST', '/task/api/tags', {
 			userType: c.get('authContext').userType,
 			boardId: body.boardId,
-			tag: body.tag
+			tag: body.tag,
 		});
 
-		return handleOperation(c, (storage, auth) =>
-			TaskHandlers.createTag(storage, auth, body)
-		);
+		return handleOperation(c, (storage, auth) => TaskHandlers.createTag(storage, auth, body));
 	});
 
 	/**
@@ -70,12 +68,10 @@ export function createTagsBatchRoutes() {
 		logRequest('POST', '/task/api/tags/delete', {
 			userType: c.get('authContext').userType,
 			boardId: body.boardId,
-			tag: body.tag
+			tag: body.tag,
 		});
 
-		return handleOperation(c, (storage, auth) =>
-			TaskHandlers.deleteTag(storage, auth, body)
-		);
+		return handleOperation(c, (storage, auth) => TaskHandlers.deleteTag(storage, auth, body));
 	});
 
 	// ============================================================================
@@ -103,7 +99,7 @@ export function createTagsBatchRoutes() {
 
 		logRequest(method, route, {
 			userType: c.get('authContext').userType,
-			boardId
+			boardId,
 		});
 
 		// Validate required fields
@@ -137,7 +133,7 @@ export function createTagsBatchRoutes() {
 	 */
 	const batchMoveHandler = async (c: Context) => {
 		logRequest('POST', '/task/api/batch-move', {
-			userType: c.get('authContext').userType
+			userType: c.get('authContext').userType,
 		});
 
 		return handleBatchOperation(
@@ -146,7 +142,7 @@ export function createTagsBatchRoutes() {
 			(storage, auth, body) => TaskHandlers.batchMoveTasks(storage, auth, body),
 			(body, userType, sessionId) => [
 				`${userType}:${sessionId}:${body.sourceBoardId}`,
-				`${userType}:${sessionId}:${body.targetBoardId}`
+				`${userType}:${sessionId}:${body.targetBoardId}`,
 			]
 		);
 	};
@@ -164,7 +160,7 @@ export function createTagsBatchRoutes() {
 	 */
 	app.post('/batch-clear-tag', async (c: Context) => {
 		logRequest('POST', '/task/api/batch-clear-tag', {
-			userType: c.get('authContext').userType
+			userType: c.get('authContext').userType,
 		});
 
 		return handleBatchOperation(

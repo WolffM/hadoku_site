@@ -1,8 +1,8 @@
 /**
  * Session Management Module
- * 
+ *
  * Handles sessionId-based storage, preferences migration, and session mapping.
- * 
+ *
  * Key Concepts:
  * - Storage by sessionId (not authKey)
  * - One preferences object per sessionId
@@ -21,18 +21,18 @@ import { preferencesKey, sessionInfoKey, sessionMappingKey } from './kv-keys';
 
 export interface UserPreferences {
 	theme?: string;
-	buttons?: any;
-	experimentalFlags?: any;
-	layout?: any;
-	deviceInfo?: any;
+	buttons?: Record<string, unknown>;
+	experimentalFlags?: Record<string, unknown>;
+	layout?: Record<string, unknown>;
+	deviceInfo?: Record<string, unknown>;
 	lastUpdated?: string;
-	[key: string]: any; // Allow additional custom preferences
+	[key: string]: unknown; // Allow additional custom preferences
 }
 
 export interface SessionMapping {
 	authKey: string;
-	sessionIds: string[];  // List of all sessionIds for this authKey
-	lastSessionId: string;  // Most recently used sessionId
+	sessionIds: string[]; // List of all sessionIds for this authKey
+	lastSessionId: string; // Most recently used sessionId
 	createdAt: string;
 	updatedAt: string;
 }
@@ -72,7 +72,7 @@ export async function savePreferencesBySessionId(
 	const key = preferencesKey(sessionId);
 	const data = {
 		...preferences,
-		lastUpdated: new Date().toISOString()
+		lastUpdated: new Date().toISOString(),
 	};
 	await kv.put(key, JSON.stringify(data));
 }
@@ -92,10 +92,7 @@ export async function getSessionInfo(
 /**
  * Save session info
  */
-export async function saveSessionInfo(
-	kv: KVNamespace,
-	sessionInfo: SessionInfo
-): Promise<void> {
+export async function saveSessionInfo(kv: KVNamespace, sessionInfo: SessionInfo): Promise<void> {
 	const key = sessionInfoKey(sessionInfo.sessionId);
 	await kv.put(key, JSON.stringify(sessionInfo));
 }
@@ -113,50 +110,102 @@ export async function getSessionMapping(
 }
 
 /**
- * Update session mapping for authKey
+ * Update session mapping for authKey with collision detection and retry
  * Adds new sessionId to the list if not present
+ *
+ * Since Workers KV doesn't support atomic compare-and-swap, we use a simple
+ * retry mechanism with random jitter to handle concurrent updates gracefully.
+ * We read, modify, write, then verify. If verification fails, we retry.
  *
  * Note: This should only be called AFTER session-info has been successfully saved
  * to prevent orphaned session references (mystery sessions)
  */
+/* eslint-disable no-await-in-loop */
 export async function updateSessionMapping(
 	kv: KVNamespace,
 	authKey: string,
-	sessionId: string
+	sessionId: string,
+	maxRetries = 10
 ): Promise<void> {
 	// Verify session-info exists before adding to mapping
 	// This prevents "mystery sessions" that have no session data
 	const sessionInfo = await getSessionInfo(kv, sessionId);
 	if (!sessionInfo) {
-		console.warn(`[SessionMapping] Cannot add session ${sessionId.substring(0, 16)}... - no session-info exists`);
+		console.warn(
+			`[SessionMapping] Cannot add session ${sessionId.substring(0, 16)}... - no session-info exists`
+		);
 		return;
 	}
 
 	const key = sessionMappingKey(authKey);
-	const existing = await getSessionMapping(kv, authKey);
-
 	const now = new Date().toISOString();
 
-	if (existing) {
-		// Add sessionId if not already in list
-		if (!existing.sessionIds.includes(sessionId)) {
-			existing.sessionIds.push(sessionId);
+	// Retry loop to handle concurrent modifications
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		// Read current mapping
+		const existing = await getSessionMapping(kv, authKey);
+
+		let newMapping: SessionMapping;
+
+		if (existing) {
+			// If sessionId is already in the list, we're done
+			if (existing.sessionIds.includes(sessionId)) {
+				return; // No update needed
+			}
+
+			// Update existing mapping
+			newMapping = {
+				...existing,
+				sessionIds: [...existing.sessionIds, sessionId],
+				lastSessionId: sessionId,
+				updatedAt: now,
+			};
+		} else {
+			// Create new mapping
+			newMapping = {
+				authKey,
+				sessionIds: [sessionId],
+				lastSessionId: sessionId,
+				createdAt: now,
+				updatedAt: now,
+			};
 		}
-		existing.lastSessionId = sessionId;
-		existing.updatedAt = now;
-		await kv.put(key, JSON.stringify(existing));
-	} else {
-		// Create new mapping
-		const mapping: SessionMapping = {
-			authKey,
-			sessionIds: [sessionId],
-			lastSessionId: sessionId,
-			createdAt: now,
-			updatedAt: now
-		};
-		await kv.put(key, JSON.stringify(mapping));
+
+		// Write the new mapping
+		await kv.put(key, JSON.stringify(newMapping));
+
+		// Small delay to allow KV to propagate
+		await new Promise((resolve) => setTimeout(resolve, 10));
+
+		// Verify the write by reading back
+		const verification = await getSessionMapping(kv, authKey);
+
+		// Check if our sessionId made it into the mapping
+		if (verification && verification.sessionIds.includes(sessionId)) {
+			// Success! Our write is reflected
+			return;
+		}
+
+		// Conflict detected - retry with exponential backoff + jitter
+		if (attempt === maxRetries - 1) {
+			console.error(
+				`[SessionMapping] Failed to update after ${maxRetries} attempts for authKey ${authKey.substring(0, 8)}...`
+			);
+			throw new Error('Session mapping update failed due to concurrent modifications');
+		}
+
+		// Exponential backoff with random jitter to avoid thundering herd
+		const baseDelay = Math.min(50 * Math.pow(2, attempt), 500);
+		const jitter = Math.random() * baseDelay * 0.5;
+		const delay = baseDelay + jitter;
+
+		await new Promise((resolve) => setTimeout(resolve, delay));
+		console.log(
+			`[SessionMapping] Retry ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms for authKey ${authKey.substring(0, 8)}...`
+		);
 	}
 }
+/* eslint-enable no-await-in-loop */
 
 // ============================================================================
 // Session Handshake Logic
@@ -167,7 +216,7 @@ export async function updateSessionMapping(
  */
 const DEFAULT_PREFERENCES: UserPreferences = {
 	...CONSTANTS_DEFAULT_PREFERENCES,
-	lastUpdated: new Date().toISOString()
+	lastUpdated: new Date().toISOString(),
 };
 
 export interface HandshakeRequest {
@@ -185,7 +234,7 @@ export interface HandshakeResponse {
 
 /**
  * Handle session handshake
- * 
+ *
  * Logic:
  * 1. If oldSessionId provided, try to load preferences from it
  * 2. If oldSessionId not found, check authKey mapping for last sessionId (for fallback only, don't delete)
@@ -194,7 +243,7 @@ export interface HandshakeResponse {
  * 5. Update authKey → sessionId mapping
  * 6. Create session info for newSessionId with the VALIDATED userType (from auth middleware)
  * 7. Delete old session info if it was migrated
- * 
+ *
  * IMPORTANT: The userType parameter comes from auth middleware which has already validated
  * the authKey. This ensures we always return the current, correct userType based on key validity.
  */
@@ -205,15 +254,15 @@ export async function handleSessionHandshake(
 	request: HandshakeRequest
 ): Promise<HandshakeResponse> {
 	const { oldSessionId, newSessionId } = request;
-	
+
 	// Log the validated userType for debugging
 	console.log('[Session Handshake] Validated userType from auth middleware:', userType);
-	
+
 	let preferences: UserPreferences | null = null;
 	let migratedFrom: string | undefined = undefined;
 	let isNewSession = true;
 	let sessionIdToDelete: string | null = null;
-	
+
 	// Try to load preferences from oldSessionId (explicit migration)
 	if (oldSessionId) {
 		preferences = await getPreferencesBySessionId(kv, oldSessionId);
@@ -223,7 +272,7 @@ export async function handleSessionHandshake(
 			sessionIdToDelete = oldSessionId; // Only delete if explicitly migrating
 		}
 	}
-	
+
 	// If oldSessionId not provided or not found, try authKey mapping as fallback
 	// Note: We DON'T delete this - it might be another device still using it
 	if (!preferences) {
@@ -242,7 +291,7 @@ export async function handleSessionHandshake(
 	// This handles migration from old storage format (prefs:authKey) to new format (prefs:sessionId)
 	if (!preferences) {
 		const legacyKey = preferencesKey(authKey);
-		const legacyPrefs = await kv.get(legacyKey, 'json') as UserPreferences | null;
+		const legacyPrefs = (await kv.get(legacyKey, 'json')) as UserPreferences | null;
 		if (legacyPrefs) {
 			preferences = legacyPrefs;
 			migratedFrom = authKey;
@@ -254,28 +303,28 @@ export async function handleSessionHandshake(
 			await kv.delete(legacyKey);
 		}
 	}
-	
+
 	// Use defaults if nothing found
 	if (!preferences) {
 		preferences = { ...DEFAULT_PREFERENCES };
 	}
-	
+
 	// Save preferences to newSessionId
 	await savePreferencesBySessionId(kv, newSessionId, preferences);
-	
+
 	// Delete old preferences and session info ONLY if explicitly migrating
 	if (sessionIdToDelete && sessionIdToDelete !== newSessionId) {
 		await kv.delete(preferencesKey(sessionIdToDelete));
 		await kv.delete(sessionInfoKey(sessionIdToDelete));
-		
+
 		// Remove old sessionId from mapping
 		const mapping = await getSessionMapping(kv, authKey);
 		if (mapping) {
-			mapping.sessionIds = mapping.sessionIds.filter(id => id !== sessionIdToDelete);
+			mapping.sessionIds = mapping.sessionIds.filter((id) => id !== sessionIdToDelete);
 			await kv.put(sessionMappingKey(authKey), JSON.stringify(mapping));
 		}
 	}
-	
+
 	// Create session info for newSessionId FIRST (before updating mapping)
 	// This ensures session-info exists when updateSessionMapping checks for it
 	const now = new Date().toISOString();
@@ -284,7 +333,7 @@ export async function handleSessionHandshake(
 		authKey,
 		userType,
 		createdAt: now,
-		lastAccessedAt: now
+		lastAccessedAt: now,
 	};
 	await saveSessionInfo(kv, sessionInfo);
 
@@ -294,7 +343,7 @@ export async function handleSessionHandshake(
 
 	// Clean up stale sessions (30+ days old) in the background
 	// This runs asynchronously and won't block the handshake response
-	cleanupStaleSessions(kv, authKey).catch(err => {
+	cleanupStaleSessions(kv, authKey).catch((err) => {
 		console.error('[SessionCleanup] Failed to cleanup stale sessions:', err);
 	});
 
@@ -303,7 +352,7 @@ export async function handleSessionHandshake(
 		preferences,
 		isNewSession,
 		migratedFrom,
-		userType // Return the validated userType from auth middleware
+		userType, // Return the validated userType from auth middleware
 	};
 }
 
@@ -340,7 +389,9 @@ async function cleanupStaleSessions(kv: KVNamespace, authKey: string): Promise<v
 
 				if (!sessionInfo) {
 					// Orphaned session - no session-info exists
-					console.log(`[SessionCleanup] Removing orphaned session: ${sessionId.substring(0, 16)}...`);
+					console.log(
+						`[SessionCleanup] Removing orphaned session: ${sessionId.substring(0, 16)}...`
+					);
 					return { sessionId, action: 'delete' as const };
 				}
 
@@ -349,7 +400,9 @@ async function cleanupStaleSessions(kv: KVNamespace, authKey: string): Promise<v
 				const age = now - lastAccessed;
 
 				if (age > STALE_THRESHOLD_MS) {
-					console.log(`[SessionCleanup] Removing stale session: ${sessionId.substring(0, 16)}... (${Math.floor(age / (24 * 60 * 60 * 1000))} days old)`);
+					console.log(
+						`[SessionCleanup] Removing stale session: ${sessionId.substring(0, 16)}... (${Math.floor(age / (24 * 60 * 60 * 1000))} days old)`
+					);
 					return { sessionId, action: 'delete' as const };
 				} else {
 					return { sessionId, action: 'keep' as const };
@@ -368,12 +421,14 @@ async function cleanupStaleSessions(kv: KVNamespace, authKey: string): Promise<v
 
 		// Delete stale sessions
 		if (sessionsToDelete.length > 0) {
-			console.log(`[SessionCleanup] Deleting ${sessionsToDelete.length} stale sessions for authKey: ${authKey.substring(0, 8)}...`);
+			console.log(
+				`[SessionCleanup] Deleting ${sessionsToDelete.length} stale sessions for authKey: ${authKey.substring(0, 8)}...`
+			);
 
 			// Delete preferences and session-info for each stale session
-			const deletePromises = sessionsToDelete.flatMap(sessionId => [
+			const deletePromises = sessionsToDelete.flatMap((sessionId) => [
 				kv.delete(preferencesKey(sessionId)),
-				kv.delete(sessionInfoKey(sessionId))
+				kv.delete(sessionInfoKey(sessionId)),
 			]);
 
 			await Promise.all(deletePromises);
@@ -390,4 +445,3 @@ async function cleanupStaleSessions(kv: KVNamespace, authKey: string): Promise<v
 		// Don't throw - cleanup is best-effort and shouldn't fail handshake
 	}
 }
-

@@ -1,6 +1,6 @@
 /**
  * Logging Module
- * 
+ *
  * Uses Cloudflare Workers Analytics Engine for zero-setup logging.
  */
 

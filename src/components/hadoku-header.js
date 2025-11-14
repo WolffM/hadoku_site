@@ -1,13 +1,13 @@
 class HadokuHeader extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-  }
+	constructor() {
+		super();
+		this.attachShadow({ mode: 'open' });
+	}
 
-  connectedCallback() {
-    const currentPath = window.location.pathname;
-    
-    this.shadowRoot.innerHTML = `
+	connectedCallback() {
+		const currentPath = window.location.pathname;
+
+		this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
@@ -61,9 +61,9 @@ class HadokuHeader extends HTMLElement {
         </ul>
       </nav>
     `;
-  }
+	}
 }
 
 if (!customElements.get('hadoku-header')) {
-  customElements.define('hadoku-header', HadokuHeader);
+	customElements.define('hadoku-header', HadokuHeader);
 }

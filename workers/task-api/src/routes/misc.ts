@@ -39,14 +39,14 @@ export function createMiscRoutes() {
 		// Auth middleware has already validated the key and set authContext
 		const authContext = c.get('authContext');
 		const userType = authContext.userType;
-		
+
 		// If userType is 'public', the key was invalid or not provided
 		const valid = userType !== 'public';
 
 		logRequest('POST', '/task/api/validate-key', {
 			valid,
 			userType,
-			hasKey: !!authContext.key
+			hasKey: !!authContext.key,
 		});
 
 		return c.json({ valid, userType });
@@ -62,12 +62,10 @@ export function createMiscRoutes() {
 	app.get('/', async (c: Context) => {
 		logRequest('GET', '/task/api', {
 			userType: c.get('authContext').userType,
-			boardId: 'main'
+			boardId: 'main',
 		});
 
-		return handleOperation(c, (storage, auth) =>
-			TaskHandlers.getBoardTasks(storage, auth, 'main')
-		);
+		return handleOperation(c, (storage, auth) => TaskHandlers.getBoardTasks(storage, auth, 'main'));
 	});
 
 	/**
@@ -79,12 +77,16 @@ export function createMiscRoutes() {
 	 * The API now only uses sessionId
 	 */
 	app.post('/migrate-userid', async (c: Context) => {
-		return c.json({
-			error: 'This endpoint is deprecated. The task API now uses sessionId only and does not support userId migration.',
-			deprecated: true,
-			version: '3.0.39+',
-			migration: 'Use sessionId as the stable identifier instead of userId'
-		}, 410); // 410 Gone - indicates the endpoint is no longer available
+		return c.json(
+			{
+				error:
+					'This endpoint is deprecated. The task API now uses sessionId only and does not support userId migration.',
+				deprecated: true,
+				version: '3.0.39+',
+				migration: 'Use sessionId as the stable identifier instead of userId',
+			},
+			410
+		); // 410 Gone - indicates the endpoint is no longer available
 	});
 
 	return app;

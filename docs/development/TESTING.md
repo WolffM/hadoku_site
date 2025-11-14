@@ -25,6 +25,7 @@ This document describes the testing strategy, current coverage, and how to write
 ### What We Test
 
 **Focus Areas:**
+
 - ✅ **API Endpoints** - Request/response behavior, validation, error handling
 - ✅ **Session Management** - Handshake flow, preference migration, multi-device scenarios
 - ✅ **Storage Operations** - KV read/write, data isolation, key formats
@@ -37,6 +38,7 @@ We primarily write integration tests that exercise the full request/response cyc
 ### What We Don't Test
 
 **Out of Scope:**
+
 - ❌ **UI/Frontend** - Frontend testing is manual (for now)
 - ❌ **Cloudflare Workers Runtime** - We mock the environment
 - ❌ **Edge Cases in Child Package** - `@wolffm/task` has its own tests
@@ -56,30 +58,31 @@ We primarily write integration tests that exercise the full request/response cyc
 
 ### Test File Inventory
 
-| Test File | Tests | Coverage | Notes |
-|-----------|-------|----------|-------|
-| `api.test.ts` | 4 | Basic CRUD | Smoke tests only |
-| `session.test.ts` | 10 | Session lifecycle | Good coverage |
-| `session-kv.test.ts` | 3 | KV verification | Step-by-step validation |
-| `preferences.test.ts` | 1 | Basic prefs | **WEAK** - needs expansion |
-| `tasks.test.ts` | 2 | Task operations | Basic CRUD |
-| `boards.test.ts` | 6 | Board management | Good coverage |
-| `tags.test.ts` | 6 | Tag operations | Good coverage |
-| `batch.test.ts` | 3 | Batch operations | Complex scenarios |
-| `idempotency.test.ts` | 2 | Duplicate handling | Edge cases |
-| `storage-format.test.ts` | 6 | KV key formats | Validation tests |
-| `throttle.test.ts` | 5 | Rate limiting | Core functionality |
-| `isolation.test.ts` | 9 | Data isolation | Critical security |
-| `complex-scenarios.test.ts` | 10 | Real-world flows | Integration tests |
-| **NEW** `legacy-migration.test.ts` | 6 | Legacy prefs | Bug fix coverage |
-| **NEW** `mystery-session.test.ts` | 6 | Session prevention | Bug fix coverage |
-| **NEW** `preferences-legacy-fallback.test.ts` | 8 | GET fallback | Bug fix coverage |
+| Test File                                     | Tests | Coverage           | Notes                      |
+| --------------------------------------------- | ----- | ------------------ | -------------------------- |
+| `api.test.ts`                                 | 4     | Basic CRUD         | Smoke tests only           |
+| `session.test.ts`                             | 10    | Session lifecycle  | Good coverage              |
+| `session-kv.test.ts`                          | 3     | KV verification    | Step-by-step validation    |
+| `preferences.test.ts`                         | 1     | Basic prefs        | **WEAK** - needs expansion |
+| `tasks.test.ts`                               | 2     | Task operations    | Basic CRUD                 |
+| `boards.test.ts`                              | 6     | Board management   | Good coverage              |
+| `tags.test.ts`                                | 6     | Tag operations     | Good coverage              |
+| `batch.test.ts`                               | 3     | Batch operations   | Complex scenarios          |
+| `idempotency.test.ts`                         | 2     | Duplicate handling | Edge cases                 |
+| `storage-format.test.ts`                      | 6     | KV key formats     | Validation tests           |
+| `throttle.test.ts`                            | 5     | Rate limiting      | Core functionality         |
+| `isolation.test.ts`                           | 9     | Data isolation     | Critical security          |
+| `complex-scenarios.test.ts`                   | 10    | Real-world flows   | Integration tests          |
+| **NEW** `legacy-migration.test.ts`            | 6     | Legacy prefs       | Bug fix coverage           |
+| **NEW** `mystery-session.test.ts`             | 6     | Session prevention | Bug fix coverage           |
+| **NEW** `preferences-legacy-fallback.test.ts` | 8     | GET fallback       | Bug fix coverage           |
 
 **Total:** 17 test files, 81 tests
 
 ### Coverage by Subsystem
 
 #### Session Management ✅ Good (90%)
+
 - Session handshake flow
 - Multi-device scenarios
 - Legacy migration
@@ -89,6 +92,7 @@ We primarily write integration tests that exercise the full request/response cyc
 **Gap:** Edge cases with corrupted session data
 
 #### Preferences ⚠️ Fair (70%)
+
 - Basic save/retrieve
 - Legacy fallback (NEW)
 - Migration scenarios (NEW)
@@ -96,6 +100,7 @@ We primarily write integration tests that exercise the full request/response cyc
 **Gap:** Merge conflicts, concurrent updates, default handling
 
 #### Task/Board Operations ✅ Good (85%)
+
 - CRUD operations
 - Tag management
 - Batch operations
@@ -105,6 +110,7 @@ We primarily write integration tests that exercise the full request/response cyc
 **Gap:** Complex task hierarchies, bulk operations edge cases
 
 #### Authentication ✅ Excellent (95%)
+
 - Key validation
 - UserType determination
 - Session validation
@@ -112,6 +118,7 @@ We primarily write integration tests that exercise the full request/response cyc
 **Gap:** Expired sessions, malformed keys
 
 #### Throttling ✅ Good (80%)
+
 - Rate limiting
 - Violation tracking
 - Blacklist management
@@ -159,6 +166,7 @@ Duration  1.2s
 ### Continuous Integration
 
 Tests run automatically on:
+
 - ✅ Every push to `main` branch
 - ✅ Every pull request
 - ✅ Before deployment
@@ -172,7 +180,9 @@ Tests run automatically on:
 ### Core Utilities (test-utils.ts)
 
 #### createTestEnv()
+
 Creates a mock Cloudflare Workers environment with:
+
 - Mock Workers KV (persistent within test)
 - Test admin/friend keys
 - Environment variables
@@ -187,6 +197,7 @@ const env = createTestEnv();
 ```
 
 #### createAuthHeaders()
+
 Generates authentication headers for requests:
 
 ```typescript
@@ -216,14 +227,22 @@ const { tag } = await createTestTag(app, env, headers, boardId);
 
 ```typescript
 export function createMockKV(): KVNamespace {
-    const store = new Map<string, string>();
+  const store = new Map<string, string>();
 
-    return {
-        async get(key, type) { /* ... */ },
-        async put(key, value) { /* ... */ },
-        async delete(key) { /* ... */ },
-        async list() { /* ... */ }
-    };
+  return {
+    async get(key, type) {
+      /* ... */
+    },
+    async put(key, value) {
+      /* ... */
+    },
+    async delete(key) {
+      /* ... */
+    },
+    async list() {
+      /* ... */
+    },
+  };
 }
 ```
 
@@ -243,46 +262,55 @@ import app from './index';
 import { createTestEnv, createAuthHeaders } from './test-utils';
 
 describe('Feature Name', () => {
-    const env = createTestEnv();
+  const env = createTestEnv();
 
-    describe('Specific Scenario', () => {
-        it('should do something specific', async () => {
-            // Arrange
-            const headers = createAuthHeaders(env, 'automated_testing_admin');
+  describe('Specific Scenario', () => {
+    it('should do something specific', async () => {
+      // Arrange
+      const headers = createAuthHeaders(env, 'automated_testing_admin');
 
-            // Act
-            const response = await app.request('/task/api/endpoint', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ data: 'value' })
-            }, env);
+      // Act
+      const response = await app.request(
+        '/task/api/endpoint',
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ data: 'value' }),
+        },
+        env
+      );
 
-            // Assert
-            expect(response.status).toBe(200);
-            const data = await response.json();
-            expect(data.field).toBe('expected');
-        });
+      // Assert
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.field).toBe('expected');
     });
+  });
 });
 ```
 
 ### Best Practices
 
 #### 1. Use Descriptive Test Names
+
 **Good:**
+
 ```typescript
 it('should migrate prefs:{authKey} during handshake when no oldSessionId provided', async () => {
 ```
 
 **Bad:**
+
 ```typescript
 it('test migration', async () => {
 ```
 
 #### 2. Test One Thing Per Test
+
 Each test should validate a single behavior or scenario.
 
 #### 3. Verify KV State
+
 Don't just test API responses - verify the data was actually written to KV:
 
 ```typescript
@@ -295,6 +323,7 @@ expect(savedData.theme).toBe('dark');
 ```
 
 #### 4. Use Unique Keys Per Test
+
 Avoid test interference by using unique identifiers:
 
 ```typescript
@@ -302,17 +331,22 @@ const uniqueKey = `test-${Date.now()}-${Math.random()}`;
 ```
 
 #### 5. Test Error Cases
+
 Don't just test the happy path:
 
 ```typescript
 it('should reject handshake without newSessionId', async () => {
-    const response = await app.request('/task/api/session/handshake', {
-        method: 'POST',
-        headers: adminHeaders,
-        body: JSON.stringify({ oldSessionId: null })  // Missing newSessionId
-    }, env);
+  const response = await app.request(
+    '/task/api/session/handshake',
+    {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ oldSessionId: null }), // Missing newSessionId
+    },
+    env
+  );
 
-    expect(response.status).toBe(400);
+  expect(response.status).toBe(400);
 });
 ```
 
@@ -324,49 +358,56 @@ import app from './index';
 import { createTestEnv, createAuthHeaders } from './test-utils';
 
 describe('Session Handshake', () => {
-    const env = createTestEnv();
+  const env = createTestEnv();
 
-    it('should create new session with default preferences', async () => {
-        // Arrange: Create unique user
-        const uniqueKey = `test-user-${Date.now()}`;
-        const headers = {
-            'X-User-Key': uniqueKey,
-            'X-User-Id': 'test-admin',
-            'Content-Type': 'application/json'
-        };
+  it('should create new session with default preferences', async () => {
+    // Arrange: Create unique user
+    const uniqueKey = `test-user-${Date.now()}`;
+    const headers = {
+      'X-User-Key': uniqueKey,
+      'X-User-Id': 'test-admin',
+      'Content-Type': 'application/json',
+    };
 
-        // Add key to admin keys
-        const keys = JSON.parse(env.ADMIN_KEYS || '{}');
-        keys[uniqueKey] = uniqueKey;
-        env.ADMIN_KEYS = JSON.stringify(keys);
+    // Add key to admin keys
+    const keys = JSON.parse(env.ADMIN_KEYS || '{}');
+    keys[uniqueKey] = uniqueKey;
+    env.ADMIN_KEYS = JSON.stringify(keys);
 
-        // Act: Perform handshake
-        const newSessionId = `session-${Date.now()}`;
-        const response = await app.request('/task/api/session/handshake', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                oldSessionId: null,
-                newSessionId: newSessionId
-            })
-        }, env);
+    // Act: Perform handshake
+    const newSessionId = `session-${Date.now()}`;
+    const response = await app.request(
+      '/task/api/session/handshake',
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          oldSessionId: null,
+          newSessionId: newSessionId,
+        }),
+      },
+      env
+    );
 
-        // Assert: Check response
-        expect(response.status).toBe(200);
-        const data = await response.json();
-        expect(data.sessionId).toBe(newSessionId);
-        expect(data.preferences.theme).toBe('system'); // Default
-        expect(data.isNewSession).toBe(true);
+    // Assert: Check response
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.sessionId).toBe(newSessionId);
+    expect(data.preferences.theme).toBe('system'); // Default
+    expect(data.isNewSession).toBe(true);
 
-        // Assert: Verify KV state
-        const prefs = await env.TASKS_KV.get(`prefs:${newSessionId}`, 'json');
-        expect(prefs).toBeDefined();
-        expect(prefs.theme).toBe('system');
+    // Assert: Verify KV state
+    const prefs = await env.TASKS_KV.get(`prefs:${newSessionId}`, 'json');
+    expect(prefs).toBeDefined();
+    expect(prefs.theme).toBe('system');
 
-        const sessionInfo = await env.TASKS_KV.get(`session-info:${newSessionId}`, 'json');
-        expect(sessionInfo).toBeDefined();
-        expect(sessionInfo.authKey).toBe(uniqueKey);
-    });
+    const sessionInfo = await env.TASKS_KV.get(
+      `session-info:${newSessionId}`,
+      'json'
+    );
+    expect(sessionInfo).toBeDefined();
+    expect(sessionInfo.authKey).toBe(uniqueKey);
+  });
 });
 ```
 
@@ -379,6 +420,7 @@ describe('Session Handshake', () => {
 **Issue:** Mock KV uses in-memory `Map`, which doesn't perfectly replicate Workers KV behavior.
 
 **Differences:**
+
 - ❌ No eventual consistency simulation
 - ❌ No TTL/expiration support
 - ❌ No metadata support
@@ -427,6 +469,7 @@ describe('Session Handshake', () => {
 Based on [TEST_QUALITY_ANALYSIS.md](./archive/2025-11-06-test-analysis.md), here's the roadmap:
 
 ### Phase 1: Critical Gaps (✅ COMPLETED - Nov 6, 2025)
+
 - ✅ Add legacy preference migration tests (6 tests)
 - ✅ Add mystery session prevention tests (6 tests)
 - ✅ Add GET /preferences legacy fallback tests (8 tests)
@@ -434,6 +477,7 @@ Based on [TEST_QUALITY_ANALYSIS.md](./archive/2025-11-06-test-analysis.md), here
 **Result:** +20 tests, bug fix coverage at 100%
 
 ### Phase 2: High Priority (2-3 weeks)
+
 - ⏳ Expand preferences tests (merge conflicts, concurrent updates)
 - ⏳ Add throttling distributed scenario tests
 - ⏳ Add session expiration/cleanup tests
@@ -443,6 +487,7 @@ Based on [TEST_QUALITY_ANALYSIS.md](./archive/2025-11-06-test-analysis.md), here
 **Estimated:** +15-20 tests
 
 ### Phase 3: Nice to Have (1-2 months)
+
 - ⏳ Migrate to Miniflare for realistic KV
 - ⏳ Add performance benchmarks
 - ⏳ Add end-to-end frontend tests with Playwright
@@ -482,6 +527,7 @@ request-utils.ts      |   88.9  |   83.7   |   90.3  |   89.5
 ### Tests Failing Locally
 
 **Common Causes:**
+
 1. **Stale dependencies:** Run `npm install`
 2. **Modified test environment:** Check `createTestEnv()` configuration
 3. **Port conflicts:** Make sure no other processes are using test ports
@@ -489,6 +535,7 @@ request-utils.ts      |   88.9  |   83.7   |   90.3  |   89.5
 ### Tests Passing Locally but Failing in CI
 
 **Common Causes:**
+
 1. **Timing issues:** Add `await` for async operations
 2. **Unique ID collisions:** Use `Date.now() + Math.random()` for unique keys
 3. **Environment variables:** Check CI environment setup
@@ -500,8 +547,9 @@ request-utils.ts      |   88.9  |   83.7   |   90.3  |   89.5
 **Cause:** Mock KV `Map` is scoped to function call, not test.
 
 **Solution:** Use the shared `env` object created by `createTestEnv()`:
+
 ```typescript
-const env = createTestEnv();  // Once at test start
+const env = createTestEnv(); // Once at test start
 // Use env.TASKS_KV throughout test
 ```
 
@@ -510,11 +558,13 @@ const env = createTestEnv();  // Once at test start
 **Symptoms:** Tests sometimes pass, sometimes fail.
 
 **Common Causes:**
+
 1. Shared state between tests
 2. Timing/race conditions
 3. Non-unique test data
 
 **Solutions:**
+
 1. Use unique keys: `test-${Date.now()}-${Math.random()}`
 2. Add `await` to all async operations
 3. Clean up state in `afterEach` hooks
@@ -534,4 +584,5 @@ const env = createTestEnv();  // Once at test start
 **Last Updated:** November 6, 2025
 **Maintained By:** Engineering Team
 **Change Log:**
+
 - 2025-11-06: Initial creation with current coverage analysis and improvement plan

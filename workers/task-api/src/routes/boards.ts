@@ -39,7 +39,7 @@ export function createBoardRoutes() {
 		return c.json({
 			...boardsData,
 			// Always reflect current authentication
-			userType: auth.userType
+			userType: auth.userType,
 		});
 	});
 
@@ -63,7 +63,7 @@ export function createBoardRoutes() {
 
 		logRequest('POST', '/task/api/boards', {
 			userType: c.get('authContext').userType,
-			boardId: body.id
+			boardId: body.id,
 		});
 
 		// Lock the boards list to prevent concurrent modifications
@@ -85,16 +85,19 @@ export function createBoardRoutes() {
 	 * Deletes a board and all associated tasks and stats
 	 */
 	app.delete('/boards/:boardId', async (c: Context) => {
-		const boardId = c.req.param('boardId');
-		const validationError = validateBoardId(boardId);
+		const boardIdParam = c.req.param('boardId');
+		const validationError = validateBoardId(boardIdParam);
 		if (validationError) {
 			logError('DELETE', '/task/api/boards/:boardId', validationError);
 			return badRequest(c, validationError);
 		}
 
+		// After validation, we know boardId is valid
+		const boardId = boardIdParam as string;
+
 		logRequest('DELETE', `/task/api/boards/${boardId}`, {
 			userType: c.get('authContext').userType,
-			boardId
+			boardId,
 		});
 
 		// Lock the boards list to prevent concurrent modifications
@@ -102,7 +105,7 @@ export function createBoardRoutes() {
 		const lockKey = boardsKey(auth.sessionId);
 
 		const result = await withBoardLock(lockKey, async () => {
-			return TaskHandlers.deleteBoard(storage, auth, boardId!);
+			return TaskHandlers.deleteBoard(storage, auth, boardId);
 		});
 
 		return c.json(result);

@@ -9,7 +9,7 @@ import { badRequest, logRequest, logError } from '../../../util';
 import {
 	getPreferencesBySessionId,
 	savePreferencesBySessionId,
-	type UserPreferences
+	type UserPreferences,
 } from '../session';
 import { getSessionIdFromRequest, maskSessionId, maskKey } from '../request-utils';
 import { DEFAULT_SESSION_ID, DEFAULT_THEME } from '../constants';
@@ -36,7 +36,7 @@ export function createPreferencesRoutes() {
 
 		logRequest('GET', '/task/api/preferences', {
 			userType: auth.userType,
-			sessionId: maskSessionId(sessionId)
+			sessionId: maskSessionId(sessionId),
 		});
 
 		try {
@@ -52,12 +52,12 @@ export function createPreferencesRoutes() {
 			const authKey = auth.key || auth.sessionId;
 			if (authKey && authKey !== sessionId && authKey !== DEFAULT_SESSION_ID) {
 				const legacyKey = `prefs:${authKey}`;
-				const legacyPrefs = await c.env.TASKS_KV.get(legacyKey, 'json') as UserPreferences | null;
+				const legacyPrefs = (await c.env.TASKS_KV.get(legacyKey, 'json')) as UserPreferences | null;
 
 				if (legacyPrefs) {
 					logRequest('GET', '/task/api/preferences', {
 						note: 'Found legacy prefs, migrating',
-						authKey: maskKey(authKey)
+						authKey: maskKey(authKey),
 					});
 
 					// Migrate to sessionId-based storage and delete legacy key
@@ -74,19 +74,23 @@ export function createPreferencesRoutes() {
 				buttons: {},
 				experimentalFlags: {},
 				layout: {},
-				lastUpdated: new Date().toISOString()
+				lastUpdated: new Date().toISOString(),
 			};
 
 			return c.json(defaultPrefs);
-		} catch (error: any) {
-			logError('GET', '/task/api/preferences', error);
+		} catch (error: unknown) {
+			logError(
+				'GET',
+				'/task/api/preferences',
+				error instanceof Error ? error : new Error(String(error))
+			);
 
 			// Return defaults on error
 			return c.json({
 				theme: DEFAULT_THEME,
 				buttons: {},
 				experimentalFlags: {},
-				layout: {}
+				layout: {},
 			});
 		}
 	});
@@ -110,17 +114,17 @@ export function createPreferencesRoutes() {
 			logRequest('PUT', '/task/api/preferences', {
 				userType: auth.userType,
 				sessionId: maskSessionId(sessionId),
-				fields: Object.keys(body)
+				fields: Object.keys(body),
 			});
 
 			// Get existing preferences
-			const existing = await getPreferencesBySessionId(c.env.TASKS_KV, sessionId) || {};
+			const existing = (await getPreferencesBySessionId(c.env.TASKS_KV, sessionId)) || {};
 
 			// Merge with new preferences
 			const updated: UserPreferences = {
 				...existing,
 				...body,
-				lastUpdated: new Date().toISOString()
+				lastUpdated: new Date().toISOString(),
 			};
 
 			// Save merged preferences for current session ONLY
@@ -128,11 +132,15 @@ export function createPreferencesRoutes() {
 			await savePreferencesBySessionId(c.env.TASKS_KV, sessionId, updated);
 
 			return c.json({ ok: true, message: 'Preferences saved', preferences: updated });
-		} catch (error: any) {
-			logError('PUT', '/task/api/preferences', error);
-			return badRequest(c, `Failed to save preferences: ${  error.message}`);
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logError(
+				'PUT',
+				'/task/api/preferences',
+				error instanceof Error ? error : new Error(errorMessage)
+			);
+			return badRequest(c, `Failed to save preferences: ${errorMessage}`);
 		}
 	});
-
 	return app;
 }

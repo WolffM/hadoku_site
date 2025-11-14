@@ -1,13 +1,13 @@
 /**
  * Tag Lifecycle Tests
- * 
+ *
  * Tests tag creation, assignment, and deletion with task cleanup.
  */
 import { describe, it, expect } from 'vitest';
 import app from '../../src/index';
-import { 
-	createTestEnv, 
-	createAuthHeaders, 
+import {
+	createTestEnv,
+	createAuthHeaders,
 	createBoard,
 	createTask,
 	updateTask,
@@ -15,7 +15,7 @@ import {
 	completeTask,
 	deleteTask,
 	getBoards,
-	uniqueId 
+	uniqueId,
 } from '../__helpers__/test-utils';
 
 describe('Tag Lifecycle Tests', () => {
@@ -41,10 +41,18 @@ describe('Tag Lifecycle Tests', () => {
 		// Verify tag was assigned
 		let boardsRes = await getBoards(app, env, adminHeaders);
 
-		let boardsData: { boards: any[] } = await boardsRes.json();
-		let board = boardsData.boards.find((b: any) => b.id === boardId);
-		let task = board.tasks.find((t: any) => t.id === taskId);
-		expect(task.tag).toContain(newTag);
+		interface BoardData {
+			boards: Array<{
+				id: string;
+				tasks: Array<{ id: string; tag?: string | null }>;
+				tags: string[];
+			}>;
+		}
+
+		let boardsData: BoardData = await boardsRes.json();
+		let board = boardsData.boards.find((b) => b.id === boardId);
+		let task = board?.tasks.find((t) => t.id === taskId);
+		expect(task?.tag).toContain(newTag);
 
 		// 3. Delete tag from board (NOTE: deleteTag only removes from board's tag list, not from tasks)
 		const deleteTagRes = await deleteTag(app, env, adminHeaders, boardId, newTag);
@@ -53,12 +61,11 @@ describe('Tag Lifecycle Tests', () => {
 		// 4. Verify that tag has been removed from board's tag list but still exists on task
 		boardsRes = await getBoards(app, env, adminHeaders);
 		boardsData = await boardsRes.json();
-		board = boardsData.boards.find((b: any) => b.id === boardId);
-		task = board.tasks.find((t: any) => t.id === taskId);
-		
+		board = boardsData.boards.find((b) => b.id === boardId);
+		task = board?.tasks.find((t) => t.id === taskId);
+
 		// Tag should STILL be on the task (deleteTag doesn't remove from tasks)
-		expect(task.tag || '').toContain(newTag);
-		
+		expect(task?.tag || '').toContain(newTag);
 		// Tag should not exist in board's tags list
 		if (board.tags) {
 			expect(board.tags).not.toContain(newTag);

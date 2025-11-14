@@ -27,6 +27,7 @@ The system has **old preference entries stored by authKey** (legacy format: `pre
 ### KV Store Analysis (Exported 2025-11-06)
 
 #### Summary Statistics:
+
 - **Total keys in KV:** 101
 - **Preference entries:** 18
 - **Session-info entries:** 10
@@ -37,6 +38,7 @@ The system has **old preference entries stored by authKey** (legacy format: `pre
 
 **1. AuthKey-based Orphaned Preferences (Legacy Format)**
 These preference entries exist but are NOT linked to any active sessionId:
+
 - `prefs:4355` - userId-based (old format)
 - `prefs:655b37cf-e0d4-4bf5-88cb-e2d1c2bd9c6b` - authKey-based (old format)
 - `prefs:N7RZK2YW9X1TQ8HP` - authKey-based (old format)
@@ -49,12 +51,14 @@ These preference entries exist but are NOT linked to any active sessionId:
 **2. Session Mapping Issues**
 
 **AuthKey: `4355`**
+
 - Mapped sessions: 1
 - Last sessionId: `d84ca2a7af9d45a3...`
 - Sessions with prefs: **0/1** ❌
 - **Issue:** Latest session has NO prefs, but authKey HAS old-style prefs entry `prefs:4355`
 
 **AuthKey: `655b37cf-e0d4-4bf5-88cb-e2d1c2bd9c6b`**
+
 - Mapped sessions: 11
 - Last sessionId: `bf9018dedba04a29...`
 - Sessions with prefs: **4/11**
@@ -62,6 +66,7 @@ These preference entries exist but are NOT linked to any active sessionId:
 - **Issue:** Only 4 out of 11 sessions have preferences. The authKey also has an old-style entry `prefs:655b37cf-...`
 
 **AuthKey: `a21743d9-b0f1-4c75-8e01-ba2dc37feacd` (Admin)**
+
 - Mapped sessions: 13
 - Last sessionId: `41173e5283c84ec6...`
 - Sessions with prefs: **3/13** ❌
@@ -69,6 +74,7 @@ These preference entries exist but are NOT linked to any active sessionId:
 - **Issue:** Latest session missing prefs! But authKey HAS old-style prefs entry
 
 **AuthKey: `N7RZK2YW9X1TQ8HP`**
+
 - Mapped sessions: 4
 - Last sessionId: `b0e26c73df7c909c...`
 - Sessions with prefs: 3/4
@@ -127,22 +133,25 @@ export function getSessionIdFromRequest(c, auth) {
 ### 3. Client-Side Session Management ([public/mf/task/index.js](public/mf/task/index.js))
 
 **Session Generation:**
+
 ```javascript
 const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 ```
 
 **Storage:**
+
 ```javascript
 function storeSessionId(sessionId) {
-  localStorage.setItem("currentSessionId", sessionId);
+  localStorage.setItem('currentSessionId', sessionId);
 }
 
 function getStoredSessionId() {
-  return localStorage.getItem("currentSessionId");
+  return localStorage.getItem('currentSessionId');
 }
 ```
 
 **Handshake Call:**
+
 ```javascript
 async function performHandshake(newSessionId, userType) {
   const oldSessionId = getStoredSessionId();
@@ -176,6 +185,7 @@ async function performHandshake(newSessionId, userType) {
 ```
 
 **Preference Loading:**
+
 ```javascript
 async getPreferences() {
   if (userType !== "public") {
@@ -202,6 +212,7 @@ async getPreferences() {
 ### 4. Preference API Endpoints ([index.ts:722-801](workers/task-api/src/index.ts#L722-L801))
 
 **GET /task/api/preferences**
+
 ```typescript
 app.get('/task/api/preferences', async (c) => {
   const { auth } = getContext(c);
@@ -222,14 +233,20 @@ app.get('/task/api/preferences', async (c) => {
 ```
 
 **PUT /task/api/preferences**
+
 ```typescript
 app.put('/task/api/preferences', async (c) => {
   const { auth } = getContext(c);
   const sessionId = getSessionIdFromRequest(c, auth);
   const body = await c.req.json();
 
-  const existing = await getPreferencesBySessionId(c.env.TASKS_KV, sessionId) || {};
-  const updated = { ...existing, ...body, lastUpdated: new Date().toISOString() };
+  const existing =
+    (await getPreferencesBySessionId(c.env.TASKS_KV, sessionId)) || {};
+  const updated = {
+    ...existing,
+    ...body,
+    lastUpdated: new Date().toISOString(),
+  };
 
   await savePreferencesBySessionId(c.env.TASKS_KV, sessionId, updated);
   // Saves to: prefs:{sessionId}
@@ -259,6 +276,7 @@ if (!preferences) {
 ```
 
 **What Should Happen:**
+
 1. Check `prefs:{oldSessionId}` (if provided)
 2. Check `prefs:{mapping.lastSessionId}` (if mapping exists)
 3. **Check `prefs:{authKey}` for legacy preferences** ⬅️ MISSING!
@@ -273,12 +291,14 @@ return c.req.header('X-Session-Id') || auth.sessionId || 'public';
 ```
 
 If both `X-Session-Id` header and `auth.sessionId` are missing, this defaults to `'public'`, potentially causing:
+
 - Multiple unauthenticated requests to share preferences
 - Authenticated users without proper session headers to get public preferences
 
 ### TERTIARY ISSUE: No Automatic Cleanup of Old Sessions
 
 From [session.ts:11](workers/task-api/src/session.ts#L11):
+
 > "Never delete old sessionId preferences"
 
 While this is intentional for multi-device support, it creates **orphaned preference entries** that accumulate over time but are never migrated to new sessions.
@@ -290,12 +310,14 @@ While this is intentional for multi-device support, it creates **orphaned prefer
 ### Case Study: AuthKey `4355`
 
 **Current State:**
+
 - Session mapping: `session-map:4355` → `[d84ca2a7af9d45a3...]`
 - Session info: `session-info:d84ca2a7af9d45a3...` exists
 - Preferences: `prefs:4355` exists (old format) ✅
 - Preferences: `prefs:d84ca2a7af9d45a3...` does NOT exist ❌
 
 **What Happens:**
+
 1. User visits site with authKey `4355`
 2. Client generates new sessionId (e.g., `d84ca2a7af9d45a3...`)
 3. Handshake called with `oldSessionId: null`, `newSessionId: d84ca2a7af9d45a3...`
@@ -309,6 +331,7 @@ While this is intentional for multi-device support, it creates **orphaned prefer
 ### Case Study: AuthKey `a21743d9-b0f1-4c75-8e01-ba2dc37feacd` (Admin)
 
 **Current State:**
+
 - 13 sessions mapped
 - Last sessionId: `41173e5283c84ec6...`
 - Only 3 out of 13 sessions have preferences
@@ -352,6 +375,7 @@ it('should save and retrieve preferences', async () => {
 ```
 
 **Missing Test Cases:**
+
 1. User has authKey-based preferences, creates new session → should migrate
 2. User has old sessionId preferences, creates new session → should migrate
 3. User has multiple devices with different sessionIds → should use latest
@@ -380,7 +404,7 @@ if (!preferences) {
   // 🆕 NEW: Check for legacy authKey-based preferences
   if (!preferences) {
     const legacyKey = preferencesKey(authKey);
-    preferences = await kv.get(legacyKey, 'json') as UserPreferences | null;
+    preferences = (await kv.get(legacyKey, 'json')) as UserPreferences | null;
     if (preferences) {
       migratedFrom = authKey;
       isNewSession = false;
@@ -416,7 +440,7 @@ export function getSessionIdFromRequest(c, auth) {
     if (auth.userType !== 'public') {
       console.warn('[Session] Authenticated user missing sessionId', {
         userType: auth.userType,
-        authKey: maskKey(auth.key || 'unknown')
+        authKey: maskKey(auth.key || 'unknown'),
       });
     }
     return 'public';
@@ -429,6 +453,7 @@ export function getSessionIdFromRequest(c, auth) {
 ### 4. **Add Comprehensive Tests**
 
 Add test cases for:
+
 - Legacy authKey-based preference migration
 - Multi-device session handling
 - Session recovery scenarios
@@ -437,6 +462,7 @@ Add test cases for:
 ### 5. **Add Admin Monitoring**
 
 Create an endpoint to check for:
+
 - Orphaned preference entries
 - Users with sessions but no preferences
 - Sessions without recent access (for cleanup)
@@ -472,6 +498,7 @@ Based on KV analysis:
 ### Why This Wasn't Caught in Testing
 
 The test suite uses `X-User-Key` and `X-User-Id` headers, which properly authenticate users. However:
+
 1. Tests don't simulate the client-side session lifecycle
 2. Tests don't use `X-Session-Id` headers
 3. Tests don't cover the migration path from old to new storage format
@@ -480,6 +507,7 @@ The test suite uses `X-User-Key` and `X-User-Id` headers, which properly authent
 ### Multi-Device Consideration
 
 The current design intentionally keeps preferences per-sessionId for multi-device support. However, this creates complexity:
+
 - Each device should have its own sessionId
 - Preferences should sync across devices
 - But device-specific settings (like screen layout) shouldn't sync

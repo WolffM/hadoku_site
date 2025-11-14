@@ -8,7 +8,12 @@
     "dev": "wrangler dev",
     "tail": "wrangler tail"
   },
-  "keywords": ["cloudflare", "worker", "edge", "router"],
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "edge",
+    "router"
+  ],
   "author": "Hadoku",
   "license": "ISC",
   "dependencies": {

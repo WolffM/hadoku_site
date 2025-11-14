@@ -30,7 +30,7 @@ export function createTaskRoutes() {
 
 		logRequest('GET', '/task/api/tasks', {
 			userType: c.get('authContext').userType,
-			boardId
+			boardId,
 		});
 
 		return handleOperation(c, (storage, auth) =>
@@ -61,7 +61,7 @@ export function createTaskRoutes() {
 		logRequest('POST', '/task/api', {
 			userType: c.get('authContext').userType,
 			boardId,
-			taskId: input.id
+			taskId: input.id,
 		});
 
 		return handleBoardOperation(c, boardId, (storage, auth) =>
@@ -76,19 +76,22 @@ export function createTaskRoutes() {
 	 *
 	 * Updates an existing task
 	 */
-	app.patch('/:id', createTaskOperationHandler(
-		'PATCH',
-		'/task/api/:id',
-		(storage, auth, id, boardId, body) => {
-			const { boardId: _, ...input } = body;
-			return TaskHandlers.updateTask(storage, auth, id, input, boardId);
-		},
-		handleBoardOperation,
-		logRequest,
-		logError,
-		badRequest,
-		getContext
-	));
+	app.patch(
+		'/:id',
+		createTaskOperationHandler(
+			'PATCH',
+			'/task/api/:id',
+			(storage, auth, id, boardId, body) => {
+				const { boardId: _, ...input } = body;
+				return TaskHandlers.updateTask(storage, auth, id, input, boardId);
+			},
+			handleBoardOperation,
+			logRequest,
+			logError,
+			badRequest,
+			getContext
+		)
+	);
 
 	/**
 	 * Complete Task
@@ -97,16 +100,19 @@ export function createTaskRoutes() {
 	 *
 	 * Marks a task as completed
 	 */
-	app.post('/:id/complete', createTaskOperationHandler(
-		'POST',
-		'/task/api/:id/complete',
-		(storage, auth, id, boardId) => TaskHandlers.completeTask(storage, auth, id, boardId),
-		handleBoardOperation,
-		logRequest,
-		logError,
-		badRequest,
-		getContext
-	));
+	app.post(
+		'/:id/complete',
+		createTaskOperationHandler(
+			'POST',
+			'/task/api/:id/complete',
+			(storage, auth, id, boardId) => TaskHandlers.completeTask(storage, auth, id, boardId),
+			handleBoardOperation,
+			logRequest,
+			logError,
+			badRequest,
+			getContext
+		)
+	);
 
 	/**
 	 * Delete Task
@@ -115,16 +121,19 @@ export function createTaskRoutes() {
 	 *
 	 * Deletes a task
 	 */
-	app.delete('/:id', createTaskOperationHandler(
-		'DELETE',
-		'/task/api/:id',
-		(storage, auth, id, boardId) => TaskHandlers.deleteTask(storage, auth, id, boardId),
-		handleBoardOperation,
-		logRequest,
-		logError,
-		badRequest,
-		getContext
-	));
+	app.delete(
+		'/:id',
+		createTaskOperationHandler(
+			'DELETE',
+			'/task/api/:id',
+			(storage, auth, id, boardId) => TaskHandlers.deleteTask(storage, auth, id, boardId),
+			handleBoardOperation,
+			logRequest,
+			logError,
+			badRequest,
+			getContext
+		)
+	);
 
 	/**
 	 * Get Board Stats
@@ -138,7 +147,7 @@ export function createTaskRoutes() {
 
 		logRequest('GET', '/task/api/stats', {
 			userType: c.get('authContext').userType,
-			boardId
+			boardId,
 		});
 
 		return handleOperation(c, (storage, auth) =>

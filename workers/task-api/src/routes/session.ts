@@ -6,10 +6,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { badRequest, logRequest, logError } from '../../../util';
-import {
-	handleSessionHandshake,
-	type HandshakeRequest
-} from '../session';
+import { handleSessionHandshake, type HandshakeRequest } from '../session';
 import { maskKey, maskSessionId } from '../request-utils';
 
 type Env = {
@@ -33,7 +30,7 @@ export function createSessionRoutes() {
 	app.post('/session/handshake', async (c: Context) => {
 		try {
 			const auth = c.get('authContext');
-			const body = await c.req.json() as HandshakeRequest;
+			const body = (await c.req.json()) as HandshakeRequest;
 
 			// Validate request
 			if (!body.newSessionId) {
@@ -47,7 +44,7 @@ export function createSessionRoutes() {
 				userType: auth.userType,
 				authKey: maskKey(authKey),
 				oldSessionId: body.oldSessionId ? maskSessionId(body.oldSessionId) : null,
-				newSessionId: maskSessionId(body.newSessionId)
+				newSessionId: maskSessionId(body.newSessionId),
 			});
 
 			// Handle handshake
@@ -59,11 +56,15 @@ export function createSessionRoutes() {
 			);
 
 			return c.json(response);
-		} catch (error: any) {
-			logError('POST', '/task/api/session/handshake', error);
-			return badRequest(c, `Handshake failed: ${  error.message}`);
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logError(
+				'POST',
+				'/task/api/session/handshake',
+				error instanceof Error ? error : new Error(errorMessage)
+			);
+			return badRequest(c, `Handshake failed: ${errorMessage}`);
 		}
 	});
-
 	return app;
 }

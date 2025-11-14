@@ -10,92 +10,94 @@ const __dirname = dirname(__filename);
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const taskVersion = packageJson.dependencies['@wolffm/task']?.replace('^', '') || 'latest';
-const watchpartyVersion = packageJson.dependencies['@wolffm/watchparty-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
+const watchpartyVersion =
+	packageJson.dependencies['@wolffm/watchparty-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
 const timestamp = Date.now(); // Fallback for apps without versions
 
 // Load .env file if it exists (for local development)
 const envPath = join(__dirname, '..', '.env');
 if (existsSync(envPath)) {
-  const envContent = readFileSync(envPath, 'utf-8');
-  envContent.split('\n').forEach(line => {
-    const match = line.match(/^([^#=]+)=(.*)$/);
-    if (match) {
-      const key = match[1].trim();
-      const value = match[2].trim().replace(/^["']|["']$/g, '');
-      if (!process.env[key]) {
-        process.env[key] = value;
-      }
-    }
-  });
+	const envContent = readFileSync(envPath, 'utf-8');
+	envContent.split('\n').forEach((line) => {
+		const match = line.match(/^([^#=]+)=(.*)$/);
+		if (match) {
+			const key = match[1].trim();
+			const value = match[2].trim().replace(/^["']|["']$/g, '');
+			if (!process.env[key]) {
+				process.env[key] = value;
+			}
+		}
+	});
 }
 
 // Get environment variables
 const MODE = process.env.MODE || 'development';
 
 // Watchparty config
-const watchpartyConfig = MODE === 'production' 
-  ? {
-      basename: '/watchparty',
-      serverOrigin: 'https://api.hadoku.me',
-      environment: MODE,
-      userType: 'public'  // Default, will be overridden by client-side loader
-    }
-  : {
-      basename: '/watchparty',
-      serverOrigin: 'http://localhost:8080',
-      environment: MODE,
-      userType: 'public'  // Default, will be overridden by client-side loader
-    };
+const watchpartyConfig =
+	MODE === 'production'
+		? {
+				basename: '/watchparty',
+				serverOrigin: 'https://api.hadoku.me',
+				environment: MODE,
+				userType: 'public', // Default, will be overridden by client-side loader
+			}
+		: {
+				basename: '/watchparty',
+				serverOrigin: 'http://localhost:8080',
+				environment: MODE,
+				userType: 'public', // Default, will be overridden by client-side loader
+			};
 
 // Task config - provides default props that will be enhanced at runtime
 const taskConfig = {
-  basename: '/task',
-  apiUrl: undefined,           // Task app uses internal service worker API
-  environment: MODE,
-  userType: 'public'          // Default, will be overridden by client-side loader
+	basename: '/task',
+	apiUrl: undefined, // Task app uses internal service worker API
+	environment: MODE,
+	userType: 'public', // Default, will be overridden by client-side loader
 };
 
 // Generate registry with cache-busting query parameters
 const registry = {
-  home: {
-    url: `/mf/home/index.js?v=${timestamp}`,
-    basename: '/',
-    props: {
-      basename: '/',
-      environment: MODE,
-      userType: 'public'  // Default, will be overridden by client-side loader
-    }
-  },
-  watchparty: {
-    url: `/mf/watchparty/index.js?v=${watchpartyVersion}`,
-    css: `/mf/watchparty/style.css?v=${watchpartyVersion}`,
-    basename: '/watchparty',
-    props: watchpartyConfig
-  },
-  task: {
-    url: `/mf/task/index.js?v=${taskVersion}`,
-    css: `/mf/task/style.css?v=${taskVersion}`,
-    basename: '/task',
-    props: taskConfig
-  },
-  contact: {
-    url: `/mf/contact/index.js?v=${timestamp}`,
-    basename: '/contact',
-    props: {
-      basename: '/contact',
-      environment: MODE,
-      userType: 'public'  // Default, will be overridden by client-side loader
-    }
-  },
-  herodraft: {
-    url: `/mf/herodraft/index.js?v=${timestamp}`,
-    basename: '/herodraft',
-    props: {
-      basename: '/herodraft',
-      environment: MODE,
-      userType: 'public'  // Default, will be overridden by client-side loader
-    }
-  }
+	home: {
+		url: `/mf/home/index.js?v=${timestamp}`,
+		basename: '/',
+		props: {
+			basename: '/',
+			environment: MODE,
+			userType: 'public', // Default, will be overridden by client-side loader
+		},
+	},
+	watchparty: {
+		url: `/mf/watchparty/index.js?v=${watchpartyVersion}`,
+		css: `/mf/watchparty/style.css?v=${watchpartyVersion}`,
+		basename: '/watchparty',
+		props: watchpartyConfig,
+	},
+	task: {
+		url: `/mf/task/index.js?v=${taskVersion}`,
+		css: `/mf/task/style.css?v=${taskVersion}`,
+		basename: '/task',
+		props: taskConfig,
+	},
+	contact: {
+		url: `/mf/contact/index.js?v=${timestamp}`,
+		basename: '/contact',
+		props: {
+			basename: '/contact',
+			environment: MODE,
+			userType: 'public', // Default, will be overridden by client-side loader
+		},
+	},
+	herodraft: {
+		url: `/mf/herodraft/index.js?v=${timestamp}`,
+		basename: '/herodraft',
+		props: {
+			basename: '/herodraft',
+			environment: MODE,
+			userType: 'public', // Default, will be overridden by client-side loader
+		},
+	},
 };
 
 // Write to public/mf/registry.json

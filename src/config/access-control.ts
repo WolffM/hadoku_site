@@ -9,9 +9,9 @@ export type UserType = 'public' | 'friend' | 'admin';
 
 // App visibility by user type (static mapping for UI)
 export const appVisibility: Record<UserType, string[]> = {
-  public: ['home', 'task', 'watchparty'],
-  friend: ['home', 'task', 'watchparty'],
-  admin: ['home', 'task', 'watchparty', 'contact', 'herodraft']
+	public: ['home', 'task', 'watchparty'],
+	friend: ['home', 'task', 'watchparty'],
+	admin: ['home', 'task', 'watchparty', 'contact', 'herodraft'],
 };
 
 /**
@@ -19,7 +19,7 @@ export const appVisibility: Record<UserType, string[]> = {
  * Actual access control happens server-side
  */
 export function hasAccess(userType: UserType, appName: string): boolean {
-  return appVisibility[userType].includes(appName);
+	return appVisibility[userType].includes(appName);
 }
 
 /**
@@ -27,5 +27,5 @@ export function hasAccess(userType: UserType, appName: string): boolean {
  * Actual access control happens server-side
  */
 export function getAccessibleApps(userType: UserType): string[] {
-  return appVisibility[userType];
+	return appVisibility[userType];
 }

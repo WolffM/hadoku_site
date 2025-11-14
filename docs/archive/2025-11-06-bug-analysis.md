@@ -9,6 +9,7 @@
 ## Cleanup Completed ✅
 
 Successfully deleted 8 invalid KV entries:
+
 - 2 orphaned boards entries
 - 1 orphaned prefs entry
 - 2 entries with invalid authKey "hi"
@@ -19,12 +20,15 @@ Successfully deleted 8 invalid KV entries:
 ## Bug #1: Missing Legacy Preference Fallback (PRIMARY ISSUE)
 
 ### Location
+
 [workers/task-api/src/session.ts:262-272](workers/task-api/src/session.ts#L262-L272)
 
 ### Description
+
 The handshake fallback logic does NOT check for legacy `prefs:{authKey}` entries. This causes users with existing preferences stored in the old format to get default preferences when creating new sessions.
 
 ### Current Code
+
 ```typescript
 // Fallback: Try authKey mapping
 if (!preferences) {
@@ -42,6 +46,7 @@ if (!preferences) {
 ```
 
 ### Fix Required
+
 ```typescript
 // Fallback: Try authKey mapping
 if (!preferences) {
@@ -57,7 +62,10 @@ if (!preferences) {
   // 🆕 NEW: Check for legacy authKey-based preferences
   if (!preferences) {
     const legacyKey = preferencesKey(authKey);
-    const legacyPrefs = await kv.get(legacyKey, 'json') as UserPreferences | null;
+    const legacyPrefs = (await kv.get(
+      legacyKey,
+      'json'
+    )) as UserPreferences | null;
     if (legacyPrefs) {
       preferences = legacyPrefs;
       migratedFrom = authKey;
@@ -72,6 +80,7 @@ if (!preferences) {
 ```
 
 ### Impact
+
 - **Users Affected:** N7RZK2YW9X1TQ8HP, 4355, a21743d9-..., others
 - **Severity:** HIGH - Users losing saved preferences
 - **Frequency:** Occurs every time a new session is created after localStorage is cleared
@@ -81,14 +90,17 @@ if (!preferences) {
 ## Bug #2: Mystery Sessions - Missing Session Info
 
 ### Location
+
 Multiple sessions found in session-map but missing session-info entries
 
 ### Description
+
 Some sessions appear in the `session-map` but have no corresponding `session-info` or `prefs` entries. This creates "mystery sessions" that leave no trace of when/why they were created.
 
 **Example:** Session `fe8c8eec3309bde198ab394d120f7a27` for user N7RZK2YW9X1TQ8HP
 
 ### Current Flow
+
 1. Handshake called with `newSessionId`
 2. `saveSessionInfo()` saves session-info
 3. `updateSessionMapping()` adds sessionId to mapping
@@ -97,6 +109,7 @@ Some sessions appear in the `session-map` but have no corresponding `session-inf
 ### Fix Required
 
 **Option A: Add Transaction-like Behavior**
+
 ```typescript
 export async function handleSessionHandshake(
   kv: KVNamespace,
@@ -117,7 +130,7 @@ export async function handleSessionHandshake(
       authKey,
       userType,
       createdAt: now,
-      lastAccessedAt: now
+      lastAccessedAt: now,
     };
     await saveSessionInfo(kv, sessionInfo);
 
@@ -130,7 +143,6 @@ export async function handleSessionHandshake(
       await kv.delete(sessionInfoKey(sessionIdToDelete));
       await removeSessionFromMapping(kv, authKey, sessionIdToDelete);
     }
-
   } catch (error) {
     console.error('[Handshake] Failed to save session data:', error);
     throw error;
@@ -140,12 +152,13 @@ export async function handleSessionHandshake(
     sessionId: newSessionId,
     preferences,
     isNewSession,
-    migratedFrom
+    migratedFrom,
   };
 }
 ```
 
 **Option B: Add Session Info Validation**
+
 ```typescript
 // In updateSessionMapping(), verify session-info exists first
 export async function updateSessionMapping(
@@ -156,7 +169,9 @@ export async function updateSessionMapping(
   // Verify session-info exists before adding to mapping
   const sessionInfo = await getSessionInfo(kv, sessionId);
   if (!sessionInfo) {
-    console.warn(`[SessionMapping] Cannot add session ${sessionId} - no session-info exists`);
+    console.warn(
+      `[SessionMapping] Cannot add session ${sessionId} - no session-info exists`
+    );
     return;
   }
 
@@ -168,6 +183,7 @@ export async function updateSessionMapping(
 ```
 
 ### Impact
+
 - **Severity:** MEDIUM - Creates orphaned session references
 - **Side Effect:** Users may experience preference loss during these mystery session windows
 
@@ -176,12 +192,15 @@ export async function updateSessionMapping(
 ## Bug #3: GET /preferences Doesn't Check Legacy Format
 
 ### Location
+
 [workers/task-api/src/index.ts:722-759](workers/task-api/src/index.ts#L722-L759)
 
 ### Description
+
 The GET `/task/api/preferences` endpoint only checks `prefs:{sessionId}` and returns defaults if not found. It should also fallback to `prefs:{authKey}` for legacy data.
 
 ### Current Code
+
 ```typescript
 app.get('/task/api/preferences', async (c) => {
   const { auth } = getContext(c);
@@ -203,6 +222,7 @@ app.get('/task/api/preferences', async (c) => {
 ```
 
 ### Fix Required
+
 ```typescript
 app.get('/task/api/preferences', async (c) => {
   const { auth } = getContext(c);
@@ -220,7 +240,10 @@ app.get('/task/api/preferences', async (c) => {
     const authKey = auth.key || sessionId;
     if (authKey && authKey !== sessionId && authKey !== 'public') {
       const legacyKey = `prefs:${authKey}`;
-      prefs = await c.env.TASKS_KV.get(legacyKey, 'json') as UserPreferences | null;
+      prefs = (await c.env.TASKS_KV.get(
+        legacyKey,
+        'json'
+      )) as UserPreferences | null;
 
       if (prefs) {
         console.log(`[Preferences] Found legacy prefs for authKey: ${authKey}`);
@@ -240,6 +263,7 @@ app.get('/task/api/preferences', async (c) => {
 ```
 
 ### Impact
+
 - **Severity:** MEDIUM - Provides additional safety net for preference retrieval
 - **Benefit:** Even if handshake fails, users can still retrieve their legacy prefs
 
@@ -248,12 +272,15 @@ app.get('/task/api/preferences', async (c) => {
 ## Bug #4: Session ID Fallback to 'public' for Authenticated Users
 
 ### Location
+
 [workers/task-api/src/request-utils.ts:72](workers/task-api/src/request-utils.ts#L72)
 
 ### Description
+
 If `X-Session-Id` header is missing and `auth.sessionId` is undefined, the function defaults to `'public'`. This could cause authenticated users to share preferences with public users.
 
 ### Current Code
+
 ```typescript
 export function getSessionIdFromRequest(
   c: Context,
@@ -264,6 +291,7 @@ export function getSessionIdFromRequest(
 ```
 
 ### Fix Required
+
 ```typescript
 export function getSessionIdFromRequest(
   c: Context,
@@ -277,13 +305,15 @@ export function getSessionIdFromRequest(
       console.warn('[Session] Authenticated user missing sessionId', {
         userType: auth.userType,
         authKey: auth.key ? maskKey(auth.key) : 'unknown',
-        headers: c.req.header('X-Session-Id') ? 'present' : 'missing'
+        headers: c.req.header('X-Session-Id') ? 'present' : 'missing',
       });
     }
 
     // For authenticated users, use authKey as session fallback
     if (auth.key && auth.userType !== 'public') {
-      console.log(`[Session] Using authKey as sessionId fallback for ${auth.userType}`);
+      console.log(
+        `[Session] Using authKey as sessionId fallback for ${auth.userType}`
+      );
       return auth.key;
     }
 
@@ -295,6 +325,7 @@ export function getSessionIdFromRequest(
 ```
 
 ### Impact
+
 - **Severity:** LOW-MEDIUM - Edge case but could cause data leakage
 - **Frequency:** Rare - Only when client forgets to send X-Session-Id
 
@@ -303,20 +334,23 @@ export function getSessionIdFromRequest(
 ## Bug #5: No Cleanup of Orphaned Session Mappings
 
 ### Location
+
 [workers/task-api/src/session.ts](workers/task-api/src/session.ts) - No cleanup functionality exists
 
 ### Description
+
 Session mappings can contain references to sessions that no longer have `session-info` or `prefs` entries. This creates orphaned references that bloat the mappings.
 
 ### Example from Production
+
 ```json
 {
   "authKey": "N7RZK2YW9X1TQ8HP",
   "sessionIds": [
-    "4cb5458d...",  // ✅ Has prefs
-    "fe8c8eec...",  // ❌ Mystery session - no prefs, no session-info
-    "889d24de...",  // ✅ Has prefs
-    "b0e26c73..."   // ✅ Has prefs
+    "4cb5458d...", // ✅ Has prefs
+    "fe8c8eec...", // ❌ Mystery session - no prefs, no session-info
+    "889d24de...", // ✅ Has prefs
+    "b0e26c73..." // ✅ Has prefs
   ]
 }
 ```
@@ -324,6 +358,7 @@ Session mappings can contain references to sessions that no longer have `session
 ### Fix Required
 
 **Add cleanup function:**
+
 ```typescript
 /**
  * Clean up orphaned session references from mapping
@@ -355,7 +390,10 @@ export async function cleanupSessionMapping(
     mapping.sessionIds = validSessionIds;
 
     // Update lastSessionId if it was removed
-    if (!validSessionIds.includes(mapping.lastSessionId) && validSessionIds.length > 0) {
+    if (
+      !validSessionIds.includes(mapping.lastSessionId) &&
+      validSessionIds.length > 0
+    ) {
       mapping.lastSessionId = validSessionIds[validSessionIds.length - 1];
     } else if (validSessionIds.length === 0) {
       mapping.lastSessionId = '';
@@ -370,6 +408,7 @@ export async function cleanupSessionMapping(
 ```
 
 **Call periodically:**
+
 ```typescript
 // In handleSessionHandshake, optionally clean up old sessions
 export async function handleSessionHandshake(...) {
@@ -385,6 +424,7 @@ export async function handleSessionHandshake(...) {
 ```
 
 ### Impact
+
 - **Severity:** LOW - Maintenance issue, not breaking
 - **Benefit:** Keeps session mappings clean and accurate
 
@@ -424,25 +464,33 @@ export async function handleSessionHandshake(...) {
 ### New Test Cases Required
 
 **Test: Legacy Preference Migration**
+
 ```typescript
 it('should migrate legacy authKey-based preferences', async () => {
   const authKey = 'test-friend-key';
   const adminHeaders = createAuthHeaders(env, authKey);
 
   // 1. Create legacy prefs entry (prefs:authKey)
-  await env.TASKS_KV.put(`prefs:${authKey}`, JSON.stringify({
-    theme: 'strawberry-dark',
-    experimentalThemes: true,
-    version: 1
-  }));
+  await env.TASKS_KV.put(
+    `prefs:${authKey}`,
+    JSON.stringify({
+      theme: 'strawberry-dark',
+      experimentalThemes: true,
+      version: 1,
+    })
+  );
 
   // 2. Call handshake without oldSessionId
   const newSessionId = 'new-session-123';
-  const handshakeRes = await app.request('/task/api/session/handshake', {
-    method: 'POST',
-    headers: { ...adminHeaders, 'X-Session-Id': newSessionId },
-    body: JSON.stringify({ newSessionId, oldSessionId: null })
-  }, env);
+  const handshakeRes = await app.request(
+    '/task/api/session/handshake',
+    {
+      method: 'POST',
+      headers: { ...adminHeaders, 'X-Session-Id': newSessionId },
+      body: JSON.stringify({ newSessionId, oldSessionId: null }),
+    },
+    env
+  );
 
   expect(handshakeRes.status).toBe(200);
   const handshakeData = await handshakeRes.json();
@@ -460,6 +508,7 @@ it('should migrate legacy authKey-based preferences', async () => {
 ```
 
 **Test: Mystery Session Prevention**
+
 ```typescript
 it('should not add session to mapping if session-info missing', async () => {
   // This test verifies Bug #2 fix
@@ -476,25 +525,33 @@ it('should not add session to mapping if session-info missing', async () => {
 ```
 
 **Test: GET /preferences Legacy Fallback**
+
 ```typescript
 it('should return legacy prefs when session prefs do not exist', async () => {
   const authKey = 'test-legacy-user';
   const sessionId = 'new-session-789';
   const headers = {
     ...createAuthHeaders(env, authKey),
-    'X-Session-Id': sessionId
+    'X-Session-Id': sessionId,
   };
 
   // Create legacy prefs only
-  await env.TASKS_KV.put(`prefs:${authKey}`, JSON.stringify({
-    theme: 'nature-dark',
-    version: 1
-  }));
+  await env.TASKS_KV.put(
+    `prefs:${authKey}`,
+    JSON.stringify({
+      theme: 'nature-dark',
+      version: 1,
+    })
+  );
 
   // Request prefs with sessionId (no session prefs exist)
-  const res = await app.request('/task/api/preferences', {
-    headers
-  }, env);
+  const res = await app.request(
+    '/task/api/preferences',
+    {
+      headers,
+    },
+    env
+  );
 
   expect(res.status).toBe(200);
   const prefs = await res.json();
@@ -532,6 +589,7 @@ it('should return legacy prefs when session prefs do not exist', async () => {
 ## Rollback Plan
 
 If issues occur:
+
 1. Revert deployment immediately
 2. Restore previous session.ts
 3. Legacy prefs will remain in place (no data loss)

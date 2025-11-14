@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Context extraction utilities for Cloudflare Workers
- * 
+ *
  * Generic helpers to extract common request context (userId, sessionId, etc.)
  * from headers, query parameters, or request body.
- * 
+ *
  * @example
  * ```typescript
  * // Extract multiple fields at once
@@ -16,7 +17,7 @@
  *   defaults: { boardId: 'main', userId: 'anonymous' }
  * });
  * // Result: { userId: '123', sessionId: 'abc', boardId: 'main' }
- * 
+ *
  * // Extract single field with fallbacks
  * const userId = extractField(c, ['header:X-User-Id', 'query:userId'], 'anonymous');
  * ```
@@ -27,13 +28,13 @@ import type { ContextExtractionConfig } from './types.js';
 
 /**
  * Extract a single field from multiple sources (in priority order)
- * 
+ *
  * @param c - Hono context
  * @param sources - Array of sources to check (e.g., ['header:X-User-Id', 'query:userId'])
  * @param defaultValue - Default value if not found in any source
  * @param transform - Optional transform function
  * @returns Extracted value or default
- * 
+ *
  * @example
  * ```typescript
  * const userId = extractField(c, ['header:X-User-Id', 'query:userId'], 'public');
@@ -99,11 +100,11 @@ export function extractField<T = string>(
 
 /**
  * Extract multiple fields from request based on configuration
- * 
+ *
  * @param c - Hono context
  * @param config - Extraction configuration
  * @returns Object with extracted fields
- * 
+ *
  * @example
  * ```typescript
  * const context = extractContext(c, {
@@ -143,10 +144,10 @@ export function extractContext<T extends Record<string, any>>(
 
 /**
  * Create a reusable context extractor function
- * 
+ *
  * @param config - Extraction configuration
  * @returns Function that extracts context from Hono context
- * 
+ *
  * @example
  * ```typescript
  * // Define once
@@ -158,7 +159,7 @@ export function extractContext<T extends Record<string, any>>(
  *   },
  *   defaults: { boardId: 'main', userId: 'public' }
  * });
- * 
+ *
  * // Use in multiple routes
  * app.get('/tasks', (c) => {
  *   const { userId, boardId } = getUserContext(c);
@@ -182,12 +183,12 @@ export function createContextExtractor<T extends Record<string, any>>(
 export const extractUserContext = createContextExtractor({
 	fields: {
 		userId: ['header:X-User-Id', 'query:userId'],
-		sessionId: ['header:X-Session-Id', 'query:sessionId']
+		sessionId: ['header:X-Session-Id', 'query:sessionId'],
 	},
 	defaults: {
 		userId: undefined,
-		sessionId: undefined
-	}
+		sessionId: undefined,
+	},
 });
 
 /**
@@ -197,18 +198,18 @@ export const extractPagination = createContextExtractor({
 	fields: {
 		page: ['query:page'],
 		limit: ['query:limit'],
-		offset: ['query:offset']
+		offset: ['query:offset'],
 	},
 	defaults: {
 		page: 1,
 		limit: 50,
-		offset: 0
+		offset: 0,
 	},
 	transforms: {
 		page: (val) => Math.max(1, parseInt(val, 10) || 1),
 		limit: (val) => Math.min(1000, Math.max(1, parseInt(val, 10) || 50)),
-		offset: (val) => Math.max(0, parseInt(val, 10) || 0)
-	}
+		offset: (val) => Math.max(0, parseInt(val, 10) || 0),
+	},
 });
 
 /**
@@ -217,25 +218,23 @@ export const extractPagination = createContextExtractor({
 export const extractSorting = createContextExtractor({
 	fields: {
 		sortBy: ['query:sortBy', 'query:sort'],
-		sortOrder: ['query:sortOrder', 'query:order']
+		sortOrder: ['query:sortOrder', 'query:order'],
 	},
 	defaults: {
 		sortBy: 'createdAt',
-		sortOrder: 'desc'
+		sortOrder: 'desc',
 	},
 	transforms: {
-		sortOrder: (val) => ['asc', 'desc'].includes(val?.toLowerCase()) 
-			? val.toLowerCase() 
-			: 'desc'
-	}
+		sortOrder: (val) => (['asc', 'desc'].includes(val?.toLowerCase()) ? val.toLowerCase() : 'desc'),
+	},
 });
 
 /**
  * Helper to get request metadata (IP, user-agent, etc.)
- * 
+ *
  * @param c - Hono context
  * @returns Request metadata object
- * 
+ *
  * @example
  * ```typescript
  * const metadata = getRequestMetadata(c);
@@ -262,27 +261,24 @@ export function getRequestMetadata(c: Context): {
 		region: cf?.region,
 		timezone: cf?.timezone,
 		colo: cf?.colo,
-		requestId: c.req.header('CF-Ray') || crypto.randomUUID()
+		requestId: c.req.header('CF-Ray') || crypto.randomUUID(),
 	};
 }
 
 /**
  * Helper to safely parse JSON body with fallback
- * 
+ *
  * @param c - Hono context
  * @param fallback - Fallback value if parsing fails
  * @returns Parsed JSON or fallback
- * 
+ *
  * @example
  * ```typescript
  * const body = await parseBody(c, {});
  * const { boardId = 'main' } = body;
  * ```
  */
-export async function parseBody<T = any>(
-	c: Context,
-	fallback: T = {} as T
-): Promise<T> {
+export async function parseBody<T = any>(c: Context, fallback: T = {} as T): Promise<T> {
 	try {
 		return await c.req.json<T>();
 	} catch {
@@ -292,11 +288,11 @@ export async function parseBody<T = any>(
 
 /**
  * Get common request context combining auth, user, and metadata
- * 
+ *
  * @param c - Hono context
  * @param options - Options for what to include
  * @returns Combined context object
- * 
+ *
  * @example
  * ```typescript
  * const ctx = getFullContext(c, {
@@ -320,12 +316,12 @@ export function getFullContext(
 		includeMetadata = false,
 		includePagination = false,
 		includeSorting = false,
-		authContextKey = 'authContext'
+		authContextKey = 'authContext',
 	} = options;
 
 	const context: Record<string, any> = {
 		auth: c.get(authContextKey),
-		user: extractUserContext(c)
+		user: extractUserContext(c),
 	};
 
 	if (includeMetadata) {

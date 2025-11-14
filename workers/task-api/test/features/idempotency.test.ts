@@ -1,11 +1,17 @@
 /**
  * Board and Tag Idempotency Tests
- * 
+ *
  * Tests that verify idempotent creation of boards and tags.
  */
 import { describe, it, expect } from 'vitest';
 import app from '../../src/index';
-import { createTestEnv, createAuthHeaders, createBoard, createTag, getBoards } from '../__helpers__/test-utils';
+import {
+	createTestEnv,
+	createAuthHeaders,
+	createBoard,
+	createTag,
+	getBoards,
+} from '../__helpers__/test-utils';
 
 describe('Board and Tag Idempotency Tests', () => {
 	const env = createTestEnv();
@@ -36,7 +42,7 @@ describe('Board and Tag Idempotency Tests', () => {
 		const boardsData = await boardsRes.json<{ boards: { id: string }[] }>();
 		const board = boardsData.boards.find((b) => b.id === boardId);
 		expect(board).toBeDefined();
-		expect(board!.id).toBe(boardId);
+		expect(board?.id).toBe(boardId);
 	});
 
 	it('should handle duplicate tag creation gracefully', async () => {

@@ -55,24 +55,24 @@ workers/
  */
 import { Hono, type Context } from 'hono';
 import { MyAppHandlers } from '@wolffm/myapp/api';
-import type { 
-	MyAppStorage, 
-	AuthContext as MyAppAuthContext, 
-	UserType,
-	// Import other types from your child package
+import type {
+  MyAppStorage,
+  AuthContext as MyAppAuthContext,
+  UserType,
+  // Import other types from your child package
 } from '@wolffm/myapp/api';
 import {
-	createKeyAuth,
-	createHadokuCors,
-	extractUserContext,
-	extractField,
-	requireFields,
-	ok,
-	created,
-	badRequest,
-	healthCheck,
-	logRequest,
-	logError
+  createKeyAuth,
+  createHadokuCors,
+  extractUserContext,
+  extractField,
+  requireFields,
+  ok,
+  created,
+  badRequest,
+  healthCheck,
+  logRequest,
+  logError,
 } from '../../util';
 
 // ============================================================================
@@ -80,17 +80,17 @@ import {
 // ============================================================================
 
 interface Env {
-	ADMIN_KEY: string;
-	FRIEND_KEY: string;
-	MYAPP_KV: KVNamespace;  // Or D1Database, R2Bucket, etc.
-	// Add other environment bindings here
+  ADMIN_KEY: string;
+  FRIEND_KEY: string;
+  MYAPP_KV: KVNamespace; // Or D1Database, R2Bucket, etc.
+  // Add other environment bindings here
 }
 
 type AppContext = {
-	Bindings: Env;
-	Variables: {
-		authContext: MyAppAuthContext;
-	};
+  Bindings: Env;
+  Variables: {
+    authContext: MyAppAuthContext;
+  };
 };
 
 const app = new Hono<AppContext>();
@@ -99,26 +99,32 @@ const app = new Hono<AppContext>();
 // 1. CORS Middleware
 // ============================================================================
 
-app.use('*', createHadokuCors([
-	'https://myapp-api.hadoku.me',  // Add your API subdomain
-	// Add other allowed origins
-]));
+app.use(
+  '*',
+  createHadokuCors([
+    'https://myapp-api.hadoku.me', // Add your API subdomain
+    // Add other allowed origins
+  ])
+);
 
 // ============================================================================
 // 2. Authentication Middleware
 // ============================================================================
 
-app.use('*', createKeyAuth<Env>(
-	(env) => ({
-		[env.ADMIN_KEY]: 'admin',
-		[env.FRIEND_KEY]: 'friend'
-	}),
-	{
-		sources: ['header:X-User-Key', 'query:key'],
-		defaultUserType: 'public',
-		includeHelpers: true
-	}
-));
+app.use(
+  '*',
+  createKeyAuth<Env>(
+    (env) => ({
+      [env.ADMIN_KEY]: 'admin',
+      [env.FRIEND_KEY]: 'friend',
+    }),
+    {
+      sources: ['header:X-User-Key', 'query:key'],
+      defaultUserType: 'public',
+      includeHelpers: true,
+    }
+  )
+);
 
 // ============================================================================
 // 3. Storage Adapter Implementation
@@ -129,29 +135,29 @@ app.use('*', createKeyAuth<Env>(
  * This is YOUR responsibility as the parent - adapt storage to the environment.
  */
 function createKVStorage(env: Env): MyAppStorage {
-	return {
-		// Implement storage methods required by your child package
-		async getItems(userType: UserType, userId?: string) {
-			const key = `items:${userType}:${userId || 'public'}`;
-			const data = await env.MYAPP_KV.get(key, 'json');
-			return data || { items: [] };
-		},
-		
-		async saveItems(userType: UserType, userId: string | undefined, data: any) {
-			const key = `items:${userType}:${userId || 'public'}`;
-			await env.MYAPP_KV.put(key, JSON.stringify(data));
-		},
-		
-		// Add other storage methods as required by MyAppStorage interface
-	};
+  return {
+    // Implement storage methods required by your child package
+    async getItems(userType: UserType, userId?: string) {
+      const key = `items:${userType}:${userId || 'public'}`;
+      const data = await env.MYAPP_KV.get(key, 'json');
+      return data || { items: [] };
+    },
+
+    async saveItems(userType: UserType, userId: string | undefined, data: any) {
+      const key = `items:${userType}:${userId || 'public'}`;
+      await env.MYAPP_KV.put(key, JSON.stringify(data));
+    },
+
+    // Add other storage methods as required by MyAppStorage interface
+  };
 }
 
 // ============================================================================
 // 4. Health Check
 // ============================================================================
 
-app.get('/myapp/api/health', (c) => 
-	healthCheck(c, 'myapp-api-adapter', { kv: true })
+app.get('/myapp/api/health', (c) =>
+  healthCheck(c, 'myapp-api-adapter', { kv: true })
 );
 
 // ============================================================================
@@ -159,8 +165,8 @@ app.get('/myapp/api/health', (c) =>
 // ============================================================================
 
 const getContext = (c: Context<AppContext>) => ({
-	storage: createKVStorage(c.env),
-	auth: c.get('authContext'),
+  storage: createKVStorage(c.env),
+  auth: c.get('authContext'),
 });
 
 // ============================================================================
@@ -169,67 +175,92 @@ const getContext = (c: Context<AppContext>) => ({
 
 // GET /myapp/api/items - List all items
 app.get('/myapp/api/items', async (c) => {
-	const { storage, auth } = getContext(c);
-	const { userId } = extractUserContext(c);
-	
-	logRequest('GET', '/myapp/api/items', { userType: auth.userType, userId });
-	
-	const result = await MyAppHandlers.getItems(storage, { ...auth, userId });
-	return ok(c, result);
+  const { storage, auth } = getContext(c);
+  const { userId } = extractUserContext(c);
+
+  logRequest('GET', '/myapp/api/items', { userType: auth.userType, userId });
+
+  const result = await MyAppHandlers.getItems(storage, { ...auth, userId });
+  return ok(c, result);
 });
 
 // POST /myapp/api/items - Create new item
 app.post('/myapp/api/items', async (c) => {
-	const { storage, auth } = getContext(c);
-	const body = await c.req.json();
-	const { userId } = extractUserContext(c);
-	
-	// Validate required fields
-	const error = requireFields(body, ['id', 'title']);
-	if (error) {
-		logError('POST', '/myapp/api/items', error);
-		return badRequest(c, error);
-	}
-	
-	logRequest('POST', '/myapp/api/items', { userType: auth.userType, userId, itemId: body.id });
-	
-	const result = await MyAppHandlers.createItem(storage, { ...auth, userId }, body);
-	return created(c, result);
+  const { storage, auth } = getContext(c);
+  const body = await c.req.json();
+  const { userId } = extractUserContext(c);
+
+  // Validate required fields
+  const error = requireFields(body, ['id', 'title']);
+  if (error) {
+    logError('POST', '/myapp/api/items', error);
+    return badRequest(c, error);
+  }
+
+  logRequest('POST', '/myapp/api/items', {
+    userType: auth.userType,
+    userId,
+    itemId: body.id,
+  });
+
+  const result = await MyAppHandlers.createItem(
+    storage,
+    { ...auth, userId },
+    body
+  );
+  return created(c, result);
 });
 
 // PATCH /myapp/api/items/:id - Update item
 app.patch('/myapp/api/items/:id', async (c) => {
-	const { storage, auth } = getContext(c);
-	const id = c.req.param('id');
-	const body = await c.req.json();
-	const { userId } = extractUserContext(c);
-	
-	if (!id || id.trim() === '') {
-		logError('PATCH', '/myapp/api/items/:id', 'Missing item ID in URL');
-		return badRequest(c, 'Missing required parameter: item ID');
-	}
-	
-	logRequest('PATCH', `/myapp/api/items/${id}`, { userType: auth.userType, userId, itemId: id });
-	
-	const result = await MyAppHandlers.updateItem(storage, { ...auth, userId }, id, body);
-	return ok(c, result);
+  const { storage, auth } = getContext(c);
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  const { userId } = extractUserContext(c);
+
+  if (!id || id.trim() === '') {
+    logError('PATCH', '/myapp/api/items/:id', 'Missing item ID in URL');
+    return badRequest(c, 'Missing required parameter: item ID');
+  }
+
+  logRequest('PATCH', `/myapp/api/items/${id}`, {
+    userType: auth.userType,
+    userId,
+    itemId: id,
+  });
+
+  const result = await MyAppHandlers.updateItem(
+    storage,
+    { ...auth, userId },
+    id,
+    body
+  );
+  return ok(c, result);
 });
 
 // DELETE /myapp/api/items/:id - Delete item
 app.delete('/myapp/api/items/:id', async (c) => {
-	const { storage, auth } = getContext(c);
-	const id = c.req.param('id');
-	const { userId } = extractUserContext(c);
-	
-	if (!id || id.trim() === '') {
-		logError('DELETE', '/myapp/api/items/:id', 'Missing item ID in URL');
-		return badRequest(c, 'Missing required parameter: item ID');
-	}
-	
-	logRequest('DELETE', `/myapp/api/items/${id}`, { userType: auth.userType, userId, itemId: id });
-	
-	const result = await MyAppHandlers.deleteItem(storage, { ...auth, userId }, id);
-	return ok(c, result);
+  const { storage, auth } = getContext(c);
+  const id = c.req.param('id');
+  const { userId } = extractUserContext(c);
+
+  if (!id || id.trim() === '') {
+    logError('DELETE', '/myapp/api/items/:id', 'Missing item ID in URL');
+    return badRequest(c, 'Missing required parameter: item ID');
+  }
+
+  logRequest('DELETE', `/myapp/api/items/${id}`, {
+    userType: auth.userType,
+    userId,
+    itemId: id,
+  });
+
+  const result = await MyAppHandlers.deleteItem(
+    storage,
+    { ...auth, userId },
+    id
+  );
+  return ok(c, result);
 });
 
 // Add more routes as needed based on your child package's API_SPEC.md
@@ -360,7 +391,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ... existing steps ...
-      
+
       # Add your worker
       - name: Deploy myapp-api
         run: |
@@ -396,17 +427,17 @@ return c.json({ items });
 // ✅ Good - Validate at the start
 const error = requireFields(body, ['id', 'title']);
 if (error) {
-	logError('POST', '/api/items', error);
-	return badRequest(c, error);
+  logError('POST', '/api/items', error);
+  return badRequest(c, error);
 }
 // ... proceed with handler
 
 // ❌ Bad - Deep validation logic
 if (!body.id) {
-	return c.json({ error: 'Missing id' }, 400);
+  return c.json({ error: 'Missing id' }, 400);
 }
 if (!body.title || body.title.trim() === '') {
-	return c.json({ error: 'Missing title' }, 400);
+  return c.json({ error: 'Missing title' }, 400);
 }
 ```
 
@@ -432,9 +463,9 @@ const result = await MyAppHandlers.createItem(storage, auth, data);
 
 // ❌ Bad - Business logic in adapter
 const newItem = {
-	id: crypto.randomUUID(),
-	...data,
-	createdAt: new Date().toISOString()
+  id: crypto.randomUUID(),
+  ...data,
+  createdAt: new Date().toISOString(),
 };
 await storage.saveItem(newItem);
 ```

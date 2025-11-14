@@ -183,6 +183,7 @@ workers/task-api/src/
    - Acquires multiple locks in sorted order (deadlock prevention)
 
 **Board Locking System:**
+
 - Uses Map<string, Promise> for in-memory locks
 - Lock key format: `{userType}:{sessionId}:{boardId}`
 - Prevents concurrent writes to same board
@@ -191,21 +192,24 @@ workers/task-api/src/
 ### throttle.ts - Rate Limiting
 
 **Configuration:**
+
 ```typescript
 DEFAULT_THROTTLE_LIMITS = {
-  admin:  { windowMs: 60000, maxRequests: 300 },  // 5 req/sec
-  friend: { windowMs: 60000, maxRequests: 120 },  // 2 req/sec
-  public: { windowMs: 60000, maxRequests: 60 }    // 1 req/sec
-}
+  admin: { windowMs: 60000, maxRequests: 300 }, // 5 req/sec
+  friend: { windowMs: 60000, maxRequests: 120 }, // 2 req/sec
+  public: { windowMs: 60000, maxRequests: 60 }, // 1 req/sec
+};
 ```
 
 **Features:**
+
 - Per-sessionId tracking in KV
 - Violation counting (auto-blacklist after 3)
 - Incident recording with 24hr retention
 - Blacklist support
 
 **Optimization:**
+
 - Only applies to public users
 - Admin/friend bypass throttling (trusted users)
 - Significantly reduces KV operations
@@ -213,6 +217,7 @@ DEFAULT_THROTTLE_LIMITS = {
 ### request-utils.ts ⚠️ Task-Specific Utilities
 
 **Current Functions:**
+
 - `getBoardIdFromContext()` - Extract boardId from request
 - `getTaskIdFromParam()` - Extract taskId from URL
 - `getSessionIdFromRequest()` - Extract sessionId
@@ -228,13 +233,13 @@ DEFAULT_THROTTLE_LIMITS = {
 
 ```typescript
 // 1. Parse keys from environment
-const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS);  // Set or Record
+const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS); // Set or Record
 const friendKeys = parseKeysFromEnv(env.FRIEND_KEYS);
 
 // 2. Validate incoming key
 const { valid, userType } = validateKeyAndGetType(
-  credential, 
-  adminKeys, 
+  credential,
+  adminKeys,
   friendKeys
 );
 // Returns: { valid: true, userType: 'admin' | 'friend' | 'public' }
@@ -246,6 +251,7 @@ c.set('authContext', { userType, sessionId, key });
 ### Auth Middleware Pattern
 
 Uses `createAuthMiddleware()` from @hadoku/worker-utils:
+
 - Sources: `['header:X-User-Key', 'query:key']`
 - Resolver: Custom function to validate keys
 - Sets: `c.get('authContext')` for route handlers
@@ -269,10 +275,12 @@ session-auth:{authKey}:{sessionId}    # Session mapping
 **Purpose:** Track task lifecycle for stats/analytics
 
 **Tables:**
+
 - `task_events` - Event log (create, complete, update, delete)
 - Indexed by: `userKey`, `boardId`, `taskId`, `timestamp`
 
 **Query Patterns:**
+
 - `getD1BoardStats()` - Aggregate counters from events
 - `getBoardTimeline()` - Recent events for a board
 - `deleteBoardEvents()` - Cleanup when board deleted
@@ -293,26 +301,29 @@ session-auth:{authKey}:{sessionId}    # Session mapping
 #### 1. **In-Memory Locks Are Not Global** ❌
 
 **Problem:**
+
 ```typescript
 const boardLocks = new Map<string, Promise<any>>();
 ```
 
 This is a **module-level Map**, which means:
+
 - Locks are per-worker instance
 - Multiple worker instances can write to same board simultaneously
 - Race conditions can still occur in production
 
-**Impact:** 
+**Impact:**
+
 - Low risk for personal use (low traffic)
 - High risk for multi-user scenarios
 - KV "last write wins" model can cause data loss
 
 **Solutions:**
+
 1. **Use Durable Objects** (recommended for production)
    - Provides true global coordination
    - Single instance per board
    - Guaranteed sequential processing
-   
 2. **Use optimistic locking with ETags**
    - Store version number in KV metadata
    - Check version before write
@@ -330,37 +341,48 @@ This is a **module-level Map**, which means:
 **Location:** `request-utils.ts`
 
 **Problem:**
+
 ```typescript
 export function createTaskOperationHandler<T>(
-	method: string,
-	path: string,
-	operation: (storage: any, auth: any, taskId: string, boardId: string, body?: any) => Promise<T>,
-	handleBoardOperation: any,
-	logRequest: any,
-	logError: any,
-	badRequest: any,
-	getContext: any
-) { /* ... */ }
+  method: string,
+  path: string,
+  operation: (
+    storage: any,
+    auth: any,
+    taskId: string,
+    boardId: string,
+    body?: any
+  ) => Promise<T>,
+  handleBoardOperation: any,
+  logRequest: any,
+  logError: any,
+  badRequest: any,
+  getContext: any
+) {
+  /* ... */
+}
 ```
 
 **Issues:**
+
 - Takes 8 parameters (too many)
 - Functions passed as dependencies (unusual pattern)
 - Not type-safe (`any` types)
 - Could be simplified with closures or partial application
 
 **Better Pattern:**
+
 ```typescript
 // Option 1: Use route-utils functions directly (no factory)
 app.patch('/:id', async (c) => {
   const id = getTaskIdFromParam(c);
   if (!validateTaskId(id)) return badRequest(c, 'Invalid task ID');
-  
+
   const body = await parseBody(c, {});
   const boardId = getBoardIdFromContext(c, body);
-  
+
   logRequest('PATCH', '/task/api/:id', { taskId: id, boardId });
-  
+
   return handleBoardOperation(c, boardId, (storage, auth) =>
     TaskHandlers.updateTask(storage, auth, id, body, boardId)
   );
@@ -375,12 +397,12 @@ function createTaskHandler(
   return async (c: Context) => {
     const id = c.req.param('id');
     if (!id) return badRequest(c, 'Missing task ID');
-    
+
     const body = await parseBody(c, {});
     const boardId = getBoardIdFromContext(c, body);
-    
+
     logRequest(method, path, { taskId: id, boardId });
-    
+
     return handleBoardOperation(c, boardId, (storage, auth) =>
       handler(id, body, boardId)
     );
@@ -388,9 +410,12 @@ function createTaskHandler(
 }
 
 // Usage
-app.patch('/:id', createTaskHandler('PATCH', '/task/api/:id', 
-  (id, body, boardId) => TaskHandlers.updateTask(storage, auth, id, body, boardId)
-));
+app.patch(
+  '/:id',
+  createTaskHandler('PATCH', '/task/api/:id', (id, body, boardId) =>
+    TaskHandlers.updateTask(storage, auth, id, body, boardId)
+  )
+);
 ```
 
 **Recommendation:** Simplify by either removing the factory or using proper closure pattern.
@@ -398,16 +423,19 @@ app.patch('/:id', createTaskHandler('PATCH', '/task/api/:id',
 #### 3. **Throttle State in KV** ⚠️
 
 **Current:**
+
 - Throttle state stored in KV
 - Each request reads + writes KV
 - 60 requests/min = 120 KV operations/min per user
 
 **Optimization:**
+
 - Use Durable Objects for throttling
 - In-memory counters (much faster)
 - Only persist on eviction/failure
 
 **Current Mitigation:**
+
 - Only applies to public users (good!)
 - Admin/friend bypass (reduces KV load)
 
@@ -416,6 +444,7 @@ app.patch('/:id', createTaskHandler('PATCH', '/task/api/:id',
 #### 4. **Mixed Responsibilities in index.ts** ⚠️
 
 **Current:**
+
 ```typescript
 // index.ts contains:
 - Middleware definitions
@@ -425,6 +454,7 @@ app.patch('/:id', createTaskHandler('PATCH', '/task/api/:id',
 ```
 
 **Better:**
+
 - Move auth resolver to `auth.ts` or `middleware/auth.ts`
 - Move throttle middleware to `middleware/throttle.ts`
 - Keep index.ts as pure composition
@@ -434,6 +464,7 @@ app.patch('/:id', createTaskHandler('PATCH', '/task/api/:id',
 #### 5. **Error Handling Inconsistency** ⚠️
 
 **Pattern 1:** Explicit validation + return
+
 ```typescript
 const error = requireFields(body, ['id', 'title']);
 if (error) {
@@ -443,6 +474,7 @@ if (error) {
 ```
 
 **Pattern 2:** Try/catch (missing in most places)
+
 ```typescript
 try {
   const result = await operation();
@@ -456,6 +488,7 @@ try {
 **Issue:** No top-level error handling for unexpected exceptions
 
 **Recommendation:**
+
 - Add error boundary middleware
 - Consistent error response format
 - Log all unhandled errors
@@ -465,12 +498,13 @@ try {
 #### High Priority
 
 1. **Document Board Lock Limitations**
+
    ```typescript
    /**
     * IMPORTANT: These locks are per-worker instance, not global.
     * For production multi-user deployments, use Durable Objects
     * to ensure true global coordination across all worker instances.
-    * 
+    *
     * Current approach is acceptable for:
     * - Personal use (single user)
     * - Low traffic scenarios
@@ -504,6 +538,7 @@ try {
    - `middleware/error.ts` - Error boundary
 
 5. **Add Request ID Tracking**
+
    ```typescript
    app.use('*', async (c, next) => {
      const requestId = crypto.randomUUID();
@@ -533,7 +568,8 @@ try {
 ## Testing Strategy
 
 **Current Coverage:**
-- ✅ Extensive test suite (*.test.ts files)
+
+- ✅ Extensive test suite (\*.test.ts files)
 - ✅ Unit tests for business logic
 - ✅ Integration tests for storage
 - ✅ Auth tests
@@ -541,6 +577,7 @@ try {
 - ✅ Data isolation tests
 
 **Good Practices:**
+
 - Mock KV/D1 with test-utils
 - Separate test files per feature
 - Clear test descriptions
@@ -564,12 +601,14 @@ Total: ~50-100ms (warm worker, KV cache hit)
 ### KV Operations Per Request
 
 **Authenticated User (Admin/Friend):**
+
 - Throttle: 0 (bypassed)
 - Task data: 1 read + 1 write = 2 ops
 - Stats: 0 (D1 only)
 - **Total: ~2 KV ops per write request**
 
 **Public User:**
+
 - Throttle: 1 read + 1 write = 2 ops
 - Task data: 1 read + 1 write = 2 ops
 - **Total: ~4 KV ops per write request**
@@ -588,6 +627,7 @@ Total: ~50-100ms (warm worker, KV cache hit)
 ## Security Considerations
 
 ### Authentication
+
 - ✅ Keys validated on every request
 - ✅ Keys in headers only (never in body)
 - ✅ Server-side userType determination
@@ -595,18 +635,21 @@ Total: ~50-100ms (warm worker, KV cache hit)
 - ✅ All logging uses masked keys
 
 ### Rate Limiting
+
 - ✅ Per-sessionId throttling
 - ✅ Automatic blacklisting (3 violations)
 - ✅ Incident recording
 - ✅ Public users only (reduces attack surface)
 
 ### Data Isolation
+
 - ✅ sessionId-based KV keys
 - ✅ No cross-session data leakage
 - ✅ Separate storage per userType
 - ✅ Test coverage for isolation
 
 ### Input Validation
+
 - ✅ Required field validation
 - ✅ Type checking in TaskHandlers
 - ✅ Sanitization in util functions
@@ -627,18 +670,21 @@ Total: ~50-100ms (warm worker, KV cache hit)
 ## Future Enhancements
 
 ### Short Term
+
 1. Document lock limitations
 2. Simplify createTaskOperationHandler()
 3. Add error boundary middleware
 4. Extract middleware to files
 
 ### Medium Term
+
 5. Request ID tracking
 6. Structured logging
 7. Performance monitoring
 8. Better error handling
 
 ### Long Term
+
 9. Durable Objects for locks
 10. Durable Objects for throttling
 11. Real-time collaboration features

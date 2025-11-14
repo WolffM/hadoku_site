@@ -2,11 +2,12 @@
  * Request Utilities for Task API
  *
  * Common utilities for extracting and validating request parameters.
- * 
+ *
  * NOTE: Many generic utilities have been moved to @hadoku/worker-utils.
  * This file now contains only task-api-specific helpers.
  */
 import type { Context } from 'hono';
+import type { TaskStorage, AuthContext } from '@wolffm/task/api';
 import { extractField, parseBody, isNonEmptyString } from '../../util';
 import { DEFAULT_SESSION_ID, DEFAULT_BOARD_ID } from './constants';
 
@@ -26,44 +27,39 @@ export { maskKey, maskSessionId } from './constants';
  */
 export function getBoardIdFromContext(
 	c: Context,
-	body: any = {},
+	body: Record<string, unknown> = {},
 	defaultId: string = DEFAULT_BOARD_ID
 ): string {
-	return body.boardId || extractField(c, ['query:boardId'], defaultId);
+	const fromBody = typeof body.boardId === 'string' ? body.boardId : null;
+	return fromBody || extractField(c, ['query:boardId'], defaultId) || defaultId;
 }
 
 /**
  * Get task ID from URL parameter
- * 
+ *
  * @param c - Hono context
  * @param paramName - Parameter name (default: 'id')
  * @returns Task ID or null if not found
  */
-export function getTaskIdFromParam(
-	c: Context,
-	paramName: string = 'id'
-): string | null {
+export function getTaskIdFromParam(c: Context, paramName: string = 'id'): string | null {
 	const id = c.req.param(paramName);
 	return id || null;
 }
 
 /**
  * Get session ID from request header or auth context
- * 
+ *
  * @param c - Hono context
  * @param auth - Auth context
  * @returns Session ID
  */
-export function getSessionIdFromRequest(
-	c: Context,
-	auth: { sessionId?: string }
-): string {
+export function getSessionIdFromRequest(c: Context, auth: { sessionId?: string }): string {
 	return c.req.header('X-Session-Id') || auth.sessionId || DEFAULT_SESSION_ID;
 }
 
 /**
  * Validate task ID (uses util's isNonEmptyString)
- * 
+ *
  * @param id - Task ID to validate
  * @returns Error message or null if valid
  */
@@ -76,7 +72,7 @@ export function validateTaskId(id: string | null): string | null {
 
 /**
  * Validate board ID (uses util's isNonEmptyString)
- * 
+ *
  * @param id - Board ID to validate
  * @returns Error message or null if valid
  */
@@ -89,11 +85,11 @@ export function validateBoardId(id: string | null): string | null {
 
 /**
  * Parse request body safely (wrapper around util's parseBody with default)
- * 
+ *
  * @param c - Hono context
  * @returns Parsed body or empty object
  */
-export async function parseBodySafely(c: Context): Promise<any> {
+export async function parseBodySafely(c: Context): Promise<Record<string, unknown>> {
 	return parseBody(c, {});
 }
 
@@ -104,12 +100,22 @@ export async function parseBodySafely(c: Context): Promise<any> {
 export function createTaskOperationHandler<T>(
 	method: string,
 	path: string,
-	operation: (storage: any, auth: any, taskId: string, boardId: string, body?: any) => Promise<T>,
-	handleBoardOperation: any,
-	logRequest: any,
-	logError: any,
-	badRequest: any,
-	_getContext: any
+	operation: (
+		storage: TaskStorage,
+		auth: AuthContext,
+		taskId: string,
+		boardId: string,
+		body?: Record<string, unknown>
+	) => Promise<T>,
+	handleBoardOperation: (
+		c: Context,
+		boardId: string,
+		op: (storage: TaskStorage, auth: AuthContext) => Promise<T>
+	) => Promise<Response>,
+	logRequest: (method: string, path: string, data: Record<string, unknown>) => void,
+	logError: (method: string, path: string, error: unknown) => void,
+	badRequest: (c: Context, message: string) => Response,
+	_getContext: unknown
 ) {
 	return async (c: Context) => {
 		const id = getTaskIdFromParam(c);
@@ -118,18 +124,21 @@ export function createTaskOperationHandler<T>(
 			logError(method, path, validationError);
 			return badRequest(c, validationError);
 		}
-		
+
+		// After validation, we know id is a valid string
+		const taskId = id as string;
+
 		const body = await parseBodySafely(c);
 		const boardId = getBoardIdFromContext(c, body, DEFAULT_BOARD_ID);
-		
-		logRequest(method, path.replace(':id', id!), { 
-			userType: c.get('authContext').userType, 
-			boardId, 
-			taskId: id 
+
+		logRequest(method, path.replace(':id', taskId), {
+			userType: c.get('authContext').userType,
+			boardId,
+			taskId,
 		});
-		
-		return handleBoardOperation(c, boardId, (storage: any, auth: any) =>
-			operation(storage, auth, id!, boardId, body)
+
+		return handleBoardOperation(c, boardId, (storage: TaskStorage, auth: AuthContext) =>
+			operation(storage, auth, taskId, boardId, body)
 		);
 	};
 }

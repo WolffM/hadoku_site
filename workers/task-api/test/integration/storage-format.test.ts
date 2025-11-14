@@ -1,24 +1,22 @@
 /**
  * Storage Format Tests
- * 
+ *
  * Verify that data is stored in KV with the correct structure and keys.
  * These tests catch schema changes and ensure data consistency.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import app from '../../src/index';
 import { createTestEnv, createAuthHeaders, uniqueId } from '../__helpers__/test-utils';
+import type { BoardsFile, TasksFile } from '@wolffm/task/api';
 
 describe('Storage Format Tests', () => {
 	let env: ReturnType<typeof createTestEnv>;
-	const adminHeaders = createAuthHeaders(
-		'test-admin-key',
-		'automated_testing_admin'
-	);
+	const adminHeaders = createAuthHeaders('test-admin-key', 'automated_testing_admin');
 
 	beforeEach(() => {
 		env = createTestEnv({
 			ADMIN_KEYS: JSON.stringify({ 'test-admin-key': 'admin' }),
-			FRIEND_KEYS: JSON.stringify({ 'test-friend-key': 'friend' })
+			FRIEND_KEYS: JSON.stringify({ 'test-friend-key': 'friend' }),
 		});
 	});
 
@@ -27,18 +25,22 @@ describe('Storage Format Tests', () => {
 			const boardId = `test-${uniqueId()}`;
 
 			// Create a board
-			const response = await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId, name: 'Test Board' })
-			}, env);
+			const response = await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: boardId, name: 'Test Board' }),
+				},
+				env
+			);
 
 			expect(response.status).toBe(200);
 
 			// Verify the KV entry exists with correct key format
 			// Key format should be: boards:{sessionId} where sessionId is the auth key
 			const kvKey = `boards:test-admin-key`;
-			const boardsData = await env.TASKS_KV.get<{ version: number; boards: any[]; updatedAt: string }>(kvKey, 'json');
+			const boardsData = await env.TASKS_KV.get<BoardsFile>(kvKey, 'json');
 
 			expect(boardsData).toBeDefined();
 			expect(boardsData).toHaveProperty('version');
@@ -51,21 +53,25 @@ describe('Storage Format Tests', () => {
 			const boardName = 'Structured Board';
 
 			// Create board
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId, name: boardName })
-			}, env);
+			await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: boardId, name: boardName }),
+				},
+				env
+			);
 
 			// Verify structure
-			const boardsData = await env.TASKS_KV.get<{ version: number; boards: any[]; updatedAt: string }>('boards:test-admin-key', 'json');
+			const boardsData = await env.TASKS_KV.get<BoardsFile>('boards:test-admin-key', 'json');
 
-			expect(boardsData!.version).toBe(1);
-			expect(Array.isArray(boardsData!.boards)).toBe(true);
-			expect(boardsData!.boards.length).toBeGreaterThan(0);
+			expect(boardsData?.version).toBe(1);
+			expect(Array.isArray(boardsData?.boards)).toBe(true);
+			expect(boardsData?.boards.length).toBeGreaterThan(0);
 
 			// Find our board
-			const board = boardsData!.boards.find((b: any) => b.id === boardId);
+			const board = boardsData?.boards.find((b) => b.id === boardId);
 			expect(board).toBeDefined();
 			expect(board.name).toBe(boardName);
 			expect(board).toHaveProperty('id');
@@ -77,15 +83,22 @@ describe('Storage Format Tests', () => {
 			const boardId = `test-${uniqueId()}`;
 
 			// Create board
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId, name: 'Timestamp Board' })
-			}, env);
+			await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: boardId, name: 'Timestamp Board' }),
+				},
+				env
+			);
 
 			// Check timestamp
-			const boardsData = await env.TASKS_KV.get<{ updatedAt: string }>('boards:test-admin-key', 'json');
-			const timestamp = boardsData!.updatedAt;
+			const boardsData = await env.TASKS_KV.get<{ updatedAt: string }>(
+				'boards:test-admin-key',
+				'json'
+			);
+			const timestamp = boardsData?.updatedAt;
 
 			// Should be valid ISO 8601
 			expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
@@ -100,22 +113,30 @@ describe('Storage Format Tests', () => {
 			const taskId = `task-${uniqueId()}`;
 
 			// Create board first
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId, name: 'Task Board' })
-			}, env);
+			await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: boardId, name: 'Task Board' }),
+				},
+				env
+			);
 
 			// Create task
-			await app.request('/task/api', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: taskId, title: 'Test Task', boardId })
-			}, env);
+			await app.request(
+				'/task/api',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: taskId, title: 'Test Task', boardId }),
+				},
+				env
+			);
 
 			// Verify KV key format: tasks:{sessionId}:{boardId}
 			const kvKey = `tasks:test-admin-key:${boardId}`;
-			const tasksData = await env.TASKS_KV.get<{ version: number; tasks: any[]; updatedAt: string }>(kvKey, 'json');
+			const tasksData = await env.TASKS_KV.get<TasksFile>(kvKey, 'json');
 
 			expect(tasksData).toBeDefined();
 			expect(tasksData).toHaveProperty('version');
@@ -129,25 +150,36 @@ describe('Storage Format Tests', () => {
 			const taskTitle = 'Structured Task';
 
 			// Create board and task
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId, name: 'Board' })
-			}, env);
+			await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: boardId, name: 'Board' }),
+				},
+				env
+			);
 
-			await app.request('/task/api', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: taskId, title: taskTitle, boardId })
-			}, env);
+			await app.request(
+				'/task/api',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: taskId, title: taskTitle, boardId }),
+				},
+				env
+			);
 
 			// Verify task data
-			const tasksData = await env.TASKS_KV.get<{ version: number; tasks: any[]; updatedAt: string }>(`tasks:test-admin-key:${boardId}`, 'json');
+			const tasksData = await env.TASKS_KV.get<TasksFile>(
+				`tasks:test-admin-key:${boardId}`,
+				'json'
+			);
 
-			expect(tasksData!.version).toBe(1);
-			expect(Array.isArray(tasksData!.tasks)).toBe(true);
+			expect(tasksData?.version).toBe(1);
+			expect(Array.isArray(tasksData?.tasks)).toBe(true);
 
-			const task = tasksData!.tasks.find((t: any) => t.id === taskId);
+			const task = tasksData?.tasks.find((t) => t.id === taskId);
 			expect(task).toBeDefined();
 			expect(task.title).toBe(taskTitle);
 			expect(task).toHaveProperty('id');
@@ -162,41 +194,57 @@ describe('Storage Format Tests', () => {
 			const taskId2 = `task-${uniqueId()}`;
 
 			// Create two boards
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId1, name: 'Board 1' })
-			}, env);
+			await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: boardId1, name: 'Board 1' }),
+				},
+				env
+			);
 
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId2, name: 'Board 2' })
-			}, env);
+			await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: boardId2, name: 'Board 2' }),
+				},
+				env
+			);
 
 			// Create task in board 1
-			await app.request('/task/api', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: taskId1, title: 'Task 1', boardId: boardId1 })
-			}, env);
+			await app.request(
+				'/task/api',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: taskId1, title: 'Task 1', boardId: boardId1 }),
+				},
+				env
+			);
 
 			// Create task in board 2
-			await app.request('/task/api', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: taskId2, title: 'Task 2', boardId: boardId2 })
-			}, env);
+			await app.request(
+				'/task/api',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: taskId2, title: 'Task 2', boardId: boardId2 }),
+				},
+				env
+			);
 
 			// Verify they're in separate KV entries
-			const tasks1 = await env.TASKS_KV.get<{ tasks: any[] }>(`tasks:test-admin-key:${boardId1}`, 'json');
-			const tasks2 = await env.TASKS_KV.get<{ tasks: any[] }>(`tasks:test-admin-key:${boardId2}`, 'json');
+			const tasks1 = await env.TASKS_KV.get<TasksFile>(`tasks:test-admin-key:${boardId1}`, 'json');
+			const tasks2 = await env.TASKS_KV.get<TasksFile>(`tasks:test-admin-key:${boardId2}`, 'json');
 
-			expect(tasks1!.tasks.some((t: any) => t.id === taskId1)).toBe(true);
-			expect(tasks1!.tasks.some((t: any) => t.id === taskId2)).toBe(false);
+			expect(tasks1?.tasks.some((t) => t.id === taskId1)).toBe(true);
+			expect(tasks1?.tasks.some((t) => t.id === taskId2)).toBe(false);
 
-			expect(tasks2!.tasks.some((t: any) => t.id === taskId1)).toBe(false);
-			expect(tasks2!.tasks.some((t: any) => t.id === taskId2)).toBe(true);
+			expect(tasks2?.tasks.some((t) => t.id === taskId1)).toBe(false);
+			expect(tasks2?.tasks.some((t) => t.id === taskId2)).toBe(true);
 		});
 	});
 
@@ -207,19 +255,26 @@ describe('Storage Format Tests', () => {
 			const prefs = { theme: 'dark', notifications: true };
 
 			// Save preferences
-			await app.request('/task/api/preferences', {
-				method: 'PUT',
-				headers: adminHeaders,
-				body: JSON.stringify(prefs)
-			}, env);
+			await app.request(
+				'/task/api/preferences',
+				{
+					method: 'PUT',
+					headers: adminHeaders,
+					body: JSON.stringify(prefs),
+				},
+				env
+			);
 
 			// Verify KV key format: prefs:{sessionId}
 			const kvKey = 'prefs:test-admin-key';
-			const prefsData = await env.TASKS_KV.get<{ theme: string; notifications: boolean }>(kvKey, 'json');
+			const prefsData = await env.TASKS_KV.get<{ theme: string; notifications: boolean }>(
+				kvKey,
+				'json'
+			);
 
 			expect(prefsData).toBeDefined();
-			expect(prefsData!.theme).toBe('dark');
-			expect(prefsData!.notifications).toBe(true);
+			expect(prefsData?.theme).toBe('dark');
+			expect(prefsData?.notifications).toBe(true);
 		});
 
 		it('should preserve preference values exactly', async () => {
@@ -227,63 +282,79 @@ describe('Storage Format Tests', () => {
 				theme: 'light',
 				notifications: false,
 				language: 'en-US',
-				custom: { nested: 'value' }
+				custom: { nested: 'value' },
 			};
 
 			// Save preferences
-			await app.request('/task/api/preferences', {
-				method: 'PUT',
-				headers: adminHeaders,
-				body: JSON.stringify(prefs)
-			}, env);
+			await app.request(
+				'/task/api/preferences',
+				{
+					method: 'PUT',
+					headers: adminHeaders,
+					body: JSON.stringify(prefs),
+				},
+				env
+			);
 
 			// Verify exact preservation (excluding auto-added lastUpdated)
-			const prefsData = await env.TASKS_KV.get<any>('prefs:test-admin-key', 'json');
+			interface PrefsData {
+				theme: string;
+				notifications: boolean;
+				language: string;
+				custom: { setting1: string };
+				lastUpdated?: string;
+			}
+			const prefsData = await env.TASKS_KV.get<PrefsData>('prefs:test-admin-key', 'json');
 
-			expect(prefsData!.theme).toBe(prefs.theme);
-			expect(prefsData!.notifications).toBe(prefs.notifications);
-			expect(prefsData!.language).toBe(prefs.language);
-			expect(prefsData!.custom).toEqual(prefs.custom);
-			expect(prefsData!.lastUpdated).toBeDefined(); // Auto-added by server
+			expect(prefsData?.theme).toBe(prefs.theme);
+			expect(prefsData?.notifications).toBe(prefs.notifications);
+			expect(prefsData?.language).toBe(prefs.language);
+			expect(prefsData?.custom).toEqual(prefs.custom);
+			expect(prefsData?.lastUpdated).toBeDefined(); // Auto-added by server
 		});
 	});
 
 	describe('KV Key Isolation', () => {
 		it('should use sessionId to isolate data between keys', async () => {
 			// Admin creates a board
-			const adminResponse = await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: 'admin-board', name: 'Admin Board' })
-			}, env);
+			const adminResponse = await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: 'admin-board', name: 'Admin Board' }),
+				},
+				env
+			);
 			expect(adminResponse.status).toBe(200);
 
 			// Friend creates a board with same name
-			const friendHeaders = createAuthHeaders(
-				'test-friend-key',
-				'automated_testing_friend'
+			const friendHeaders = createAuthHeaders('test-friend-key', 'automated_testing_friend');
+			const friendResponse = await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: friendHeaders,
+					body: JSON.stringify({ id: 'friend-board', name: 'Admin Board' }),
+				},
+				env
 			);
-			const friendResponse = await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: friendHeaders,
-				body: JSON.stringify({ id: 'friend-board', name: 'Admin Board' })
-			}, env);
 			expect(friendResponse.status).toBe(200);
 
 			// Verify they're stored in separate KV entries
-			const adminBoardsData = await env.TASKS_KV.get<{ boards: any[] }>('boards:test-admin-key', 'json');
-			const friendBoardsData = await env.TASKS_KV.get<{ boards: any[] }>('boards:test-friend-key', 'json');
+			const adminBoardsData = await env.TASKS_KV.get<BoardsFile>('boards:test-admin-key', 'json');
+			const friendBoardsData = await env.TASKS_KV.get<BoardsFile>('boards:test-friend-key', 'json');
 
 			expect(adminBoardsData).toBeDefined();
 			expect(friendBoardsData).toBeDefined();
 
 			// Admin should only see their board
-			expect(adminBoardsData!.boards.some((b: any) => b.id === 'admin-board')).toBe(true);
-			expect(adminBoardsData!.boards.some((b: any) => b.id === 'friend-board')).toBe(false);
+			expect(adminBoardsData?.boards.some((b) => b.id === 'admin-board')).toBe(true);
+			expect(adminBoardsData?.boards.some((b) => b.id === 'friend-board')).toBe(false);
 
 			// Friend should only see their board
-			expect(friendBoardsData!.boards.some((b: any) => b.id === 'admin-board')).toBe(false);
-			expect(friendBoardsData!.boards.some((b: any) => b.id === 'friend-board')).toBe(true);
+			expect(friendBoardsData?.boards.some((b) => b.id === 'admin-board')).toBe(false);
+			expect(friendBoardsData?.boards.some((b) => b.id === 'friend-board')).toBe(true);
 		});
 	});
 
@@ -296,11 +367,15 @@ describe('Storage Format Tests', () => {
 			expect(await env.TASKS_KV.get(`tasks:test-admin-key:${boardId}`, 'json')).toBeNull();
 
 			// Create board
-			await app.request('/task/api/boards', {
-				method: 'POST',
-				headers: adminHeaders,
-				body: JSON.stringify({ id: boardId, name: 'Board' })
-			}, env);
+			await app.request(
+				'/task/api/boards',
+				{
+					method: 'POST',
+					headers: adminHeaders,
+					body: JSON.stringify({ id: boardId, name: 'Board' }),
+				},
+				env
+			);
 
 			// Now boards entry exists
 			expect(await env.TASKS_KV.get('boards:test-admin-key', 'json')).not.toBeNull();

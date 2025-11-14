@@ -12,7 +12,7 @@ import {
 	isSessionBlacklisted,
 	unblacklistSession,
 	resetThrottleState,
-	checkSuspiciousPatterns
+	checkSuspiciousPatterns,
 } from '../throttle';
 import { getSessionMapping } from '../session';
 import { maskSessionId, maskKey } from '../request-utils';
@@ -53,7 +53,7 @@ export function createAdminRoutes() {
 			throttleState: state,
 			blacklisted,
 			incidents,
-			incidentCount: incidents.length
+			incidentCount: incidents.length,
 		});
 	});
 
@@ -96,7 +96,7 @@ export function createAdminRoutes() {
 			sessions: mapping.sessionIds.map(maskSessionId),
 			lastSessionId: maskSessionId(mapping.lastSessionId),
 			suspicious: suspiciousCheck.suspicious,
-			suspiciousReasons: suspiciousCheck.reasons
+			suspiciousReasons: suspiciousCheck.reasons,
 		});
 	});
 
@@ -124,7 +124,7 @@ export function createAdminRoutes() {
 
 		logRequest('POST', `/task/api/admin/unblacklist/${maskSessionId(sessionId)}`, {
 			userType: auth.userType,
-			action: 'unblacklist'
+			action: 'unblacklist',
 		});
 
 		return c.json({ success: true, message: `Session ${maskSessionId(sessionId)} unblacklisted` });
