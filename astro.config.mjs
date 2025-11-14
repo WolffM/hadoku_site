@@ -16,5 +16,8 @@ export default defineConfig({
 				allow: ['..'],
 			},
 		},
+		ssr: {
+			noExternal: ['@wolffm/task-ui-components'],
+		},
 	},
 });
