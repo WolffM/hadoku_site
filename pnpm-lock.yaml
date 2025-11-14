@@ -27,14 +27,14 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
       '@wolffm/task-ui-components':
-        specifier: ^1.2.1
-        version: 1.2.1(react@19.2.0)
+        specifier: ^1.2.3
+        version: 1.2.3(react@19.2.0)
       '@wolffm/themes':
         specifier: 1.1.8
-        version: 1.1.8(@wolffm/task-ui-components@1.2.1(react@19.2.0))(react@19.2.0)
+        version: 1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)
       '@wolffm/watchparty-ui':
         specifier: ^0.1.11
-        version: 0.1.11(@types/react@19.2.2)(@wolffm/task-ui-components@1.2.1(react@19.2.0))
+        version: 0.1.11(@types/react@19.2.2)(@wolffm/task-ui-components@1.2.3(react@19.2.0))
       astro:
         specifier: ^5.15.1
         version: 5.15.1(@types/node@24.9.1)(jiti@1.21.7)(rollup@4.52.5)(typescript@5.9.3)(yaml@2.8.1)
@@ -1368,8 +1368,8 @@ packages:
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
-  '@wolffm/task-ui-components@1.2.1':
-    resolution: {integrity: sha512-hjG4YSOc8QPsgqMeOrcvVASjBEVtWW7Gr7yH7zdna9gOfjIPW1jNibmn4gnKpb59at63ju77yiOm0q42fMVzTw==, tarball: https://npm.pkg.github.com/download/@wolffm/task-ui-components/1.2.1/fe49f7fe4d12536ea866d17a8303800197f7d562}
+  '@wolffm/task-ui-components@1.2.3':
+    resolution: {integrity: sha512-8fiiPYUCns4gjd5SkCA/No0zZxSm65ukQL1rLIoYwdqmM7hdkLHj6oIDhZYK1zJAxBCEZdZJeS7G/atkaZ8TOw==, tarball: https://npm.pkg.github.com/download/@wolffm/task-ui-components/1.2.3/a4b04ffe940dcdf186eaf80d4696098e6f57d9ba}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
@@ -4694,7 +4694,7 @@ snapshots:
     dependencies:
       react: 19.2.0
 
-  '@wolffm/task-ui-components@1.2.1(react@19.2.0)':
+  '@wolffm/task-ui-components@1.2.3(react@19.2.0)':
     dependencies:
       react: 19.2.0
 
@@ -4710,14 +4710,14 @@ snapshots:
       '@wolffm/task-ui-components': 1.0.10(react@19.2.0)
       react: 19.2.0
 
-  '@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.1(react@19.2.0))(react@19.2.0)':
+  '@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@wolffm/task-ui-components': 1.2.1(react@19.2.0)
+      '@wolffm/task-ui-components': 1.2.3(react@19.2.0)
       react: 19.2.0
 
-  '@wolffm/watchparty-ui@0.1.11(@types/react@19.2.2)(@wolffm/task-ui-components@1.2.1(react@19.2.0))':
+  '@wolffm/watchparty-ui@0.1.11(@types/react@19.2.2)(@wolffm/task-ui-components@1.2.3(react@19.2.0))':
     dependencies:
-      '@wolffm/themes': 1.1.8(@wolffm/task-ui-components@1.2.1(react@19.2.0))(react@19.2.0)
+      '@wolffm/themes': 1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       react-router-dom: 6.30.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
