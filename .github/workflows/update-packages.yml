@@ -222,15 +222,15 @@ jobs:
             git commit -m "fix: remove .npmrc files from git tracking [automated safety check]" || true
           fi
 
-          # Check if any package files or bundle files changed
-          if git diff --quiet package.json pnpm-lock.yaml workers/task-api/package.json public/mf/; then
+          # Check if any package files changed
+          if git diff --quiet package.json pnpm-lock.yaml workers/task-api/package.json; then
             echo "ℹ️  No package updates needed"
             echo "updated=false" >> $GITHUB_OUTPUT
           else
             PACKAGES='${{ steps.parse.outputs.packages }}'
             PACKAGE_LIST=$(echo "$PACKAGES" | jq -r '.[]' | paste -sd ", " -)
 
-            git add package.json pnpm-lock.yaml workers/task-api/package.json public/mf/
+            git add package.json pnpm-lock.yaml workers/task-api/package.json
             git commit -m "chore: update packages - $PACKAGE_LIST" \
                        -m "Auto-updated from repository dispatch" \
                        -m "Packages: $PACKAGE_LIST" \
