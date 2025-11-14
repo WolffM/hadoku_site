@@ -45,3 +45,7 @@ ENV/
 *.pyc
 __pycache__/
 scripts/.venv/
+
+# Auto-generated micro-frontend bundles (rebuilt via prebuild hook)
+public/mf/
+

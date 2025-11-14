@@ -74,6 +74,7 @@ jobs:
         env:
           HADOKU_SITE_TOKEN: ${{ secrets.HADOKU_SITE_TOKEN }}
           MODE: production
+          NODE_OPTIONS: '--loader=./css-loader.mjs'
         run: pnpm run build
 
       - name: Upload artifact

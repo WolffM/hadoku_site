@@ -203,7 +203,7 @@ jobs:
         run: |
           echo "🔨 UI components package updated..."
           echo "📦 @wolffm/task-ui-components is a dependency used by Astro site"
-          echo "✅ Package installed - no bundle rebuild needed"
+          echo "✅ Package installed - bundles will rebuild on next deployment (prebuild hook)"
           echo "ℹ️  Changes will be picked up on next Astro build/deploy"
 
       - name: Commit and push if changed

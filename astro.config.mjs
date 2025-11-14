@@ -17,6 +17,8 @@ export default defineConfig({
 			},
 		},
 		ssr: {
+			// Bundle @wolffm/task-ui-components for SSR
+			// CSS imports handled by css-loader.mjs (Node.js loader hook)
 			noExternal: ['@wolffm/task-ui-components'],
 		},
 	},
