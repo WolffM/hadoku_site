@@ -23,6 +23,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.2
         version: 19.2.2(@types/react@19.2.2)
+      '@wolffm/resume-bot':
+        specifier: ^1.0.1
+        version: 1.0.1(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@wolffm/task':
         specifier: ^3.4.0
         version: 3.4.0
@@ -1357,6 +1360,13 @@ packages:
 
   '@vitest/utils@4.0.4':
     resolution: {integrity: sha512-4bJLmSvZLyVbNsYFRpPYdJViG9jZyRvMZ35IF4ymXbRZoS+ycYghmwTGiscTXduUg2lgKK7POWIyXJNute1hjw==}
+
+  '@wolffm/resume-bot@1.0.1':
+    resolution: {integrity: sha512-agHySBVrp33mOz4i0Es9aL8ccMWGr0X8dWtB0wYn/mE6CPEUy010tpE6CompDZz8mkVkQpsyoWQRE+YwzHkTEA==, tarball: https://npm.pkg.github.com/download/@wolffm/resume-bot/1.0.1/eccfa21e34497dfd06e7d42316c83a6d343d243a}
+    peerDependencies:
+      '@wolffm/themes': '>=1.0.0'
+      react: ^19.0.0
+      react-dom: ^19.0.0
 
   '@wolffm/task-ui-components@1.0.10':
     resolution: {integrity: sha512-rnn8uHTnce+x58Kv/sG7Ei0sHtgZNQ6YF7F4bngcxbdfsBz4J0hWafQhI1Qn+XNmyV8WR7KwB6WOHZ91eybqBw==, tarball: https://npm.pkg.github.com/download/@wolffm/task-ui-components/1.0.10/cad3df72f50d334ba416b619fda50a1afccc2077}
@@ -4685,6 +4695,12 @@ snapshots:
     dependencies:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
+
+  '@wolffm/resume-bot@1.0.1(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@wolffm/themes': 1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
 
   '@wolffm/task-ui-components@1.0.10(react@19.2.0)':
     dependencies:

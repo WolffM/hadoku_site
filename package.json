@@ -28,6 +28,7 @@
     "@astrojs/tailwind": "^6.0.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "@wolffm/resume-bot": "^1.0.1",
     "@wolffm/task": "^3.4.0",
     "@wolffm/task-ui-components": "^1.2.3",
     "@wolffm/themes": "1.1.8",
