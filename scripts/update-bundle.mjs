@@ -30,7 +30,7 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/resume-bot': {
 		targetDir: 'resume',
-		cssSource: 'resume-bot.css',
+		cssSource: 'style.css',
 	},
 	'@wolffm/themes': {
 		targetDir: 'themes',
