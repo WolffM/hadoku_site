@@ -93,6 +93,7 @@ SECRET_CONFIGS = {
         'repos': [
             "WolffM/hadoku-task",
             "WolffM/hadoku-watchparty",
+            "WolffM/hadoku-resume-bot",
         ]
     },
     'cloudflare': {
