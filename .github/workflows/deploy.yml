@@ -62,8 +62,13 @@ jobs:
       - name: Install dependencies (private packages)
         run: pnpm install --frozen-lockfile
 
-      - name: Update task micro-frontend bundle
-        run: pnpm run update-task-bundle
+      - name: Update micro-frontend bundles
+        run: |
+          pnpm run update-resume-bundle
+          pnpm run update-task-bundle
+          pnpm run update-watchparty-bundle
+          pnpm run update-themes-bundle
+          pnpm run update-ui-components-bundle
 
       - name: Generate registry (uses prebuild hook)
         env:

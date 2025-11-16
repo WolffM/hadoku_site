@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 // Read package.json to get versions for cache busting
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+const resumeVersion = packageJson.dependencies['@wolffm/resume-bot']?.replace(/^[\^~]/, '') || Date.now().toString();
 const taskVersion = packageJson.dependencies['@wolffm/task']?.replace('^', '') || 'latest';
 const watchpartyVersion =
 	packageJson.dependencies['@wolffm/watchparty-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
@@ -64,6 +65,16 @@ const registry = {
 		basename: '/',
 		props: {
 			basename: '/',
+			environment: MODE,
+			userType: 'public', // Default, will be overridden by client-side loader
+		},
+	},
+	resume: {
+		url: `/mf/resume/index.js?v=${resumeVersion}`,
+		css: `/mf/resume/style.css?v=${resumeVersion}`,
+		basename: '/resume',
+		props: {
+			basename: '/resume',
 			environment: MODE,
 			userType: 'public', // Default, will be overridden by client-side loader
 		},

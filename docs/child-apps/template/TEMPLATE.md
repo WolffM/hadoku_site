@@ -18,6 +18,7 @@ Template for building React-based child apps that integrate with the hadoku pare
    chmod +x .husky/pre-commit
    ```
 4. Add GitHub secret: `HADOKU_SITE_TOKEN` (get from hadoku_site admin)
+   - Required for: installing `@wolffm/*` packages, notifying parent on publish
 5. Start developing: `pnpm dev`
 6. Push to `main` to auto-deploy
 

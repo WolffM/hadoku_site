@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       packages:
-        description: 'Comma-separated packages (e.g. @wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components)'
+        description: 'Comma-separated packages (e.g. @wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components,@wolffm/resume-bot)'
         required: true
-        default: '@wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components'
+        default: '@wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components,@wolffm/resume-bot'
 
 permissions:
   contents: write
@@ -80,6 +80,14 @@ jobs:
             echo "✅ Will update @wolffm/task-ui-components"
           else
             echo "update_ui_components=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if resume-bot package needs update
+          if echo "$PACKAGES" | jq -e 'map(select(. == "@wolffm/resume-bot")) | length > 0' > /dev/null; then
+            echo "update_resume=true" >> $GITHUB_OUTPUT
+            echo "✅ Will update @wolffm/resume-bot"
+          else
+            echo "update_resume=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Backup KV namespace before package update
@@ -205,6 +213,19 @@ jobs:
           echo "📦 @wolffm/task-ui-components is a dependency used by Astro site"
           echo "✅ Package installed - bundles will rebuild on next deployment (prebuild hook)"
           echo "ℹ️  Changes will be picked up on next Astro build/deploy"
+
+      - name: Update resume bundle
+        if: steps.parse.outputs.update_resume == 'true'
+        run: |
+          echo "🔨 Rebuilding resume bundle..."
+          echo "📦 Updating resume micro-frontend bundle..."
+          pnpm run update-resume-bundle
+          echo "✅ Updated public/mf/resume/ bundle files"
+
+          # Regenerate registry with new version numbers for cache busting
+          echo "📦 Regenerating registry with cache-busting version..."
+          pnpm run generate-registry
+          echo "✅ Updated public/mf/registry.json with new versions"
 
       - name: Commit and push if changed
         id: commit
