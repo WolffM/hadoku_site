@@ -24,8 +24,8 @@ importers:
         specifier: ^19.2.2
         version: 19.2.2(@types/react@19.2.2)
       '@wolffm/resume-bot':
-        specifier: ^1.0.1
-        version: 1.0.1(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: ^1.0.2
+        version: 1.0.2(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@wolffm/task':
         specifier: ^3.4.0
         version: 3.4.0
@@ -1361,8 +1361,8 @@ packages:
   '@vitest/utils@4.0.4':
     resolution: {integrity: sha512-4bJLmSvZLyVbNsYFRpPYdJViG9jZyRvMZ35IF4ymXbRZoS+ycYghmwTGiscTXduUg2lgKK7POWIyXJNute1hjw==}
 
-  '@wolffm/resume-bot@1.0.1':
-    resolution: {integrity: sha512-agHySBVrp33mOz4i0Es9aL8ccMWGr0X8dWtB0wYn/mE6CPEUy010tpE6CompDZz8mkVkQpsyoWQRE+YwzHkTEA==, tarball: https://npm.pkg.github.com/download/@wolffm/resume-bot/1.0.1/eccfa21e34497dfd06e7d42316c83a6d343d243a}
+  '@wolffm/resume-bot@1.0.2':
+    resolution: {integrity: sha512-adIn9EzQv8VkEyPEQQ4XWUCbPwGrfQdWGZT9dc5flQMK4Ngnrn7sUB0jRvsGNcqj9pMGCffDvLM5lGKOU8EEqg==, tarball: https://npm.pkg.github.com/download/@wolffm/resume-bot/1.0.2/8a0a771893c882300c54afd348591178b714aae7}
     peerDependencies:
       '@wolffm/themes': '>=1.0.0'
       react: ^19.0.0
@@ -1391,6 +1391,11 @@ packages:
     peerDependencies:
       '@wolffm/task-ui-components': ^1.0.0
       react: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@wolffm/task-ui-components':
+        optional: true
+      react:
+        optional: true
 
   '@wolffm/watchparty-ui@0.1.11':
     resolution: {integrity: sha512-vaC28th0dogsjGvPThHjOZ+CIrZQHe+VuopHcZPGCU4Lc5Sebd5dnSeU7wM+UEMkhk/8FmIQhngCQpcRnsVHsA==, tarball: https://npm.pkg.github.com/download/@wolffm/watchparty-ui/0.1.11/59ef70be8045fb217ab883418914a564fad8f9e2}
@@ -4696,7 +4701,7 @@ snapshots:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
 
-  '@wolffm/resume-bot@1.0.1(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@wolffm/resume-bot@1.0.2(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@wolffm/themes': 1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)
       react: 19.2.0
@@ -4722,12 +4727,12 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
 
   '@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.0.10(react@19.2.0))(react@19.2.0)':
-    dependencies:
+    optionalDependencies:
       '@wolffm/task-ui-components': 1.0.10(react@19.2.0)
       react: 19.2.0
 
   '@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)':
-    dependencies:
+    optionalDependencies:
       '@wolffm/task-ui-components': 1.2.3(react@19.2.0)
       react: 19.2.0
 

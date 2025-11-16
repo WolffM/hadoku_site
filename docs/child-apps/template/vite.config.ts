@@ -11,7 +11,10 @@ export default defineConfig({
     },
     rollupOptions: {
       // Externalize peer dependencies (parent provides them)
-      external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', '@wolffm/themes']
+      external: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', '@wolffm/themes'],
+      output: {
+        assetFileNames: 'style.css'
+      }
     },
     target: 'es2022',
     cssCodeSplit: false
