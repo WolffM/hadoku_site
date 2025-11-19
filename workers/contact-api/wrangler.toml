@@ -1,0 +1,19 @@
+name = "contact-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-11"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database - Contact submissions storage
+[[d1_databases]]
+binding = "DB"
+database_name = "contact-submissions"
+database_id = "eca9e75c-3ea1-4ebe-87d7-a7ee915c24a2"
+
+# KV Namespace - Rate limiting storage
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "67a22575cb1e4ff79b65b5cf8e11729b"
+
+# Cron trigger for auto-archiving old submissions (daily at 3 AM UTC)
+[triggers]
+crons = ["0 3 * * *"]

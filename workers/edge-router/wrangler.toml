@@ -6,7 +6,8 @@ compatibility_date = "2025-10-11"
 routes = [
   { pattern = "hadoku.me/session/*", zone_name = "hadoku.me" },
   { pattern = "hadoku.me/task/api*", zone_name = "hadoku.me" },
-  { pattern = "hadoku.me/watchparty/api*", zone_name = "hadoku.me" }
+  { pattern = "hadoku.me/watchparty/api*", zone_name = "hadoku.me" },
+  { pattern = "hadoku.me/contact/api*", zone_name = "hadoku.me" }
 ]
 
 # Environment variables
@@ -14,6 +15,7 @@ routes = [
 ROUTE_CONFIG = '{"global_priority":"12"}'  # Priority: 1=tunnel, 2=worker (enabled!)
 LOCAL_BASE = "https://local-api.hadoku.me"  # Tunnel host (avoid loops)
 WORKER_BASE = "https://task-api.jamescannon4237-cfd.workers.dev"  # Task API Worker
+CONTACT_WORKER_BASE = "https://contact-api.jamescannon4237-cfd.workers.dev"  # Contact API Worker
 LAMBDA_BASE = ""
 STATIC_ORIGIN = "https://wolffm.github.io/hadoku_site/"
 

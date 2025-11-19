@@ -80,3 +80,39 @@ jobs:
           echo ""
           echo "ℹ️  Note: Secrets (ADMIN_KEYS, FRIEND_KEYS) persist in Cloudflare"
           echo "ℹ️  To update secrets manually, run locally: pnpm --filter task-api exec wrangler secret put <SECRET_NAME>"
+
+  deploy-contact-api:
+    name: Deploy Contact API Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Create .npmrc for GitHub Packages (root for pnpm)
+        run: |
+          echo "@wolffm:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.DEPLOY_PACKAGE_TOKEN }}" >> .npmrc
+
+      - name: Install dependencies (including workspace deps)
+        run: pnpm install --filter contact-api...
+
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          echo "🚀 Deploying contact-api worker..."
+          pnpm --filter contact-api exec wrangler deploy
+          echo "✅ Worker deployed successfully"
+          echo ""
+          echo "ℹ️  Note: Secrets (ADMIN_KEYS, FRIEND_KEYS) persist in Cloudflare"
+          echo "ℹ️  To update secrets manually, run locally: pnpm --filter contact-api exec wrangler secret put <SECRET_NAME>"

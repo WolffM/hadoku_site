@@ -9,8 +9,8 @@ export type UserType = 'public' | 'friend' | 'admin';
 
 // App visibility by user type (static mapping for UI)
 export const appVisibility: Record<UserType, string[]> = {
-	public: ['home', 'resume', 'task', 'watchparty'],
-	friend: ['home', 'resume', 'task', 'watchparty'],
+	public: ['home', 'resume', 'task', 'watchparty', 'contact'],
+	friend: ['home', 'resume', 'task', 'watchparty', 'contact'],
 	admin: ['home', 'resume', 'task', 'watchparty', 'contact', 'herodraft'],
 };
 

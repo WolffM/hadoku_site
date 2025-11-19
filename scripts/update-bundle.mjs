@@ -20,6 +20,9 @@ const __dirname = dirname(__filename);
 
 // Package configurations
 const PACKAGE_CONFIGS = {
+	'@wolffm/contact-ui': {
+		targetDir: 'contact',
+	},
 	'@wolffm/task': {
 		targetDir: 'task',
 		cssSource: 'task.css', // Package exports "./style.css" -> "./dist/task.css"

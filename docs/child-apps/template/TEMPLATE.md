@@ -8,9 +8,9 @@ Template for building React-based child apps that integrate with the hadoku pare
 
 1. Copy this template folder to your new repo
 2. Replace all instances:
-   - `@wolffm/your-app` → `@wolffm/resume-bot`
-   - `your-app` → `resume-bot`
-   - `YourApp` → `ResumeBot`
+   - `@wolffm/your-app`
+   - `your-app`
+   - `YourApp`
 3. Run setup:
    ```bash
    pnpm install
@@ -162,5 +162,3 @@ Push to `main` triggers:
 - [ ] Test: `pnpm build` succeeds
 
 ---
-
-*For project-specific details, see [RESUME_BOT_PROJECT.md](../RESUME_BOT_PROJECT.md)*

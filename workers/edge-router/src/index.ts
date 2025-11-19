@@ -29,6 +29,7 @@ interface Env {
 	LOCAL_BASE: string;
 	WORKER_BASE: string;
 	LAMBDA_BASE: string;
+	CONTACT_WORKER_BASE: string; // Contact API Worker
 	STATIC_ORIGIN: string;
 	TASK_API?: Fetcher; // Optional service binding
 	ANALYTICS_ENGINE?: AnalyticsEngineDataset; // Analytics Engine binding
@@ -108,6 +109,9 @@ app.post('/session/create', async (c) => {
 // 4. API routes with fallback logic
 app.all('/task/api/*', async (c) => handleApiRoute(c));
 app.all('/watchparty/api/*', async (c) => handleApiRoute(c));
+
+// Contact API - Direct proxy to contact-api worker (no fallback needed)
+app.all('/contact/api/*', async (c) => handleContactApiRoute(c));
 
 // 5. Static files - proxy to GitHub Pages
 app.all('*', async (c) => proxyToGitHubPages(c));
@@ -323,5 +327,51 @@ async function getKeyForSession(sessionId: string | null, env: Env): Promise<str
 	} catch (e) {
 		logError('SESSION', 'getKeyForSession', (e as Error).message);
 		return null;
+	}
+}
+
+/**
+ * Handle contact API routes - simple proxy to contact-api worker
+ * No fallback needed since this is a dedicated public-facing endpoint
+ */
+async function handleContactApiRoute(c: Context<AppContext>): Promise<Response> {
+	const targetUrl = new URL(c.req.path, c.env.CONTACT_WORKER_BASE).toString();
+
+	try {
+		// Look up session and inject key if present (for admin routes)
+		const sessionId = c.req.header('X-Session-Id');
+		const key = sessionId ? await getKeyForSession(sessionId, c.env) : null;
+
+		// Clone headers
+		const headers = new Headers(c.req.raw.headers);
+
+		// Inject the key from session if present
+		if (key) {
+			headers.set('X-User-Key', key);
+		}
+
+		// Read body once
+		const bodyBuffer = c.req.raw.body ? await c.req.arrayBuffer() : null;
+
+		// Forward request to contact-api worker
+		const res = await fetch(targetUrl, {
+			method: c.req.method,
+			headers,
+			body: bodyBuffer,
+			redirect: 'manual',
+		});
+
+		// Add tracing header
+		const newRes = new Response(res.body, res);
+		newRes.headers.set('X-Backend-Source', 'contact-api-worker');
+
+		c.set('backend', 'worker');
+		return newRes;
+	} catch (e) {
+		logError(c.req.method, c.req.path, `Contact API failed: ${(e as Error).message}`);
+		c.set('backend', 'error');
+		return serverError(c, 'Contact API unavailable', {
+			details: (e as Error).message,
+		});
 	}
 }

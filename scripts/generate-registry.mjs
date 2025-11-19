@@ -13,6 +13,7 @@ const resumeVersion = packageJson.dependencies['@wolffm/resume-bot']?.replace(/^
 const taskVersion = packageJson.dependencies['@wolffm/task']?.replace('^', '') || 'latest';
 const watchpartyVersion =
 	packageJson.dependencies['@wolffm/watchparty-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
+const contactVersion = packageJson.dependencies['@wolffm/contact-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
 const timestamp = Date.now(); // Fallback for apps without versions
 
 // Load .env file if it exists (for local development)
@@ -92,7 +93,7 @@ const registry = {
 		props: taskConfig,
 	},
 	contact: {
-		url: `/mf/contact/index.js?v=${timestamp}`,
+		url: `/mf/contact/index.js?v=${contactVersion}`,
 		basename: '/contact',
 		props: {
 			basename: '/contact',
