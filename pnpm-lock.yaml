@@ -24,8 +24,8 @@ importers:
         specifier: ^19.2.2
         version: 19.2.2(@types/react@19.2.2)
       '@wolffm/contact-ui':
-        specifier: ^1.0.3
-        version: 1.0.3(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: ^1.0.4
+        version: 1.0.4(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@wolffm/resume-bot':
         specifier: ^1.0.6
         version: 1.0.6(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -1422,8 +1422,8 @@ packages:
   '@vitest/utils@4.0.4':
     resolution: {integrity: sha512-4bJLmSvZLyVbNsYFRpPYdJViG9jZyRvMZ35IF4ymXbRZoS+ycYghmwTGiscTXduUg2lgKK7POWIyXJNute1hjw==}
 
-  '@wolffm/contact-ui@1.0.3':
-    resolution: {integrity: sha512-y5RqqJIFhLOykWuHjLWksIf979W/67NweJF8Sv1Oz2v8vT3TOHDpLyJcUARhntvUgLRuMw670+LzhRN7wf/jCQ==, tarball: https://npm.pkg.github.com/download/@wolffm/contact-ui/1.0.3/14efc7600e5b1d38411726c14f296178ef1b3c86}
+  '@wolffm/contact-ui@1.0.4':
+    resolution: {integrity: sha512-sT/VuFO7rq1Hs+1A7m87l1Gp5ouavUy5TxFadgV/M9w72LS9pCx0J6czJbgMfBiPgbHawBL6E3r/nxJb0zN2Ew==, tarball: https://npm.pkg.github.com/download/@wolffm/contact-ui/1.0.4/4ceabd69d2308d1e45db95de04cb1a752b6ffdeb}
     peerDependencies:
       '@wolffm/themes': '>=1.0.0'
       react: ^19.0.0
@@ -4808,7 +4808,7 @@ snapshots:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
 
-  '@wolffm/contact-ui@1.0.3(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@wolffm/contact-ui@1.0.4(@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@wolffm/themes': 1.1.8(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)
       react: 19.2.0
