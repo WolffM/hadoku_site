@@ -32,9 +32,6 @@ This app is a child component of the [hadoku_site](https://github.com/WolffM/had
 ```typescript
 interface YourAppProps {
   theme?: string;              // 'default', 'ocean', 'forest', etc.
-  environment?: 'development' | 'production';
-  serverOrigin?: string;       // API endpoint
-  sessionId?: string;          // Session identifier
 }
 ```
 
