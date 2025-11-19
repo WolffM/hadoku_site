@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       packages:
-        description: 'Comma-separated packages (e.g. @wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components,@wolffm/resume-bot)'
+        description: 'Comma-separated packages (e.g. @wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components,@wolffm/resume-bot,@wolffm/contact-ui)'
         required: true
-        default: '@wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components,@wolffm/resume-bot'
+        default: '@wolffm/task,@wolffm/themes,@wolffm/watchparty-ui,@wolffm/task-ui-components,@wolffm/resume-bot,@wolffm/contact-ui'
 
 permissions:
   contents: write
@@ -88,6 +88,14 @@ jobs:
             echo "✅ Will update @wolffm/resume-bot"
           else
             echo "update_resume=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if contact-ui package needs update
+          if echo "$PACKAGES" | jq -e 'map(select(. == "@wolffm/contact-ui")) | length > 0' > /dev/null; then
+            echo "update_contact=true" >> $GITHUB_OUTPUT
+            echo "✅ Will update @wolffm/contact-ui"
+          else
+            echo "update_contact=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Backup KV namespace before package update
@@ -221,6 +229,19 @@ jobs:
           echo "📦 Updating resume micro-frontend bundle..."
           pnpm run update-resume-bundle
           echo "✅ Updated public/mf/resume/ bundle files"
+
+          # Regenerate registry with new version numbers for cache busting
+          echo "📦 Regenerating registry with cache-busting version..."
+          pnpm run generate-registry
+          echo "✅ Updated public/mf/registry.json with new versions"
+
+      - name: Update contact bundle
+        if: steps.parse.outputs.update_contact == 'true'
+        run: |
+          echo "🔨 Rebuilding contact bundle..."
+          echo "📦 Updating contact micro-frontend bundle..."
+          pnpm run update-contact-bundle
+          echo "✅ Updated public/mf/contact/ bundle files"
 
           # Regenerate registry with new version numbers for cache busting
           echo "📦 Regenerating registry with cache-busting version..."

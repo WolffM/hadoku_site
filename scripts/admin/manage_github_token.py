@@ -94,6 +94,7 @@ SECRET_CONFIGS = {
             "WolffM/hadoku-task",
             "WolffM/hadoku-watchparty",
             "WolffM/hadoku-resume-bot",
+            "WolffM/hadoku-contact-ui",
         ]
     },
     'cloudflare': {
