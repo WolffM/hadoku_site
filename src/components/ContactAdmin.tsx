@@ -405,7 +405,7 @@ export default function ContactAdmin() {
 							<div className="space-y-2 mb-6">
 								<button
 									onClick={() => setView('compose')}
-									className="w-full px-4 py-2 rounded bg-primary text-white hover:bg-primary-dark transition-colors"
+									className="w-full px-4 py-2 rounded bg-primary text-primary-dark hover:bg-primary-dark hover:text-white transition-colors"
 								>
 									✉ Compose
 								</button>
@@ -425,7 +425,7 @@ export default function ContactAdmin() {
 									className="w-full px-4 py-2 rounded border border-border bg-bg text-text hover:bg-bg-card transition-colors"
 									title="Manage email whitelist"
 								>
-									🔓 Whitelist
+									Whitelist
 								</button>
 							</div>
 
@@ -601,13 +601,13 @@ export default function ContactAdmin() {
 														setComposeSubject(`Re: Message from ${selectedEmail.name}`);
 														setView('compose');
 													}}
-													className="px-4 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark transition-colors"
+													className="px-4 py-1 text-sm bg-primary text-primary-dark rounded hover:bg-primary-dark hover:text-white transition-colors"
 												>
 													Reply
 												</button>
 												<button
 													onClick={() => deleteEmail(selectedEmail.id)}
-													className="px-4 py-1 text-sm bg-danger text-danger-text rounded hover:opacity-90 transition-opacity"
+													className="px-4 py-1 text-sm bg-danger text-danger-text rounded hover:bg-danger-dark transition-colors"
 												>
 													Delete
 												</button>
@@ -711,7 +711,7 @@ export default function ContactAdmin() {
 								<button
 									type="submit"
 									disabled={sending}
-									className="px-6 py-2 bg-primary text-white rounded hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+									className="px-6 py-2 bg-primary text-primary-dark rounded hover:bg-primary-dark hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 								>
 									{sending ? 'Sending...' : 'Send'}
 								</button>
@@ -767,7 +767,7 @@ export default function ContactAdmin() {
 											</div>
 											<button
 												onClick={() => deleteFromWhitelist(entry.email)}
-												className="ml-4 px-3 py-1 text-sm bg-danger text-white rounded hover:bg-danger-dark transition-colors"
+												className="ml-4 px-3 py-1 text-sm bg-danger text-danger-text rounded hover:bg-danger-dark transition-colors"
 											>
 												Remove
 											</button>
@@ -781,7 +781,7 @@ export default function ContactAdmin() {
 						<div className="px-6 py-4 border-t border-border">
 							<button
 								onClick={() => setShowWhitelist(false)}
-								className="px-6 py-2 bg-primary text-white rounded hover:bg-primary-hover"
+								className="px-6 py-2 bg-primary text-primary-dark rounded hover:bg-primary-dark hover:text-white transition-colors"
 							>
 								Close
 							</button>
