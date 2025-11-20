@@ -26,7 +26,7 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/task': {
 		targetDir: 'task',
-		cssSource: 'style.css',
+		cssSource: 'task.css', // Package has task.css, exports as style.css
 	},
 	'@wolffm/watchparty-ui': {
 		targetDir: 'watchparty',
