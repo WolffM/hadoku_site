@@ -49,7 +49,7 @@ app.use(
 	'*',
 	createCorsMiddleware({
 		origins: DEFAULT_HADOKU_ORIGINS,
-		methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+		methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
 		allowedHeaders: ['Content-Type', 'X-User-Key', 'X-Session-Id'],
 		exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
 		credentials: true,

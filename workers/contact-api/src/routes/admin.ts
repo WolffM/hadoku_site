@@ -10,6 +10,7 @@ import {
 	getAllSubmissions,
 	getSubmissionById,
 	updateSubmissionStatus,
+	deleteSubmission,
 	getSubmissionStats,
 	getDatabaseSize,
 	archiveOldSubmissions,
@@ -130,6 +131,27 @@ export function createAdminRoutes() {
 		} catch (error) {
 			console.error('Error updating submission status:', error);
 			return serverError(c, 'Failed to update submission status');
+		}
+	});
+
+	/**
+	 * DELETE /admin/submissions/:id
+	 * Delete a submission permanently
+	 */
+	app.delete('/submissions/:id', async (c) => {
+		try {
+			const id = c.req.param('id');
+
+			const success = await deleteSubmission(c.env.DB, id);
+
+			if (!success) {
+				return notFound(c, 'Submission not found');
+			}
+
+			return ok(c, { success: true, message: 'Submission deleted successfully' });
+		} catch (error) {
+			console.error('Error deleting submission:', error);
+			return serverError(c, 'Failed to delete submission');
 		}
 	});
 

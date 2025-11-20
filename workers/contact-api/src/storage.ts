@@ -88,7 +88,10 @@ export async function getAllSubmissions(
 /**
  * Get submission by ID
  */
-export async function getSubmissionById(db: D1Database, id: string): Promise<StoredSubmission | null> {
+export async function getSubmissionById(
+	db: D1Database,
+	id: string
+): Promise<StoredSubmission | null> {
 	const result = await db
 		.prepare(`SELECT * FROM contact_submissions WHERE id = ?`)
 		.bind(id)
@@ -109,6 +112,15 @@ export async function updateSubmissionStatus(
 		.prepare(`UPDATE contact_submissions SET status = ? WHERE id = ?`)
 		.bind(status, id)
 		.run();
+
+	return result.success;
+}
+
+/**
+ * Delete a submission permanently
+ */
+export async function deleteSubmission(db: D1Database, id: string): Promise<boolean> {
+	const result = await db.prepare(`DELETE FROM contact_submissions WHERE id = ?`).bind(id).run();
 
 	return result.success;
 }
@@ -158,10 +170,7 @@ export async function archiveOldSubmissions(db: D1Database, daysOld: number = 30
 		.run();
 
 	// Then delete from main table
-	await db
-		.prepare(`DELETE FROM contact_submissions WHERE created_at < ?`)
-		.bind(cutoffTime)
-		.run();
+	await db.prepare(`DELETE FROM contact_submissions WHERE created_at < ?`).bind(cutoffTime).run();
 
 	// Return count of archived rows
 	return copyResult.meta?.changes || 0;

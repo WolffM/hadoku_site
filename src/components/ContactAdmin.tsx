@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import ThemePickerWrapper from './ThemePickerWrapper';
 
 interface Email {
 	id: string;
@@ -38,6 +39,7 @@ export default function ContactAdmin() {
 	const [composeMessage, setComposeMessage] = useState('');
 	const [pastRecipients, setPastRecipients] = useState<string[]>([]);
 	const [sending, setSending] = useState(false);
+	const [refreshing, setRefreshing] = useState(false);
 
 	// Validate key from URL on mount
 	useEffect(() => {
@@ -113,6 +115,29 @@ export default function ContactAdmin() {
 		fetchEmails();
 	}, [keyValidated, adminKey]);
 
+	async function refreshEmails() {
+		if (!adminKey) return;
+		setRefreshing(true);
+		try {
+			const response = await fetch('/contact/api/admin/submissions?limit=100&offset=0', {
+				headers: {
+					'X-User-Key': adminKey,
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch emails');
+			}
+
+			const result = await response.json();
+			setEmails(result.data.submissions);
+		} catch (err) {
+			alert('Failed to refresh emails: ' + (err as Error).message);
+		} finally {
+			setRefreshing(false);
+		}
+	}
+
 	async function updateStatus(id: string, status: 'unread' | 'read' | 'archived') {
 		if (!adminKey) return;
 		try {
@@ -132,6 +157,34 @@ export default function ContactAdmin() {
 			setEmails((prev) => prev.map((email) => (email.id === id ? { ...email, status } : email)));
 		} catch (err) {
 			alert('Failed to update status: ' + (err as Error).message);
+		}
+	}
+
+	async function deleteEmail(id: string) {
+		if (!adminKey) return;
+		if (!confirm('Are you sure you want to delete this email? This cannot be undone.')) {
+			return;
+		}
+
+		try {
+			const response = await fetch(`/contact/api/admin/submissions/${id}`, {
+				method: 'DELETE',
+				headers: {
+					'X-User-Key': adminKey,
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to delete email');
+			}
+
+			// Remove from state and clear selection if it was selected
+			setEmails((prev) => prev.filter((email) => email.id !== id));
+			if (selectedEmail?.id === id) {
+				setSelectedEmail(null);
+			}
+		} catch (err) {
+			alert('Failed to delete email: ' + (err as Error).message);
 		}
 	}
 
@@ -198,22 +251,25 @@ export default function ContactAdmin() {
 			{/* Top Bar */}
 			<div className="flex items-center justify-between px-6 py-3 border-b border-border bg-primary text-white">
 				<h1 className="text-xl font-semibold">Hadoku Mail</h1>
-				<div className="flex gap-2">
-					<button
-						onClick={() => setView('inbox')}
-						className={`px-4 py-2 rounded ${
-							view === 'inbox' ? 'bg-primary-dark' : 'bg-primary-light hover:bg-primary-hover'
-						}`}
-					>
-						Inbox
-					</button>
+				<div className="flex gap-2 items-center">
+					<ThemePickerWrapper />
+					{view === 'inbox' && (
+						<button
+							onClick={refreshEmails}
+							disabled={refreshing}
+							className="px-4 py-2 rounded bg-primary-light hover:bg-primary-hover disabled:opacity-50"
+							title="Refresh emails"
+						>
+							{refreshing ? '↻ Refreshing...' : '↻ Refresh'}
+						</button>
+					)}
 					<button
 						onClick={() => setView('compose')}
 						className={`px-4 py-2 rounded ${
 							view === 'compose' ? 'bg-primary-dark' : 'bg-primary-light hover:bg-primary-hover'
 						}`}
 					>
-						Compose
+						{view === 'compose' ? '✓ Composing' : '✉ Compose'}
 					</button>
 				</div>
 			</div>
@@ -339,7 +395,7 @@ export default function ContactAdmin() {
 													e.target.value as 'unread' | 'read' | 'archived'
 												)
 											}
-											className="px-3 py-1 text-sm border border-border rounded focus:outline-none focus:shadow-focus"
+											className="px-3 py-1 text-sm border border-border bg-bg text-text rounded focus:outline-none focus:shadow-focus"
 										>
 											<option value="unread">Unread</option>
 											<option value="read">Read</option>
@@ -354,6 +410,12 @@ export default function ContactAdmin() {
 											className="px-4 py-1 text-sm bg-primary text-white rounded hover:bg-primary-hover"
 										>
 											Reply
+										</button>
+										<button
+											onClick={() => deleteEmail(selectedEmail.id)}
+											className="px-4 py-1 text-sm bg-danger text-white rounded hover:bg-danger-dark"
+										>
+											Delete
 										</button>
 									</div>
 								</div>
