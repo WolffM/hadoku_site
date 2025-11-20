@@ -153,27 +153,83 @@ jobs:
       #     echo "✅ KV namespace flushed - ready for new storage structure"
 
       - name: Update packages
+        id: update
+        continue-on-error: true
         run: |
           PACKAGES='${{ steps.parse.outputs.packages }}'
           echo "📦 Updating packages..."
 
-          echo "$PACKAGES" | jq -r '.[]' | while read -r package; do
-            echo "Updating $package to latest version..."
-            
-            # Update in workspace root
-            pnpm add -w "$package@latest"
-            echo "✅ Updated $package in root package.json"
-            
-            # If it's @wolffm/task, also update in workers/task-api
-            if [ "$package" = "@wolffm/task" ]; then
-              echo "📦 Updating $package in workers/task-api..."
-              cp .npmrc ./workers/task-api/
-              pnpm --filter task-api add "$package@latest"
-              echo "✅ Updated $package in workers/task-api"
-            fi
-          done
+          # Track results
+          FAILED_PACKAGES=""
+          SUCCESS_PACKAGES=""
+          UPDATE_STATUS="success"
 
-          echo "✅ All package updates complete"
+          # Process each package
+          while IFS= read -r package; do
+            echo "═══════════════════════════════════════"
+            echo "📦 Processing: $package"
+            echo "═══════════════════════════════════════"
+
+            # Update in workspace root with error handling
+            if pnpm add -w "$package@latest" 2>&1 | tee /tmp/pnpm-output.log; then
+              # Check exit code of pnpm command
+              if [ ${PIPESTATUS[0]} -eq 0 ]; then
+                echo "✅ Updated $package in root package.json"
+                SUCCESS_PACKAGES="$SUCCESS_PACKAGES$package,"
+
+                # If it's @wolffm/task, also update in workers/task-api
+                if [ "$package" = "@wolffm/task" ]; then
+                  echo "📦 Updating $package in workers/task-api..."
+                  cp .npmrc ./workers/task-api/
+                  if pnpm --filter task-api add "$package@latest" 2>&1; then
+                    echo "✅ Updated $package in workers/task-api"
+                  else
+                    echo "⚠️  Failed to update $package in workers/task-api"
+                    echo "↩️  Reverting $package update in root..."
+                    git checkout -- package.json pnpm-lock.yaml
+                    FAILED_PACKAGES="$FAILED_PACKAGES$package,"
+                    UPDATE_STATUS="partial"
+                  fi
+                fi
+              else
+                echo "❌ pnpm command failed for $package"
+                FAILED_PACKAGES="$FAILED_PACKAGES$package,"
+                UPDATE_STATUS="partial"
+              fi
+            else
+              echo "❌ Failed to update $package"
+
+              # Check if it's a dependency version mismatch
+              if grep -q "No matching version found" /tmp/pnpm-output.log; then
+                echo "⚠️  Dependency version mismatch detected"
+                echo "ℹ️  Package depends on an unpublished version"
+                echo "ℹ️  Will skip and retry later"
+              fi
+
+              FAILED_PACKAGES="$FAILED_PACKAGES$package,"
+              UPDATE_STATUS="partial"
+            fi
+          done < <(echo "$PACKAGES" | jq -r '.[]')
+
+          # Save to GITHUB_ENV for later steps
+          echo "FAILED_PACKAGES=${FAILED_PACKAGES}" >> $GITHUB_ENV
+          echo "SUCCESS_PACKAGES=${SUCCESS_PACKAGES}" >> $GITHUB_ENV
+
+          # Report results
+          echo ""
+          echo "═══════════════════════════════════════"
+          echo "📊 Update Summary"
+          echo "═══════════════════════════════════════"
+          if [ -n "$FAILED_PACKAGES" ]; then
+            echo "❌ Failed: ${FAILED_PACKAGES%,}"
+            echo "✅ Success: ${SUCCESS_PACKAGES%,}"
+            echo "status=partial" >> $GITHUB_OUTPUT
+            # Don't fail the step - let it continue
+            exit 0
+          else
+            echo "✅ All packages updated successfully"
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
 
       - name: Update task bundle
         if: steps.parse.outputs.update_task == 'true'
@@ -314,6 +370,40 @@ jobs:
               }
             });
             console.log('✅ Cloudflare Workers deployment triggered');
+
+      - name: Report package update failures
+        if: env.FAILED_PACKAGES != ''
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const failedPackages = process.env.FAILED_PACKAGES?.trim() || '';
+            const successPackages = process.env.SUCCESS_PACKAGES?.trim() || '';
+
+            if (failedPackages) {
+              const body = `## ⚠️  Package Update Partial Failure\n\n` +
+                `**Failed Packages:** ${failedPackages}\n` +
+                `**Successful Packages:** ${successPackages || 'none'}\n\n` +
+                `**Common Causes:**\n` +
+                `- Dependency version mismatch (package depends on unpublished version)\n` +
+                `- Network issues during package download\n` +
+                `- Breaking changes in latest version\n\n` +
+                `**Next Steps:**\n` +
+                `1. Check if the failed package's dependencies need to be published first\n` +
+                `2. Retry the update manually once dependencies are available\n` +
+                `3. Check the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed logs`;
+
+              core.warning(`Package update partially failed: ${failedPackages}`);
+
+              // Create an issue for tracking
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Package update failed: ${failedPackages}`,
+                body: body,
+                labels: ['automated', 'package-update', 'needs-investigation']
+              });
+            }
 
       - name: Comment with backup info
         if: steps.commit.outputs.updated == 'true'
