@@ -18,11 +18,13 @@ import {
 	archiveOldSubmissions,
 } from '../storage';
 import { resetRateLimit } from '../rate-limit';
+import { createEmailProvider } from '../email';
 
 interface Env {
 	DB: D1Database;
 	RATE_LIMIT_KV: KVNamespace;
 	ADMIN_KEYS?: string;
+	EMAIL_PROVIDER?: string;
 }
 
 type AppContext = {
@@ -39,6 +41,7 @@ type AppContext = {
  * Middleware to require admin access
  */
 function requireAdmin() {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	return async (c: any, next: any) => {
 		const auth = c.get('authContext');
 
@@ -268,6 +271,70 @@ export function createAdminRoutes() {
 		} catch (error) {
 			console.error('Error resetting rate limit:', error);
 			return serverError(c, 'Failed to reset rate limit');
+		}
+	});
+
+	/**
+	 * POST /admin/send-email
+	 * Send an outgoing email via configured email provider
+	 */
+	app.post('/send-email', async (c) => {
+		try {
+			const body = await c.req.json();
+
+			// Validate required fields
+			if (!body.from || typeof body.from !== 'string') {
+				return badRequest(c, 'from field is required');
+			}
+			if (!body.to || typeof body.to !== 'string') {
+				return badRequest(c, 'to field is required');
+			}
+			if (!body.subject || typeof body.subject !== 'string') {
+				return badRequest(c, 'subject field is required');
+			}
+			if (!body.text || typeof body.text !== 'string') {
+				return badRequest(c, 'text field is required');
+			}
+
+			// Validate sender is from hadoku.me domain
+			const validDomains = ['hadoku.me'];
+			const fromDomain = body.from.split('@')[1];
+			if (!validDomains.includes(fromDomain)) {
+				return badRequest(c, 'from address must be from hadoku.me domain');
+			}
+
+			// Basic email validation for recipient
+			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+			if (!emailRegex.test(body.to)) {
+				return badRequest(c, 'Invalid recipient email address');
+			}
+
+			// Get email provider (defaults to mailchannels)
+			const providerName = c.env.EMAIL_PROVIDER || 'mailchannels';
+			const emailProvider = createEmailProvider(providerName);
+
+			// Send email
+			const result = await emailProvider.sendEmail({
+				from: body.from,
+				to: body.to,
+				subject: body.subject,
+				text: body.text,
+				replyTo: body.replyTo,
+			});
+
+			if (!result.success) {
+				console.error('Email sending failed:', result.error);
+				return serverError(c, result.error || 'Failed to send email');
+			}
+
+			return ok(c, {
+				success: true,
+				message: 'Email sent successfully',
+				messageId: result.messageId,
+			});
+		} catch (error) {
+			console.error('Error sending email:', error);
+			return serverError(c, 'Failed to send email');
 		}
 	});
 

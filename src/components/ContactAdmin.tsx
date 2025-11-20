@@ -143,7 +143,7 @@ export default function ContactAdmin() {
 			const result = await response.json();
 			setEmails(result.data.submissions);
 		} catch (err) {
-			alert(`Failed to refresh emails: ${  (err as Error).message}`);
+			alert(`Failed to refresh emails: ${(err as Error).message}`);
 		} finally {
 			setRefreshing(false);
 		}
@@ -177,7 +177,7 @@ export default function ContactAdmin() {
 				setSelectedEmail(null);
 			}
 		} catch (err) {
-			alert(`Failed to delete email: ${  (err as Error).message}`);
+			alert(`Failed to delete email: ${(err as Error).message}`);
 		}
 	}
 
@@ -208,7 +208,7 @@ export default function ContactAdmin() {
 				);
 			}
 		} catch (err) {
-			alert(`Failed to restore email: ${  (err as Error).message}`);
+			alert(`Failed to restore email: ${(err as Error).message}`);
 		}
 	}
 
@@ -217,8 +217,30 @@ export default function ContactAdmin() {
 		setSending(true);
 
 		try {
-			// TODO: Implement actual email sending API
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			if (!adminKey) {
+				throw new Error('No admin key available');
+			}
+
+			// Send email via API
+			const response = await fetch('/contact/api/admin/send-email', {
+				method: 'POST',
+				headers: {
+					'X-User-Key': adminKey,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					from: composeFrom,
+					to: composeTo,
+					subject: composeSubject,
+					text: composeMessage,
+					replyTo: selectedEmail?.email,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+				throw new Error(errorData.message || `Failed to send email: ${response.statusText}`);
+			}
 
 			// Save recipient to past recipients
 			if (composeTo && !pastRecipients.includes(composeTo)) {
@@ -234,7 +256,7 @@ export default function ContactAdmin() {
 			setView('inbox');
 			alert('Email sent successfully!');
 		} catch (err) {
-			alert(`Failed to send email: ${  (err as Error).message}`);
+			alert(`Failed to send email: ${(err as Error).message}`);
 		} finally {
 			setSending(false);
 		}
@@ -277,7 +299,7 @@ export default function ContactAdmin() {
 	return (
 		<div className="h-screen flex flex-col bg-bg">
 			{/* Top Bar */}
-			<div className="flex items-center justify-between px-6 py-3 border-b border-border bg-primary text-white">
+			<div className="flex items-center justify-between px-6 py-3 border-b border-border bg-primary text-primary-text">
 				<div className="flex items-center gap-4">
 					<h1 className="text-xl font-semibold">Hadoku Mail</h1>
 					<ThemePickerWrapper />
@@ -317,7 +339,7 @@ export default function ContactAdmin() {
 									}}
 									className={`w-full text-left px-3 py-2 rounded text-sm ${
 										selectedRecipient === 'all' && !showTrash
-											? 'bg-primary-bg text-primary font-medium'
+											? 'bg-primary text-primary-text font-medium'
 											: 'text-text hover:bg-bg-card'
 									}`}
 								>
@@ -343,7 +365,7 @@ export default function ContactAdmin() {
 											}}
 											className={`w-full text-left px-3 py-2 rounded text-sm ${
 												selectedRecipient === recipient && !showTrash
-													? 'bg-primary-bg text-primary font-medium'
+													? 'bg-primary text-primary-text font-medium'
 													: 'text-text hover:bg-bg-card'
 											}`}
 										>
@@ -356,7 +378,7 @@ export default function ContactAdmin() {
 								})}
 							</div>
 							<div className="mt-6 pt-6 border-t border-border">
-								<h2 className="text-sm font-semibold text-text-secondary mb-3">SPECIAL</h2>
+								<h2 className="text-sm font-semibold text-text-secondary mb-3">OTHER</h2>
 								<button
 									onClick={() => {
 										setShowTrash(true);
@@ -364,7 +386,7 @@ export default function ContactAdmin() {
 									}}
 									className={`w-full text-left px-3 py-2 rounded text-sm ${
 										showTrash
-											? 'bg-primary-bg text-primary font-medium'
+											? 'bg-primary text-primary-text font-medium'
 											: 'text-text hover:bg-bg-card'
 									}`}
 								>

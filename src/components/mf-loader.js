@@ -65,52 +65,64 @@ document.addEventListener('DOMContentLoaded', async () => {
 					// Check for key in URL first, otherwise check sessionStorage
 					const key = keyFromUrl || sessionStorage.getItem('hadoku_session_key');
 
+					// Try to get existing session from sessionStorage first
+					sessionId = sessionStorage.getItem('hadoku_session_id');
+
 					if (key) {
-						// Validate the key with the backend to get the correct userType
-						try {
-							const validationResponse = await fetch('/task/api/validate-key', {
-								method: 'POST',
-								headers: {
-									'X-User-Key': key,
-								},
-							});
+						// If we have a key from URL, validate it first
+						// If we're using an existing session (no key in URL), skip validation
+						if (keyFromUrl) {
+							// Validate the key with the backend to get the correct userType
+							try {
+								const validationResponse = await fetch('/task/api/validate-key', {
+									method: 'POST',
+									headers: {
+										'X-User-Key': key,
+									},
+								});
 
-							if (validationResponse.ok) {
-								const validation = await validationResponse.json();
+								if (validationResponse.ok) {
+									const validation = await validationResponse.json();
 
-								if (validation.valid) {
-									// Key is valid - use the userType from the auth middleware
-									userType = validation.userType; // 'admin' or 'friend'
-									userId = key;
+									if (validation.valid) {
+										// Key is valid - use the userType from the auth middleware
+										userType = validation.userType; // 'admin' or 'friend'
+										userId = key;
+									} else {
+										// Key is invalid - clear it and go to public mode
+										logger.warn('Invalid key detected, clearing session and redirecting to public');
+										sessionStorage.removeItem('hadoku_session_id');
+										sessionStorage.removeItem('hadoku_session_key');
+
+										// Redirect to public route
+										window.location.href = `/${appName}/public`;
+										return;
+									}
 								} else {
-									// Key is invalid - clear it and go to public mode
-									logger.warn('Invalid key detected, clearing session and redirecting to public');
+									// Validation endpoint failed - clear session as safety measure
+									logger.error('Failed to validate key, clearing session');
 									sessionStorage.removeItem('hadoku_session_id');
 									sessionStorage.removeItem('hadoku_session_key');
-
-									// Redirect to public route
-									window.location.href = `/${appName}/public`;
-									return;
+									userType = 'public';
+									userId = 'public';
 								}
-							} else {
-								// Validation endpoint failed - clear session as safety measure
-								logger.error('Failed to validate key, clearing session');
+							} catch (err) {
+								logger.error('Error validating key', { error: err.message || err });
+								// On error, clear session for safety
 								sessionStorage.removeItem('hadoku_session_id');
 								sessionStorage.removeItem('hadoku_session_key');
 								userType = 'public';
 								userId = 'public';
 							}
-						} catch (err) {
-							logger.error('Error validating key', { error: err.message || err });
-							// On error, clear session for safety
-							sessionStorage.removeItem('hadoku_session_id');
-							sessionStorage.removeItem('hadoku_session_key');
-							userType = 'public';
-							userId = 'public';
+						} else if (sessionId) {
+							// Using existing session - trust it without re-validation
+							// The edge router will validate the session when child app makes API requests
+							userType = 'friend'; // Default assumption for existing sessions
+							userId = key;
+							logger.debug(`Using existing session`, {
+								sessionId: `${sessionId.substring(0, 16)}...`,
+							});
 						}
-
-						// Try to get existing session from sessionStorage
-						sessionId = sessionStorage.getItem('hadoku_session_id');
 
 						// If we have a key from URL or no existing session, create/refresh session
 						if (keyFromUrl || !sessionId) {
@@ -156,10 +168,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 								sessionStorage.removeItem('hadoku_session_id');
 								sessionStorage.removeItem('hadoku_session_key');
 							}
-						} else {
-							logger.debug(`Using existing session`, {
-								sessionId: `${sessionId.substring(0, 16)}...`,
-							});
 						}
 					} else {
 						// No key found - clear any stale session data
