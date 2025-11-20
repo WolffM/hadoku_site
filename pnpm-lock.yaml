@@ -24,8 +24,8 @@ importers:
         specifier: ^19.2.2
         version: 19.2.2(@types/react@19.2.2)
       '@wolffm/contact-ui':
-        specifier: ^1.0.13
-        version: 1.0.13(@types/react@19.2.2)(@wolffm/task-ui-components@1.2.4(react@19.2.0))(@wolffm/themes@1.1.12(@wolffm/task-ui-components@1.2.4(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: ^1.0.14
+        version: 1.0.14(@types/react@19.2.2)(@wolffm/task-ui-components@1.2.4(react@19.2.0))(@wolffm/themes@1.1.12(@wolffm/task-ui-components@1.2.4(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@wolffm/resume-bot':
         specifier: ^1.0.6
         version: 1.0.6(@wolffm/themes@1.1.12(@wolffm/task-ui-components@1.2.4(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -1434,11 +1434,11 @@ packages:
   '@wojtekmaj/date-utils@2.0.2':
     resolution: {integrity: sha512-Do66mSlSNifFFuo3l9gNKfRMSFi26CRuQMsDJuuKO/ekrDWuTTtE4ZQxoFCUOG+NgxnpSeBq/k5TY8ZseEzLpA==}
 
-  '@wolffm/contact-ui@1.0.13':
-    resolution: {integrity: sha512-wgaipS7xGN6RADVGHXLDgCxXprypQggJyx8UBF1XN12dAu6s5mxQgnw9Zy1mXz8YYoYt8sd0GRXwNTIwyTgGog==, tarball: https://npm.pkg.github.com/download/@wolffm/contact-ui/1.0.13/917371dfb58722eed1b54b57195cc140b704a3f1}
+  '@wolffm/contact-ui@1.0.14':
+    resolution: {integrity: sha512-xnNVary0yOR4lQj+QsEKLn+XqI/OWGF2IunuuM2Z5KM9J4nwSidC8jg0RRyTHE8eEjp/4iEZBPumblb/gAUMJg==, tarball: https://npm.pkg.github.com/download/@wolffm/contact-ui/1.0.14/11d591245397ed7a9c86bb5216754d7789749a75}
     peerDependencies:
-      '@wolffm/task-ui-components': '>=1.0.0'
-      '@wolffm/themes': '>=1.0.0'
+      '@wolffm/task-ui-components': '*'
+      '@wolffm/themes': '*'
       react: ^19.0.0
       react-dom: ^19.0.0
 
@@ -4945,7 +4945,7 @@ snapshots:
 
   '@wojtekmaj/date-utils@2.0.2': {}
 
-  '@wolffm/contact-ui@1.0.13(@types/react@19.2.2)(@wolffm/task-ui-components@1.2.4(react@19.2.0))(@wolffm/themes@1.1.12(@wolffm/task-ui-components@1.2.4(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@wolffm/contact-ui@1.0.14(@types/react@19.2.2)(@wolffm/task-ui-components@1.2.4(react@19.2.0))(@wolffm/themes@1.1.12(@wolffm/task-ui-components@1.2.4(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@wolffm/task-ui-components': 1.2.4(react@19.2.0)
       '@wolffm/themes': 1.1.12(@wolffm/task-ui-components@1.2.4(react@19.2.0))(react@19.2.0)
