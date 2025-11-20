@@ -11,7 +11,15 @@
         const savedTheme = sessionStorage.getItem('hadoku-theme');
         const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+
         document.documentElement.setAttribute('data-theme', theme);
+
+        console.log('[theme-init] Applied initial theme:', {
+          theme,
+          savedTheme,
+          prefersDark,
+          source: savedTheme ? 'sessionStorage' : prefersDark ? 'browser-preference' : 'default'
+        });
       } catch (err) {
         console.error('[theme-init] Failed to set initial theme:', err);
         document.documentElement.setAttribute('data-theme', 'light');
@@ -26,7 +34,7 @@
 
     // Get params from URL
     const params = new URLSearchParams(window.location.search)
-    const theme = params.get('theme') || 'default'
+    const theme = params.get('theme') || undefined // Let the app handle default theme
 
     console.log('[mount] Mounting your-app with:', { theme })
 

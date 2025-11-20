@@ -31,12 +31,14 @@
   },
   "peerDependencies": {
     "@wolffm/themes": ">=1.0.0",
+    "@wolffm/task-ui-components": ">=1.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "dependencies": {},
   "devDependencies": {
-    "@wolffm/themes": "^1.0.0",
+    "@wolffm/themes": "workspace:*",
+    "@wolffm/task-ui-components": "workspace:*",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "@eslint/js": "^9.39.1",

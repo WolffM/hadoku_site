@@ -64,14 +64,16 @@ useEffect(() => {
 
 ```css
 /* ✅ Correct */
-background-color: var(--theme-background);
-color: var(--theme-text);
+background-color: var(--color-bg);
+color: var(--color-text);
+border-color: var(--color-border);
 
 /* ❌ Wrong */
 background-color: #ffffff; /* NO hardcoded colors! */
 ```
 
-**Variables**: `--theme-background`, `--theme-text`, `--theme-primary`, `--theme-border`, etc.
+**Variables**: `--color-bg`, `--color-text`, `--color-primary`, `--color-border`, `--color-bg-card`, etc.
+See `@wolffm/themes` for complete list of CSS variables.
 
 ---
 

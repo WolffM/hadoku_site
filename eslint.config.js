@@ -25,12 +25,15 @@ export default [
 
 	// JavaScript/TypeScript files
 	{
-		files: ['**/*.js', '**/*.mjs', '**/*.ts'],
+		files: ['**/*.js', '**/*.mjs', '**/*.ts', '**/*.tsx'],
 		languageOptions: {
 			parser: tsParser,
 			parserOptions: {
 				ecmaVersion: 'latest',
 				sourceType: 'module',
+				ecmaFeatures: {
+					jsx: true,
+				},
 			},
 			globals: {
 				// Node.js globals
@@ -72,12 +75,18 @@ export default [
 				AnalyticsEngineDataset: 'readonly',
 				DurableObjectNamespace: 'readonly',
 				R2Bucket: 'readonly',
-				// Custom Elements
+				// Custom Elements & DOM types
 				HTMLElement: 'readonly',
+				HTMLDivElement: 'readonly',
 				customElements: 'readonly',
 				// Browser Storage
 				sessionStorage: 'readonly',
 				localStorage: 'readonly',
+				// Browser Media Query types
+				MediaQueryList: 'readonly',
+				MediaQueryListEvent: 'readonly',
+				// React
+				React: 'readonly',
 			},
 		},
 		plugins: {

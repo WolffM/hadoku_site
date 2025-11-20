@@ -31,28 +31,28 @@ This app is a child component of the [hadoku_site](https://github.com/WolffM/had
 
 ```typescript
 interface YourAppProps {
-  theme?: string;              // 'default', 'ocean', 'forest', etc.
+  theme?: string // 'light', 'dark', 'coffee-dark', etc.
 }
 ```
 
 ### Mounting
 
 ```typescript
-import { mount, unmount } from '@wolffm/your-app';
+import { mount, unmount } from '@wolffm/your-app'
 
 // Mount the app
 mount(document.getElementById('app-root'), {
-  theme: 'ocean',
-  environment: 'production'
-});
+  theme: 'ocean-dark'
+})
 
 // Unmount when done
-unmount(document.getElementById('app-root'));
+unmount(document.getElementById('app-root'))
 ```
 
 ## Deployment
 
 Pushes to `main` automatically:
+
 1. Build and publish to GitHub Packages
 2. Notify parent site to update
 3. Parent pulls new version and redeploys
