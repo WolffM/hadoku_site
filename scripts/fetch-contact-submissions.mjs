@@ -83,29 +83,12 @@ const limit = parseInt(args.find((arg) => arg.startsWith('--limit='))?.split('='
 const offset = parseInt(args.find((arg) => arg.startsWith('--offset='))?.split('=')[1]) || 0;
 const statsOnly = args.includes('--stats');
 
-async function createSession() {
-	const response = await fetch('https://hadoku.me/session/create', {
-		method: 'POST',
-		headers: {
-			'X-User-Key': ADMIN_KEY,
-			'Content-Type': 'application/json',
-		},
-	});
-
-	if (!response.ok) {
-		throw new Error(`Failed to create session: ${response.status} ${response.statusText}`);
-	}
-
-	const data = await response.json();
-	return data.sessionId;
-}
-
-async function fetchSubmissions(sessionId) {
+async function fetchSubmissions() {
 	const url = `https://hadoku.me/contact/api/admin/submissions?limit=${limit}&offset=${offset}`;
 
 	const response = await fetch(url, {
 		headers: {
-			'X-Session-Id': sessionId,
+			'X-User-Key': ADMIN_KEY,
 		},
 	});
 
@@ -119,10 +102,10 @@ async function fetchSubmissions(sessionId) {
 	return response.json();
 }
 
-async function fetchStats(sessionId) {
+async function fetchStats() {
 	const response = await fetch('https://hadoku.me/contact/api/admin/stats', {
 		headers: {
-			'X-Session-Id': sessionId,
+			'X-User-Key': ADMIN_KEY,
 		},
 	});
 
@@ -136,13 +119,9 @@ async function fetchStats(sessionId) {
 
 async function main() {
 	try {
-		console.log('🔐 Creating admin session...');
-		const sessionId = await createSession();
-		console.log('✓ Session created\n');
-
 		if (statsOnly) {
 			console.log('📊 Fetching statistics...');
-			const data = await fetchStats(sessionId);
+			const data = await fetchStats();
 
 			console.log('\n=== Contact Form Statistics ===');
 			console.log(`Total submissions: ${data.data.submissions.total}`);
@@ -157,7 +136,7 @@ async function main() {
 			}
 		} else {
 			console.log(`📧 Fetching ${limit} submissions (offset: ${offset})...\n`);
-			const data = await fetchSubmissions(sessionId);
+			const data = await fetchSubmissions();
 
 			console.log(
 				`=== Submissions (${data.data.submissions.length} of ${data.data.stats.total}) ===\n`

@@ -67,13 +67,18 @@ app.use(
 			const adminKeys = parseKeysFromEnv(env.ADMIN_KEYS);
 			const friendKeys = parseKeysFromEnv(env.FRIEND_KEYS);
 
+			// Helper to check if credential exists in keys (handles both Set and Record)
+			const hasKey = (keys: Set<string> | Record<string, string>, cred: string): boolean => {
+				return keys instanceof Set ? keys.has(cred) : cred in keys;
+			};
+
 			// Simple validation - check if credential is in admin or friend keys
 			let userType: 'admin' | 'friend' | 'public' = 'public';
 
 			if (credential) {
-				if (adminKeys.includes(credential)) {
+				if (hasKey(adminKeys, credential)) {
 					userType = 'admin';
-				} else if (friendKeys.includes(credential)) {
+				} else if (hasKey(friendKeys, credential)) {
 					userType = 'friend';
 				}
 			}
@@ -171,6 +176,7 @@ export default {
 	fetch: app.fetch,
 
 	// Handle scheduled events (cron triggers)
+	// eslint-disable-next-line no-undef
 	async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
 		// Use waitUntil to ensure the scheduled task completes
 		ctx.waitUntil(handleScheduled(env));
