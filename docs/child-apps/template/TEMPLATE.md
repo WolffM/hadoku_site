@@ -215,8 +215,6 @@ Push to `main` triggers:
 - [ ] Repository URL in `package.json`
 - [ ] Description in `package.json` and `README.md`
 - [ ] `HADOKU_SITE_TOKEN` in GitHub secrets
-- [ ] Replace all `console.log/error/warn` with `logger.info/error/warn`
-- [ ] Import logger in all files: `import { logger } from '@wolffm/task-ui-components'`
 - [ ] Test: `pnpm build` succeeds
 
 ---
