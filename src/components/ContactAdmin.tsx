@@ -299,9 +299,9 @@ export default function ContactAdmin() {
 	return (
 		<div className="h-screen flex flex-col bg-bg">
 			{/* Top Bar */}
-			<div className="flex items-center justify-between px-6 py-3 border-b border-border bg-primary text-primary-text">
+			<div className="flex items-center justify-between px-6 py-3 border-b border-border bg-bg-card">
 				<div className="flex items-center gap-4">
-					<h1 className="text-xl font-semibold">Hadoku Mail</h1>
+					<h1 className="text-xl font-semibold text-text">Hadoku Mail</h1>
 					<ThemePickerWrapper />
 				</div>
 			</div>
@@ -315,7 +315,7 @@ export default function ContactAdmin() {
 							<div className="space-y-2 mb-6">
 								<button
 									onClick={() => setView('compose')}
-									className="w-full px-4 py-2 rounded bg-primary text-primary-text hover:opacity-90 transition-opacity"
+									className="w-full px-4 py-2 rounded bg-primary text-white hover:bg-primary-dark transition-colors"
 								>
 									✉ Compose
 								</button>
@@ -339,7 +339,7 @@ export default function ContactAdmin() {
 									}}
 									className={`w-full text-left px-3 py-2 rounded text-sm ${
 										selectedRecipient === 'all' && !showTrash
-											? 'bg-primary text-primary-text font-medium'
+											? 'bg-primary-light text-primary-dark font-medium'
 											: 'text-text hover:bg-bg-card'
 									}`}
 								>
@@ -365,7 +365,7 @@ export default function ContactAdmin() {
 											}}
 											className={`w-full text-left px-3 py-2 rounded text-sm ${
 												selectedRecipient === recipient && !showTrash
-													? 'bg-primary text-primary-text font-medium'
+													? 'bg-primary-light text-primary-dark font-medium'
 													: 'text-text hover:bg-bg-card'
 											}`}
 										>
@@ -386,7 +386,7 @@ export default function ContactAdmin() {
 									}}
 									className={`w-full text-left px-3 py-2 rounded text-sm ${
 										showTrash
-											? 'bg-primary text-primary-text font-medium'
+											? 'bg-primary-light text-primary-dark font-medium'
 											: 'text-text hover:bg-bg-card'
 									}`}
 								>
@@ -501,7 +501,7 @@ export default function ContactAdmin() {
 														setComposeSubject(`Re: Message from ${selectedEmail.name}`);
 														setView('compose');
 													}}
-													className="px-4 py-1 text-sm bg-primary text-primary-text rounded hover:opacity-90 transition-opacity"
+													className="px-4 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark transition-colors"
 												>
 													Reply
 												</button>
