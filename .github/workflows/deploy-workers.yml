@@ -10,6 +10,7 @@ on:
       - '.github/workflows/deploy-workers.yml'
   repository_dispatch:
     types: [config_updated, deploy_workers]
+  # Re-enable workflow after fixing contact-api deployment
 
 jobs:
   deploy-edge-router:
