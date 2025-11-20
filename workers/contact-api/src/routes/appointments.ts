@@ -6,7 +6,6 @@
  */
 
 import { Hono } from 'hono';
-import { badRequest, serverError } from '@hadoku/worker-utils';
 import { validateSlotFetchRequest } from '../validation';
 import { getAppointmentConfig, getAppointmentsByDate } from '../storage';
 
@@ -150,7 +149,7 @@ async function generateTimeSlots(
 	const [endHour, endMinute] = businessHoursEnd.split(':').map(Number);
 
 	// Create date objects for the requested date with business hours
-	const dateObj = new Date(`${date  }T00:00:00.000Z`);
+	const dateObj = new Date(`${date}T00:00:00.000Z`);
 	const slots = [];
 
 	// Generate slots from start to end of business hours

@@ -2,6 +2,13 @@
  * Validation utilities for contact form submissions
  */
 
+import {
+	VALIDATION_CONSTRAINTS,
+	APPOINTMENT_CONFIG,
+	SITE_CONFIG,
+	type AppointmentPlatform,
+} from './constants';
+
 export interface ContactSubmission {
 	name: string;
 	email: string;
@@ -14,12 +21,6 @@ export interface ValidationResult {
 	errors: string[];
 	sanitized?: ContactSubmission;
 }
-
-/**
- * Email validation regex
- * Simple but effective pattern for most valid emails
- */
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Sanitize a string by trimming whitespace and limiting length
@@ -81,25 +82,25 @@ export function validateContactSubmission(data: any): ValidationResult {
 	}
 
 	// Sanitize and validate individual fields
-	const name = sanitizeString(data.name, 100);
-	const email = sanitizeString(data.email, 100);
-	const message = sanitizeString(data.message, 5000);
+	const name = sanitizeString(data.name, VALIDATION_CONSTRAINTS.NAME_MAX_LENGTH);
+	const email = sanitizeString(data.email, VALIDATION_CONSTRAINTS.EMAIL_MAX_LENGTH);
+	const message = sanitizeString(data.message, VALIDATION_CONSTRAINTS.MESSAGE_MAX_LENGTH);
 
 	// Length validation (after sanitization)
-	if (name.length < 2) {
-		errors.push('Name must be at least 2 characters');
+	if (name.length < VALIDATION_CONSTRAINTS.NAME_MIN_LENGTH) {
+		errors.push(`Name must be at least ${VALIDATION_CONSTRAINTS.NAME_MIN_LENGTH} characters`);
 	}
 
-	if (email.length < 5) {
-		errors.push('Email must be at least 5 characters');
+	if (email.length < VALIDATION_CONSTRAINTS.EMAIL_MIN_LENGTH) {
+		errors.push(`Email must be at least ${VALIDATION_CONSTRAINTS.EMAIL_MIN_LENGTH} characters`);
 	}
 
-	if (message.length < 10) {
-		errors.push('Message must be at least 10 characters');
+	if (message.length < VALIDATION_CONSTRAINTS.MESSAGE_MIN_LENGTH) {
+		errors.push(`Message must be at least ${VALIDATION_CONSTRAINTS.MESSAGE_MIN_LENGTH} characters`);
 	}
 
 	// Email format validation
-	if (!EMAIL_REGEX.test(email)) {
+	if (!VALIDATION_CONSTRAINTS.EMAIL_REGEX.test(email)) {
 		errors.push('Email format is invalid');
 	}
 
@@ -165,8 +166,10 @@ export function validateReferrer(request: Request): boolean {
 		const url = new URL(referrer);
 		const hostname = url.hostname.toLowerCase();
 
-		// Allow hadoku.me and any subdomain
-		return hostname === 'hadoku.me' || hostname.endsWith('.hadoku.me');
+		// Check against allowed domains
+		return SITE_CONFIG.ALLOWED_REFERRER_DOMAINS.some(
+			(domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+		);
 	} catch {
 		// Invalid URL
 		return false;
@@ -183,7 +186,7 @@ export interface AppointmentData {
 	startTime: string; // ISO 8601
 	endTime: string; // ISO 8601
 	duration: number; // 15, 30, or 60
-	platform: 'discord' | 'google' | 'teams' | 'jitsi';
+	platform: AppointmentPlatform;
 }
 
 export interface AppointmentValidationResult {
@@ -191,16 +194,6 @@ export interface AppointmentValidationResult {
 	errors: string[];
 	sanitized?: AppointmentData;
 }
-
-/**
- * Valid slot durations in minutes
- */
-const VALID_DURATIONS = [15, 30, 60];
-
-/**
- * Valid meeting platforms
- */
-const VALID_PLATFORMS = ['discord', 'google', 'teams', 'jitsi'];
 
 /**
  * Validate appointment data
@@ -244,18 +237,19 @@ export function validateAppointment(data: any): AppointmentValidationResult {
 	}
 
 	// Validate duration
-	if (!VALID_DURATIONS.includes(data.duration)) {
-		errors.push('Duration must be 15, 30, or 60 minutes');
+	if (!APPOINTMENT_CONFIG.VALID_DURATIONS.includes(data.duration)) {
+		errors.push(
+			`Duration must be one of: ${APPOINTMENT_CONFIG.VALID_DURATIONS.join(', ')} minutes`
+		);
 	}
 
 	// Validate platform
-	if (!VALID_PLATFORMS.includes(data.platform.toLowerCase())) {
-		errors.push('Platform must be discord, google, teams, or jitsi');
+	if (!APPOINTMENT_CONFIG.VALID_PLATFORMS.includes(data.platform.toLowerCase())) {
+		errors.push(`Platform must be one of: ${APPOINTMENT_CONFIG.VALID_PLATFORMS.join(', ')}`);
 	}
 
 	// Validate date format (YYYY-MM-DD)
-	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-	if (!dateRegex.test(data.date)) {
+	if (!VALIDATION_CONSTRAINTS.DATE_FORMAT_REGEX.test(data.date)) {
 		errors.push('Date must be in YYYY-MM-DD format');
 	} else {
 		// Validate it's a real date
@@ -301,7 +295,7 @@ export function validateAppointment(data: any): AppointmentValidationResult {
 			startTime: data.startTime,
 			endTime: data.endTime,
 			duration: data.duration,
-			platform: data.platform.toLowerCase() as 'discord' | 'google' | 'teams' | 'jitsi',
+			platform: data.platform.toLowerCase() as AppointmentPlatform,
 		},
 	};
 }
@@ -333,8 +327,7 @@ export function validateSlotFetchRequest(
 	}
 
 	// Validate date format
-	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-	if (!dateRegex.test(date!)) {
+	if (!VALIDATION_CONSTRAINTS.DATE_FORMAT_REGEX.test(date!)) {
 		errors.push('Date must be in YYYY-MM-DD format');
 	} else {
 		const parsedDate = new Date(date!);
@@ -345,8 +338,11 @@ export function validateSlotFetchRequest(
 
 	// Validate duration
 	const parsedDuration = parseInt(duration!, 10);
-	if (isNaN(parsedDuration) || !VALID_DURATIONS.includes(parsedDuration)) {
-		errors.push('Duration must be 15, 30, or 60');
+	if (
+		isNaN(parsedDuration) ||
+		!APPOINTMENT_CONFIG.VALID_DURATIONS.includes(parsedDuration as any)
+	) {
+		errors.push(`Duration must be one of: ${APPOINTMENT_CONFIG.VALID_DURATIONS.join(', ')}`);
 	}
 
 	if (errors.length > 0) {

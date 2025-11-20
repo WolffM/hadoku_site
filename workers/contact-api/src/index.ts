@@ -22,6 +22,7 @@ import { createAdminRoutes } from './routes/admin';
 import { createInboundRoutes } from './routes/inbound';
 import { createAppointmentsRoutes } from './routes/appointments';
 import { archiveOldSubmissions, isDatabaseNearCapacity } from './storage';
+import { RETENTION_CONFIG, DATABASE_CONFIG } from './constants';
 
 interface Env {
 	DB: D1Database;
@@ -154,21 +155,25 @@ app.onError((err, c) => {
  * Scheduled tasks triggered by cron (daily at 3 AM UTC)
  *
  * Tasks:
- * 1. Archive submissions older than 30 days
- * 2. Check database capacity and log warning if >80%
+ * 1. Archive submissions older than configured days
+ * 2. Check database capacity and log warning if over threshold
  */
 async function handleScheduled(env: Env): Promise<void> {
 	console.log('Running scheduled tasks...');
 
 	try {
 		// Task 1: Archive old submissions
-		const archivedCount = await archiveOldSubmissions(env.DB, 30);
-		console.log(`Archived ${archivedCount} submission(s) older than 30 days`);
+		const archivedCount = await archiveOldSubmissions(env.DB, RETENTION_CONFIG.ARCHIVE_AFTER_DAYS);
+		console.log(
+			`Archived ${archivedCount} submission(s) older than ${RETENTION_CONFIG.ARCHIVE_AFTER_DAYS} days`
+		);
 
 		// Task 2: Check database capacity
 		const isNearCapacity = await isDatabaseNearCapacity(env.DB);
 		if (isNearCapacity) {
-			console.warn('⚠️ WARNING: Database is over 80% capacity!');
+			console.warn(
+				`⚠️ WARNING: Database is over ${DATABASE_CONFIG.CAPACITY_WARNING_THRESHOLD * 100}% capacity!`
+			);
 			console.warn('Consider archiving more aggressively or cleaning up old data');
 		}
 

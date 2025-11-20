@@ -2,9 +2,10 @@
  * Rate limiting using Cloudflare KV
  *
  * Strategy: Sliding window rate limiting per IP address
- * - 5 submissions per hour per IP
- * - KV TTL automatically expires old entries
+ * Configuration is centralized in constants.ts
  */
+
+import { RATE_LIMIT_CONFIG } from './constants';
 
 export interface RateLimitResult {
 	allowed: boolean;
@@ -18,10 +19,8 @@ interface RateLimitEntry {
 	windowStart: number; // Timestamp when the window started
 }
 
-// Configuration
-const RATE_LIMIT_MAX = 5; // Max submissions per window
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour in milliseconds
-const KV_TTL_SECONDS = 60 * 60 * 2; // 2 hours (give some buffer)
+// Convert seconds to milliseconds for calculations
+const RATE_LIMIT_WINDOW_MS = RATE_LIMIT_CONFIG.WINDOW_DURATION_SECONDS * 1000;
 
 /**
  * Check if an IP address is rate limited
@@ -30,10 +29,7 @@ const KV_TTL_SECONDS = 60 * 60 * 2; // 2 hours (give some buffer)
  * @param ipAddress - Client IP address
  * @returns Rate limit result with allowed status
  */
-export async function checkRateLimit(
-	kv: KVNamespace,
-	ipAddress: string
-): Promise<RateLimitResult> {
+export async function checkRateLimit(kv: KVNamespace, ipAddress: string): Promise<RateLimitResult> {
 	const key = `rate-limit:${ipAddress}`;
 	const now = Date.now();
 
@@ -45,13 +41,13 @@ export async function checkRateLimit(
 	if (!existing || now - existing.windowStart >= RATE_LIMIT_WINDOW_MS) {
 		return {
 			allowed: true,
-			remaining: RATE_LIMIT_MAX - 1, // -1 because this request will count
+			remaining: RATE_LIMIT_CONFIG.MAX_SUBMISSIONS_PER_HOUR - 1, // -1 because this request will count
 			resetAt: now + RATE_LIMIT_WINDOW_MS,
 		};
 	}
 
 	// Check if limit exceeded
-	if (existing.count >= RATE_LIMIT_MAX) {
+	if (existing.count >= RATE_LIMIT_CONFIG.MAX_SUBMISSIONS_PER_HOUR) {
 		const resetAt = existing.windowStart + RATE_LIMIT_WINDOW_MS;
 		const minutesUntilReset = Math.ceil((resetAt - now) / 60000);
 
@@ -66,7 +62,7 @@ export async function checkRateLimit(
 	// Within limit, allow
 	return {
 		allowed: true,
-		remaining: RATE_LIMIT_MAX - existing.count - 1,
+		remaining: RATE_LIMIT_CONFIG.MAX_SUBMISSIONS_PER_HOUR - existing.count - 1,
 		resetAt: existing.windowStart + RATE_LIMIT_WINDOW_MS,
 	};
 }
@@ -104,7 +100,7 @@ export async function recordSubmission(kv: KVNamespace, ipAddress: string): Prom
 
 	// Store with TTL
 	await kv.put(key, JSON.stringify(entry), {
-		expirationTtl: KV_TTL_SECONDS,
+		expirationTtl: RATE_LIMIT_CONFIG.KV_TTL_SECONDS,
 	});
 }
 

@@ -10,7 +10,6 @@
  */
 
 import { Hono } from 'hono';
-import { badRequest, serverError } from '@hadoku/worker-utils';
 import {
 	validateContactSubmission,
 	validateAppointment,
@@ -26,6 +25,7 @@ import {
 	isSlotAvailable,
 	getAppointmentsByDate,
 	getAppointmentConfig,
+	getEmailTemplate,
 } from '../storage';
 import { checkRateLimit, recordSubmission } from '../rate-limit';
 import { generateMeetingLink } from '../services/meeting-links';
@@ -36,7 +36,7 @@ import {
 	renderTemplate,
 	prepareAppointmentTemplateData,
 } from '../email/templates';
-import { getEmailTemplate } from '../storage';
+import { EMAIL_CONFIG, APPOINTMENT_CONFIG, RATE_LIMIT_CONFIG } from '../constants';
 
 interface Env {
 	DB: D1Database;
@@ -98,7 +98,7 @@ export function createSubmitRoutes() {
 					},
 					429,
 					{
-						'X-RateLimit-Limit': '5',
+						'X-RateLimit-Limit': RATE_LIMIT_CONFIG.MAX_SUBMISSIONS_PER_HOUR.toString(),
 						'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
 						'X-RateLimit-Reset': rateLimitResult.resetAt.toString(),
 					}
@@ -210,7 +210,7 @@ export function createSubmitRoutes() {
 
 				// Create appointment in database
 				const config = await getAppointmentConfig(db);
-				const timezone = config?.timezone || 'America/Los_Angeles';
+				const timezone = config?.timezone || APPOINTMENT_CONFIG.DEFAULT_TIMEZONE;
 
 				const appointment = await createAppointment(db, {
 					submission_id: submission.id,
@@ -226,8 +226,8 @@ export function createSubmitRoutes() {
 					platform: appointmentData.platform,
 					meeting_link: meetingLinkResult.success ? meetingLinkResult.meetingLink : undefined,
 					meeting_id: meetingLinkResult.success ? meetingLinkResult.meetingId : undefined,
-					ip_address: ipAddress,
-					user_agent: userAgent,
+					ip_address: ipAddress || undefined,
+					user_agent: userAgent || undefined,
 				});
 
 				// Send confirmation email with meeting details
@@ -292,11 +292,11 @@ export function createSubmitRoutes() {
 
 					// Send confirmation email
 					const emailResult = await emailProvider.sendEmail({
-						from: 'matthaeus@hadoku.me',
+						from: EMAIL_CONFIG.DEFAULT_FROM,
 						to: sanitized.email,
 						subject,
 						text,
-						replyTo: 'matthaeus@hadoku.me',
+						replyTo: EMAIL_CONFIG.DEFAULT_REPLY_TO,
 					});
 
 					if (!emailResult.success) {

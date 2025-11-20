@@ -25,13 +25,13 @@ import {
 	getAppointmentById,
 	updateAppointmentStatus,
 	listEmailTemplates,
-	getEmailTemplate,
 	upsertEmailTemplate,
 	deleteEmailTemplate,
 	getTemplateVersionHistory,
 } from '../storage';
 import { resetRateLimit } from '../rate-limit';
 import { createEmailProvider } from '../email';
+import { EMAIL_CONFIG, VALIDATION_CONSTRAINTS, RETENTION_CONFIG } from '../constants';
 
 interface Env {
 	DB: D1Database;
@@ -246,7 +246,7 @@ export function createAdminRoutes() {
 	app.post('/archive', async (c) => {
 		try {
 			const body = await c.req.json().catch(() => ({}));
-			const daysOld = Number(body.daysOld) || 30;
+			const daysOld = Number(body.daysOld) || RETENTION_CONFIG.ARCHIVE_AFTER_DAYS;
 
 			if (daysOld < 1 || daysOld > 365) {
 				return badRequest(c, 'daysOld must be between 1 and 365');
@@ -311,16 +311,17 @@ export function createAdminRoutes() {
 				return badRequest(c, 'text field is required');
 			}
 
-			// Validate sender is from hadoku.me domain
-			const validDomains = ['hadoku.me'];
+			// Validate sender is from allowed domain
 			const fromDomain = body.from.split('@')[1];
-			if (!validDomains.includes(fromDomain)) {
-				return badRequest(c, 'from address must be from hadoku.me domain');
+			if (!EMAIL_CONFIG.VALID_DOMAINS.includes(fromDomain)) {
+				return badRequest(
+					c,
+					`from address must be from one of: ${EMAIL_CONFIG.VALID_DOMAINS.join(', ')}`
+				);
 			}
 
 			// Basic email validation for recipient
-			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-			if (!emailRegex.test(body.to)) {
+			if (!VALIDATION_CONSTRAINTS.EMAIL_REGEX.test(body.to)) {
 				return badRequest(c, 'Invalid recipient email address');
 			}
 
