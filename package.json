@@ -15,6 +15,8 @@
     "update-themes-bundle": "node scripts/update-bundle.mjs @wolffm/themes",
     "update-ui-components-bundle": "node scripts/update-bundle.mjs @wolffm/task-ui-components",
     "prebuild": "pnpm run update-contact-bundle && pnpm run update-resume-bundle && pnpm run update-task-bundle && pnpm run update-watchparty-bundle && pnpm run update-themes-bundle && pnpm run update-ui-components-bundle && pnpm run generate-registry",
+    "contact:fetch": "node scripts/fetch-contact-submissions.mjs",
+    "contact:stats": "node scripts/fetch-contact-submissions.mjs --stats",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -64,6 +66,7 @@
     "lint-staged": "^16.2.7",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
+    "prettier-plugin-astro": "^0.14.1",
     "tailwindcss": "^3.4.18",
     "typescript": "^5.9.3"
   },

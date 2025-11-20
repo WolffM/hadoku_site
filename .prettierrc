@@ -10,6 +10,7 @@
 	"bracketSpacing": true,
 	"bracketSameLine": false,
 	"quoteProps": "as-needed",
+	"plugins": ["prettier-plugin-astro"],
 	"overrides": [
 		{
 			"files": ["*.json", "*.yml", "*.yaml"],
@@ -25,6 +26,12 @@
 				"tabWidth": 2,
 				"printWidth": 80,
 				"proseWrap": "preserve"
+			}
+		},
+		{
+			"files": "*.astro",
+			"options": {
+				"parser": "astro"
 			}
 		}
 	]
