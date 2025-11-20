@@ -94,6 +94,7 @@ const registry = {
 	},
 	contact: {
 		url: `/mf/contact/index.js?v=${contactVersion}`,
+		css: `/mf/contact/style.css?v=${contactVersion}`,
 		basename: '/contact',
 		props: {
 			basename: '/contact',

@@ -22,6 +22,7 @@ const __dirname = dirname(__filename);
 const PACKAGE_CONFIGS = {
 	'@wolffm/contact-ui': {
 		targetDir: 'contact',
+		cssSource: 'style.css',
 	},
 	'@wolffm/task': {
 		targetDir: 'task',
