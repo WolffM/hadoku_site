@@ -29,7 +29,10 @@
       "Bash(pnpm test:*)",
       "Bash(npx eslint:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(python scripts/administration.py:*)",
+      "Bash(where:*)",
+      "Bash(npx wrangler --version)"
     ],
     "deny": [],
     "ask": []

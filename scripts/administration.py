@@ -39,6 +39,10 @@ Key Management:
 GitHub Secrets:
     github-secrets <mode>       Update GitHub secrets (cloudflare|child-repos|all)
 
+Cloudflare Worker Secrets:
+    cloudflare-secrets [worker] Update Cloudflare Worker secrets (task-api|contact-api|all)
+    cloudflare-secrets --dry-run Show what would be updated without making changes
+
 Common Examples:
     python administration.py verify-install
     python administration.py kv-summary
@@ -47,6 +51,8 @@ Common Examples:
     python administration.py key-migrate "old-uuid" "new-uuid"
     python administration.py key-delete "old-uuid" --include-d1 --execute
     python administration.py github-secrets cloudflare
+    python administration.py cloudflare-secrets all
+    python administration.py cloudflare-secrets contact-api
 
 Key Rotation Workflow:
     1. python administration.py key-generate
@@ -255,14 +261,14 @@ def run_command(args):
                 print("Error: github-secrets requires a mode")
                 print("Usage: python administration.py github-secrets <cloudflare|child-repos|all>")
                 return 1
-            
+
             mode = args[2]
             valid_modes = ['cloudflare', 'child-repos', 'all']
             if mode not in valid_modes:
                 print(f"Error: Invalid mode '{mode}'")
                 print(f"Valid modes: {', '.join(valid_modes)}")
                 return 1
-            
+
             print(f"[INFO] Updating GitHub secrets (mode: {mode})...")
             script_path = ADMIN_DIR / 'manage_github_token.py'
             result = subprocess.run([sys.executable, str(script_path), f'--mode={mode}'])
@@ -271,9 +277,38 @@ def run_command(args):
                 print("[SUCCESS] GitHub secrets updated successfully")
             else:
                 print("[ERROR] Failed to update GitHub secrets")
-            
+
             return result.returncode
-        
+
+        elif command == 'cloudflare-secrets':
+            # Parse worker argument (default: all)
+            worker = 'all'
+            dry_run = False
+
+            if len(args) > 2:
+                if args[2] == '--dry-run':
+                    dry_run = True
+                else:
+                    worker = args[2]
+
+            if '--dry-run' in args:
+                dry_run = True
+
+            print(f"[INFO] Updating Cloudflare Worker secrets (worker: {worker})...")
+            script_path = ADMIN_DIR / 'update_cloudflare_secrets.py'
+            cmd = [sys.executable, str(script_path), '--worker', worker]
+            if dry_run:
+                cmd.append('--dry-run')
+
+            result = subprocess.run(cmd)
+
+            if result.returncode == 0:
+                print("[SUCCESS] Cloudflare secrets updated successfully")
+            else:
+                print("[ERROR] Failed to update Cloudflare secrets")
+
+            return result.returncode
+
         else:
             print(f"Error: Unknown command '{command}'")
             print_help()
