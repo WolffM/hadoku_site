@@ -5,12 +5,20 @@
  */
 import { describe, it, expect } from 'vitest';
 import { createEmailProvider } from '../../src/email';
+import { ResendProvider } from '../../src/email/resend';
 import { MailChannelsProvider } from '../../src/email/mailchannels';
 
 describe('Email Provider Factory', () => {
-	it('should create MailChannels provider by default', () => {
-		const provider = createEmailProvider();
-		expect(provider).toBeInstanceOf(MailChannelsProvider);
+	const testApiKey = 'test-api-key';
+
+	it('should create Resend provider by default', () => {
+		const provider = createEmailProvider('resend', testApiKey);
+		expect(provider).toBeInstanceOf(ResendProvider);
+	});
+
+	it('should create Resend provider when specified', () => {
+		const provider = createEmailProvider('resend', testApiKey);
+		expect(provider).toBeInstanceOf(ResendProvider);
 	});
 
 	it('should create MailChannels provider when specified', () => {
@@ -18,13 +26,17 @@ describe('Email Provider Factory', () => {
 		expect(provider).toBeInstanceOf(MailChannelsProvider);
 	});
 
-	it('should fall back to MailChannels for unknown providers', () => {
-		const provider = createEmailProvider('unknown-provider');
-		expect(provider).toBeInstanceOf(MailChannelsProvider);
+	it('should throw error for Resend without API key', () => {
+		expect(() => createEmailProvider('resend')).toThrow('RESEND_API_KEY is required');
+	});
+
+	it('should fall back to Resend for unknown providers', () => {
+		const provider = createEmailProvider('unknown-provider', testApiKey);
+		expect(provider).toBeInstanceOf(ResendProvider);
 	});
 
 	it('should be case-insensitive', () => {
-		const provider = createEmailProvider('MAILCHANNELS');
-		expect(provider).toBeInstanceOf(MailChannelsProvider);
+		const provider = createEmailProvider('RESEND', testApiKey);
+		expect(provider).toBeInstanceOf(ResendProvider);
 	});
 });

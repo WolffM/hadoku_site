@@ -25,6 +25,7 @@ interface Env {
 	RATE_LIMIT_KV: KVNamespace;
 	ADMIN_KEYS?: string;
 	EMAIL_PROVIDER?: string;
+	RESEND_API_KEY?: string;
 }
 
 type AppContext = {
@@ -309,9 +310,9 @@ export function createAdminRoutes() {
 				return badRequest(c, 'Invalid recipient email address');
 			}
 
-			// Get email provider (defaults to mailchannels)
-			const providerName = c.env.EMAIL_PROVIDER || 'mailchannels';
-			const emailProvider = createEmailProvider(providerName);
+			// Get email provider (defaults to resend)
+			const providerName = c.env.EMAIL_PROVIDER || 'resend';
+			const emailProvider = createEmailProvider(providerName, c.env.RESEND_API_KEY);
 
 			// Send email
 			const result = await emailProvider.sendEmail({

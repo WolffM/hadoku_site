@@ -38,11 +38,11 @@ describe('POST /contact/api/admin/send-email', () => {
 	});
 
 	it('should send email successfully with valid data', async () => {
-		// Mock MailChannels API
+		// Mock Resend API
 		global.fetch = vi.fn().mockResolvedValue({
 			ok: true,
-			status: 202,
-			text: async () => 'Accepted',
+			status: 200,
+			json: async () => ({ id: 'test-message-id' }),
 		});
 
 		const response = await makeRequest(worker, env, '/contact/api/admin/send-email', {
@@ -121,8 +121,8 @@ describe('POST /contact/api/admin/send-email', () => {
 	it('should handle replyTo parameter', async () => {
 		global.fetch = vi.fn().mockResolvedValue({
 			ok: true,
-			status: 202,
-			text: async () => 'Accepted',
+			status: 200,
+			json: async () => ({ id: 'test-message-id' }),
 		});
 
 		const response = await makeRequest(worker, env, '/contact/api/admin/send-email', {
@@ -168,8 +168,8 @@ describe('POST /contact/api/admin/send-email', () => {
 	it('should accept all valid hadoku.me sender addresses', async () => {
 		global.fetch = vi.fn().mockResolvedValue({
 			ok: true,
-			status: 202,
-			text: async () => 'Accepted',
+			status: 200,
+			json: async () => ({ id: 'test-message-id' }),
 		});
 
 		const validSenders = [
@@ -198,12 +198,12 @@ describe('POST /contact/api/admin/send-email', () => {
 	});
 
 	it('should use EMAIL_PROVIDER env variable', async () => {
-		const customEnv = createTestEnv({ EMAIL_PROVIDER: 'mailchannels' });
+		const customEnv = createTestEnv({ EMAIL_PROVIDER: 'resend', RESEND_API_KEY: 'test-key' });
 
 		global.fetch = vi.fn().mockResolvedValue({
 			ok: true,
-			status: 202,
-			text: async () => 'Accepted',
+			status: 200,
+			json: async () => ({ id: 'test-message-id' }),
 		});
 
 		const response = await makeRequest(worker, customEnv, '/contact/api/admin/send-email', {

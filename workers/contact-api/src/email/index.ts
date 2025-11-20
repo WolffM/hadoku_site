@@ -5,6 +5,7 @@
 
 import type { EmailProvider } from './provider';
 import { MailChannelsProvider } from './mailchannels';
+import { ResendProvider } from './resend';
 
 export type { EmailProvider, EmailParams, EmailResponse } from './provider';
 
@@ -17,20 +18,30 @@ export type { EmailProvider, EmailParams, EmailResponse } from './provider';
  * 3. Add a case in the switch statement
  * 4. Set EMAIL_PROVIDER env var to the new provider name
  *
- * @param providerName - The email provider to use (default: 'mailchannels')
+ * @param providerName - The email provider to use (default: 'resend')
+ * @param apiKey - API key for the provider (required for Resend, SendGrid, etc.)
  * @returns EmailProvider instance
  */
-export function createEmailProvider(providerName: string = 'mailchannels'): EmailProvider {
+export function createEmailProvider(
+	providerName: string = 'resend',
+	apiKey?: string
+): EmailProvider {
 	switch (providerName.toLowerCase()) {
+		case 'resend':
+			if (!apiKey) {
+				throw new Error('RESEND_API_KEY is required for Resend provider');
+			}
+			return new ResendProvider(apiKey);
 		case 'mailchannels':
 			return new MailChannelsProvider();
 		// Future providers:
-		// case 'resend':
-		//   return new ResendProvider(apiKey);
 		// case 'sendgrid':
 		//   return new SendGridProvider(apiKey);
 		default:
-			console.warn(`Unknown email provider: ${providerName}, falling back to MailChannels`);
-			return new MailChannelsProvider();
+			console.warn(`Unknown email provider: ${providerName}, falling back to Resend`);
+			if (!apiKey) {
+				throw new Error('RESEND_API_KEY is required');
+			}
+			return new ResendProvider(apiKey);
 	}
 }

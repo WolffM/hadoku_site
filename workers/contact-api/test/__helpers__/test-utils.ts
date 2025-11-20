@@ -153,13 +153,15 @@ export function createTestEnv(
 		DB: D1Database;
 		RATE_LIMIT_KV: KVNamespace;
 		EMAIL_PROVIDER: string;
+		RESEND_API_KEY: string;
 	}> = {}
 ) {
 	return {
 		ADMIN_KEYS: JSON.stringify({ 'test-admin-key': 'admin' }),
 		DB: createMockD1(),
 		RATE_LIMIT_KV: createMockKV(),
-		EMAIL_PROVIDER: 'mailchannels',
+		EMAIL_PROVIDER: 'resend',
+		RESEND_API_KEY: 'test-api-key',
 		...overrides,
 	};
 }
