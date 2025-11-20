@@ -26,7 +26,7 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/task': {
 		targetDir: 'task',
-		cssSource: 'style.css',
+		cssSource: 'task.css', // Will be 'style.css' in future package versions
 	},
 	'@wolffm/watchparty-ui': {
 		targetDir: 'watchparty',
@@ -38,7 +38,10 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/themes': {
 		targetDir: 'themes',
-		cssSource: 'style.css',
+		copyAll: true, // Copy dist directory for JS utilities
+		extraFiles: [
+			{ from: 'src/themes.css', to: 'style.css' }, // CSS is in src/, output as style.css
+		],
 	},
 	'@wolffm/task-ui-components': {
 		targetDir: 'ui-components',
@@ -52,7 +55,7 @@ function main() {
 	if (args.length === 0) {
 		console.error('Usage: node update-bundle.mjs <package-name>');
 		console.error('\nConfigured packages:');
-		Object.keys(PACKAGE_CONFIGS).forEach(pkg => {
+		Object.keys(PACKAGE_CONFIGS).forEach((pkg) => {
 			console.error(`  - ${pkg}`);
 		});
 		process.exit(1);
@@ -64,7 +67,7 @@ function main() {
 	if (!config) {
 		console.error(`✗ Unknown package: ${packageName}`);
 		console.error('\nConfigured packages:');
-		Object.keys(PACKAGE_CONFIGS).forEach(pkg => {
+		Object.keys(PACKAGE_CONFIGS).forEach((pkg) => {
 			console.error(`  - ${pkg}`);
 		});
 		process.exit(1);
