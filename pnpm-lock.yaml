@@ -24,8 +24,8 @@ importers:
         specifier: ^19.2.2
         version: 19.2.2(@types/react@19.2.2)
       '@wolffm/contact-ui':
-        specifier: ^1.0.4
-        version: 1.0.4(@wolffm/themes@1.1.9(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: ^1.0.7
+        version: 1.0.7(@wolffm/task-ui-components@1.2.3(react@19.2.0))(@wolffm/themes@1.1.9(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@wolffm/resume-bot':
         specifier: ^1.0.6
         version: 1.0.6(@wolffm/themes@1.1.9(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -1431,9 +1431,10 @@ packages:
   '@vitest/utils@4.0.4':
     resolution: {integrity: sha512-4bJLmSvZLyVbNsYFRpPYdJViG9jZyRvMZ35IF4ymXbRZoS+ycYghmwTGiscTXduUg2lgKK7POWIyXJNute1hjw==}
 
-  '@wolffm/contact-ui@1.0.4':
-    resolution: {integrity: sha512-sT/VuFO7rq1Hs+1A7m87l1Gp5ouavUy5TxFadgV/M9w72LS9pCx0J6czJbgMfBiPgbHawBL6E3r/nxJb0zN2Ew==, tarball: https://npm.pkg.github.com/download/@wolffm/contact-ui/1.0.4/4ceabd69d2308d1e45db95de04cb1a752b6ffdeb}
+  '@wolffm/contact-ui@1.0.7':
+    resolution: {integrity: sha512-WJ5Kku7lHHyZJf1YPNrq8N5VTtY9ep7uX8/iO8/ZGJ5YHM/eqBNc45iNoB1ntAwRd94aLVlBvVO0DVl4HHO9GQ==, tarball: https://npm.pkg.github.com/download/@wolffm/contact-ui/1.0.7/9befdc76e5ef1cc30a47995909c4c9a6d81a75ed}
     peerDependencies:
+      '@wolffm/task-ui-components': '>=1.0.0'
       '@wolffm/themes': '>=1.0.0'
       react: ^19.0.0
       react-dom: ^19.0.0
@@ -1482,22 +1483,12 @@ packages:
     peerDependencies:
       '@wolffm/task-ui-components': ^1.0.0
       react: ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@wolffm/task-ui-components':
-        optional: true
-      react:
-        optional: true
 
   '@wolffm/themes@1.1.9':
     resolution: {integrity: sha512-tqXi37NpTGSo/vJoNx2QN0yQyOuwYYelQ5NYv5oR/FF0QHImF3TNRKrZ+UjUYryXgs5zEx5lxhlmHyI7501lmA==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.1.9/47d8b8aafcd9fe6c5cd397bd412aee2014c78aca}
     peerDependencies:
       '@wolffm/task-ui-components': ^1.0.0
       react: ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@wolffm/task-ui-components':
-        optional: true
-      react:
-        optional: true
 
   '@wolffm/watchparty-ui@0.1.11':
     resolution: {integrity: sha512-vaC28th0dogsjGvPThHjOZ+CIrZQHe+VuopHcZPGCU4Lc5Sebd5dnSeU7wM+UEMkhk/8FmIQhngCQpcRnsVHsA==, tarball: https://npm.pkg.github.com/download/@wolffm/watchparty-ui/0.1.11/59ef70be8045fb217ab883418914a564fad8f9e2}
@@ -4941,8 +4932,9 @@ snapshots:
       '@vitest/pretty-format': 4.0.4
       tinyrainbow: 3.0.3
 
-  '@wolffm/contact-ui@1.0.4(@wolffm/themes@1.1.9(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+  '@wolffm/contact-ui@1.0.7(@wolffm/task-ui-components@1.2.3(react@19.2.0))(@wolffm/themes@1.1.9(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
+      '@wolffm/task-ui-components': 1.2.3(react@19.2.0)
       '@wolffm/themes': 1.1.9(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
@@ -4989,12 +4981,12 @@ snapshots:
       react: 19.2.0
 
   '@wolffm/themes@1.1.8(@wolffm/task-ui-components@1.0.10(react@19.2.0))(react@19.2.0)':
-    optionalDependencies:
+    dependencies:
       '@wolffm/task-ui-components': 1.0.10(react@19.2.0)
       react: 19.2.0
 
   '@wolffm/themes@1.1.9(@wolffm/task-ui-components@1.2.3(react@19.2.0))(react@19.2.0)':
-    optionalDependencies:
+    dependencies:
       '@wolffm/task-ui-components': 1.2.3(react@19.2.0)
       react: 19.2.0
 
