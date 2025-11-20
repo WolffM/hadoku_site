@@ -19,6 +19,7 @@ import {
 } from '@hadoku/worker-utils';
 import { createSubmitRoutes } from './routes/submit';
 import { createAdminRoutes } from './routes/admin';
+import { createInboundRoutes } from './routes/inbound';
 import { archiveOldSubmissions, isDatabaseNearCapacity } from './storage';
 
 interface Env {
@@ -106,6 +107,9 @@ app.get('/contact/api/health', (c) => {
 
 // Public routes (no auth required)
 app.route('/contact/api', createSubmitRoutes());
+
+// Inbound email webhook (no auth required - Resend webhooks use signature)
+app.route('/contact/api', createInboundRoutes());
 
 // Admin routes (require admin auth)
 app.route('/contact/api/admin', createAdminRoutes());

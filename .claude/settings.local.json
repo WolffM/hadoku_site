@@ -32,7 +32,16 @@
       "Bash(git commit:*)",
       "Bash(python scripts/administration.py:*)",
       "Bash(where:*)",
-      "Bash(npx wrangler --version)"
+      "Bash(npx wrangler --version)",
+      "Bash(npx wrangler d1 execute:*)",
+      "Bash(set:*)",
+      "Bash(npm run migrate:remote:*)",
+      "Bash(npx wrangler whoami)",
+      "Bash(npm test:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(npm run build:*)",
+      "Bash(pnpm wrangler pages deploy:*)"
     ],
     "deny": [],
     "ask": []

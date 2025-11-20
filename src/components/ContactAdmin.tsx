@@ -23,16 +23,28 @@ const VALID_RECIPIENTS = [
 	'hello@hadoku.me',
 ];
 
+interface WhitelistEntry {
+	email: string;
+	whitelisted_at: number;
+	whitelisted_by: string;
+	contact_id: string | null;
+	notes: string | null;
+}
+
 export default function ContactAdmin() {
 	const [emails, setEmails] = useState<Email[]>([]);
 	const [selectedRecipient, setSelectedRecipient] = useState<string>('all');
 	const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
 	const [view, setView] = useState<'inbox' | 'compose'>('inbox');
+	const [activeTab, setActiveTab] = useState<'mail' | 'appointments'>('mail');
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [adminKey, setAdminKey] = useState<string | null>(null);
 	const [keyValidated, setKeyValidated] = useState(false);
 	const [showTrash, setShowTrash] = useState(false);
+	const [showWhitelist, setShowWhitelist] = useState(false);
+	const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([]);
+	const [loadingWhitelist, setLoadingWhitelist] = useState(false);
 
 	// Compose form state
 	const [composeFrom, setComposeFrom] = useState(VALID_RECIPIENTS[0]);
@@ -212,6 +224,58 @@ export default function ContactAdmin() {
 		}
 	}
 
+	// Fetch whitelist
+	async function fetchWhitelist() {
+		if (!adminKey) return;
+
+		setLoadingWhitelist(true);
+		try {
+			const response = await fetch('/contact/api/admin/whitelist', {
+				headers: {
+					'X-User-Key': adminKey || '',
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch whitelist');
+			}
+
+			const data = await response.json();
+			setWhitelist(data.data.emails || []);
+		} catch (err) {
+			console.error('Failed to fetch whitelist:', err);
+			alert('Failed to load whitelist');
+		} finally {
+			setLoadingWhitelist(false);
+		}
+	}
+
+	// Delete from whitelist
+	async function deleteFromWhitelist(email: string) {
+		if (!adminKey) return;
+		if (!confirm(`Remove ${email} from whitelist?`)) return;
+
+		try {
+			const response = await fetch(`/contact/api/admin/whitelist/${encodeURIComponent(email)}`, {
+				method: 'DELETE',
+				headers: {
+					'X-User-Key': adminKey || '',
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to remove from whitelist');
+			}
+
+			// Refresh whitelist
+			await fetchWhitelist();
+			alert('Email removed from whitelist');
+		} catch (err) {
+			console.error('Failed to remove from whitelist:', err);
+			alert('Failed to remove from whitelist');
+		}
+	}
+
 	async function sendEmail(e: React.FormEvent) {
 		e.preventDefault();
 		setSending(true);
@@ -298,15 +362,41 @@ export default function ContactAdmin() {
 
 	return (
 		<div className="h-screen flex flex-col bg-bg">
-			{/* Top Bar */}
-			<div className="flex items-center justify-between px-6 py-3 border-b border-border bg-bg-card">
-				<div className="flex items-center gap-4">
-					<h1 className="text-xl font-semibold text-text">Hadoku Mail</h1>
-					<ThemePickerWrapper />
+			{/* Top Bar with Navigation */}
+			<div className="border-b border-border bg-bg-card">
+				<div className="flex items-center justify-between px-6 py-3">
+					<div className="flex items-center gap-4">
+						<h1 className="text-xl font-semibold text-text">Hadoku Admin</h1>
+						<ThemePickerWrapper />
+					</div>
+				</div>
+				{/* Navigation Tabs */}
+				<div className="flex gap-1 px-6">
+					<button
+						onClick={() => setActiveTab('mail')}
+						className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+							activeTab === 'mail'
+								? 'text-primary border-primary'
+								: 'text-text-secondary border-transparent hover:text-text'
+						}`}
+					>
+						Mail
+					</button>
+					<button
+						onClick={() => setActiveTab('appointments')}
+						className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+							activeTab === 'appointments'
+								? 'text-primary border-primary'
+								: 'text-text-secondary border-transparent hover:text-text'
+						}`}
+					>
+						Appointments
+					</button>
 				</div>
 			</div>
 
-			{view === 'inbox' ? (
+			{/* Mail Tab Content */}
+			{activeTab === 'mail' && view === 'inbox' ? (
 				<div className="flex flex-1 overflow-hidden">
 					{/* Sidebar */}
 					<div className="w-64 border-r border-border bg-bg-alt">
@@ -326,6 +416,16 @@ export default function ContactAdmin() {
 									title="Refresh emails"
 								>
 									{refreshing ? '↻ Refreshing...' : '↻ Refresh'}
+								</button>
+								<button
+									onClick={() => {
+										setShowWhitelist(true);
+										fetchWhitelist();
+									}}
+									className="w-full px-4 py-2 rounded border border-border bg-bg text-text hover:bg-bg-card transition-colors"
+									title="Manage email whitelist"
+								>
+									🔓 Whitelist
 								</button>
 							</div>
 
@@ -530,7 +630,7 @@ export default function ContactAdmin() {
 						)}
 					</div>
 				</div>
-			) : (
+			) : activeTab === 'mail' && view === 'compose' ? (
 				/* Compose View */
 				<div className="flex-1 overflow-y-auto bg-bg-alt">
 					<div className="max-w-4xl mx-auto p-8">
@@ -624,6 +724,79 @@ export default function ContactAdmin() {
 								</button>
 							</div>
 						</form>
+					</div>
+				</div>
+			) : null}
+
+			{/* Whitelist Modal */}
+			{showWhitelist && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+					<div className="bg-bg-card border border-border rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
+						{/* Modal Header */}
+						<div className="flex items-center justify-between px-6 py-4 border-b border-border">
+							<h2 className="text-xl font-semibold text-text">Email Whitelist</h2>
+							<button
+								onClick={() => setShowWhitelist(false)}
+								className="text-text-secondary hover:text-text"
+							>
+								✕
+							</button>
+						</div>
+
+						{/* Modal Body */}
+						<div className="flex-1 overflow-auto p-6">
+							{loadingWhitelist ? (
+								<div className="text-center text-text-secondary py-8">Loading whitelist...</div>
+							) : whitelist.length === 0 ? (
+								<div className="text-center text-text-secondary py-8">
+									No whitelisted emails yet
+								</div>
+							) : (
+								<div className="space-y-3">
+									{whitelist.map((entry) => (
+										<div
+											key={entry.email}
+											className="flex items-center justify-between p-4 bg-bg border border-border rounded hover:bg-bg-alt transition-colors"
+										>
+											<div className="flex-1">
+												<div className="font-medium text-text">{entry.email}</div>
+												<div className="text-sm text-text-secondary mt-1">
+													Added: {new Date(entry.whitelisted_at).toLocaleString()}
+													{entry.notes && <span className="ml-2">• {entry.notes}</span>}
+												</div>
+											</div>
+											<button
+												onClick={() => deleteFromWhitelist(entry.email)}
+												className="ml-4 px-3 py-1 text-sm bg-danger text-white rounded hover:bg-danger-dark transition-colors"
+											>
+												Remove
+											</button>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+
+						{/* Modal Footer */}
+						<div className="px-6 py-4 border-t border-border">
+							<button
+								onClick={() => setShowWhitelist(false)}
+								className="px-6 py-2 bg-primary text-white rounded hover:bg-primary-hover"
+							>
+								Close
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Appointments Tab Content (Placeholder) */}
+			{activeTab === 'appointments' && (
+				<div className="flex-1 flex items-center justify-center text-text-secondary">
+					<div className="text-center">
+						<div className="text-4xl mb-4">📅</div>
+						<div className="text-xl">Appointments</div>
+						<div className="text-sm mt-2">Coming soon...</div>
 					</div>
 				</div>
 			)}

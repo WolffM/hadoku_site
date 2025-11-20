@@ -17,3 +17,7 @@ id = "67a22575cb1e4ff79b65b5cf8e11729b"
 # Cron trigger for auto-archiving old submissions (daily at 3 AM UTC)
 [triggers]
 crons = ["0 3 * * *"]
+
+# Optional: Resend webhook secret for verifying inbound emails
+# Set this via: wrangler secret put RESEND_WEBHOOK_SECRET
+# RESEND_WEBHOOK_SECRET = "your-webhook-secret-here"

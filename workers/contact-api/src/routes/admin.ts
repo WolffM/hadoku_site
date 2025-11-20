@@ -16,6 +16,9 @@ import {
 	getSubmissionStats,
 	getDatabaseSize,
 	archiveOldSubmissions,
+	addToWhitelist,
+	getAllWhitelistedEmails,
+	removeFromWhitelist,
 } from '../storage';
 import { resetRateLimit } from '../rate-limit';
 import { createEmailProvider } from '../email';
@@ -328,14 +331,77 @@ export function createAdminRoutes() {
 				return serverError(c, result.error || 'Failed to send email');
 			}
 
+			// Automatically whitelist the recipient email address
+			// This allows them to contact us directly in the future, bypassing referrer restrictions
+			const auth = c.get('authContext');
+			const adminIdentifier = auth?.sessionId || 'admin';
+
+			// Extract contact submission ID if this is a reply (from body.replyTo or body.contactId)
+			const contactId = body.contactId || null;
+
+			await addToWhitelist(
+				c.env.DB,
+				body.to,
+				adminIdentifier,
+				contactId,
+				'Auto-whitelisted after admin reply'
+			);
+
 			return ok(c, {
 				success: true,
 				message: 'Email sent successfully',
 				messageId: result.messageId,
+				whitelisted: true,
 			});
 		} catch (error) {
 			console.error('Error sending email:', error);
 			return serverError(c, 'Failed to send email');
+		}
+	});
+
+	/**
+	 * GET /admin/whitelist
+	 * Get all whitelisted email addresses
+	 */
+	app.get('/whitelist', async (c) => {
+		try {
+			const emails = await getAllWhitelistedEmails(c.env.DB);
+
+			return ok(c, {
+				emails,
+				total: emails.length,
+			});
+		} catch (error) {
+			console.error('Error fetching whitelist:', error);
+			return serverError(c, 'Failed to fetch whitelist');
+		}
+	});
+
+	/**
+	 * DELETE /admin/whitelist/:email
+	 * Remove an email from the whitelist
+	 */
+	app.delete('/whitelist/:email', async (c) => {
+		try {
+			const email = c.req.param('email');
+
+			if (!email) {
+				return badRequest(c, 'Email parameter is required');
+			}
+
+			const success = await removeFromWhitelist(c.env.DB, email);
+
+			if (!success) {
+				return notFound(c, 'Email not found in whitelist');
+			}
+
+			return ok(c, {
+				success: true,
+				message: `Email ${email} removed from whitelist`,
+			});
+		} catch (error) {
+			console.error('Error removing from whitelist:', error);
+			return serverError(c, 'Failed to remove from whitelist');
 		}
 	});
 

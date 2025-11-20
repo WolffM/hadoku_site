@@ -17,7 +17,7 @@ import {
 	extractReferrer,
 	validateReferrer,
 } from '../validation';
-import { createSubmission } from '../storage';
+import { createSubmission, isEmailWhitelisted, addToWhitelist } from '../storage';
 import { checkRateLimit, recordSubmission } from '../rate-limit';
 
 interface Env {
@@ -38,19 +38,34 @@ export function createSubmitRoutes() {
 		const request = c.req.raw;
 
 		try {
-			// Security Layer 1: Referrer validation
-			if (!validateReferrer(request)) {
+			// Parse request body early to check email whitelist
+			let body: any;
+			try {
+				body = await c.req.json();
+			} catch {
+				return c.json({ success: false, message: 'Invalid JSON in request body' }, 400);
+			}
+
+			// Quick validation check for email field
+			const email = body?.email?.trim().toLowerCase();
+
+			// Security Layer 1: Check if email is whitelisted
+			// Whitelisted emails bypass referrer restrictions
+			const isWhitelisted = email ? await isEmailWhitelisted(db, email) : false;
+
+			// Security Layer 2: Referrer validation (skip if whitelisted)
+			if (!isWhitelisted && !validateReferrer(request)) {
 				return c.json({ success: false, message: 'Invalid request origin' }, 400);
 			}
 
-			// Security Layer 2: Extract client IP for rate limiting
+			// Security Layer 3: Extract client IP for rate limiting
 			const ipAddress = extractClientIP(request);
 			if (!ipAddress) {
 				console.error('Could not extract client IP');
 				return c.json({ success: false, message: 'Could not identify client' }, 400);
 			}
 
-			// Security Layer 3: Rate limiting check
+			// Security Layer 4: Rate limiting check
 			const rateLimitResult = await checkRateLimit(kv, ipAddress);
 			if (!rateLimitResult.allowed) {
 				return c.json(
@@ -69,15 +84,7 @@ export function createSubmitRoutes() {
 				);
 			}
 
-			// Parse request body
-			let body: any;
-			try {
-				body = await c.req.json();
-			} catch {
-				return c.json({ success: false, message: 'Invalid JSON in request body' }, 400);
-			}
-
-			// Security Layer 4: Validate and sanitize input (includes honeypot check)
+			// Security Layer 5: Validate and sanitize input (includes honeypot check)
 			const validation = validateContactSubmission(body);
 			if (!validation.valid) {
 				return c.json(
@@ -109,6 +116,18 @@ export function createSubmitRoutes() {
 
 			// Record this submission for rate limiting
 			await recordSubmission(kv, ipAddress);
+
+			// Auto-whitelist the sender after successful submission
+			// This allows them to contact us again without referrer restrictions
+			if (!isWhitelisted) {
+				await addToWhitelist(
+					db,
+					sanitized.email,
+					'auto-whitelist',
+					submission.id,
+					'Auto-whitelisted after contact form submission'
+				);
+			}
 
 			// Success response - simple format for contact form
 			return c.json(
