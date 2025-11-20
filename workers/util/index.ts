@@ -63,7 +63,7 @@ export {
 	DEFAULT_HADOKU_ORIGINS,
 } from './cors.js';
 
-// Logging
+// Logging (Cloudflare Worker Logger)
 export {
 	createLogger,
 	logRequest,
@@ -74,7 +74,7 @@ export {
 	startTimer,
 	redactFields,
 	SENSITIVE_FIELDS,
-} from './logging.js';
+} from './cloudflareWorkerLogger.js';
 
 // Masking (data sanitization for logs)
 export { maskKey, maskSessionId, maskEmail, MASKING } from './masking.js';

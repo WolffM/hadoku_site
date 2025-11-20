@@ -84,9 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 									userId = key;
 								} else {
 									// Key is invalid - clear it and go to public mode
-									console.warn(
-										'⚠️ Invalid key detected, clearing session and redirecting to public'
-									);
+									logger.warn('Invalid key detected, clearing session and redirecting to public');
 									sessionStorage.removeItem('hadoku_session_id');
 									sessionStorage.removeItem('hadoku_session_key');
 
@@ -96,14 +94,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 								}
 							} else {
 								// Validation endpoint failed - clear session as safety measure
-								console.error('Failed to validate key, clearing session');
+								logger.error('Failed to validate key, clearing session');
 								sessionStorage.removeItem('hadoku_session_id');
 								sessionStorage.removeItem('hadoku_session_key');
 								userType = 'public';
 								userId = 'public';
 							}
 						} catch (err) {
-							console.error('Error validating key:', err);
+							logger.error('Error validating key', { error: err.message || err });
 							// On error, clear session for safety
 							sessionStorage.removeItem('hadoku_session_id');
 							sessionStorage.removeItem('hadoku_session_key');
