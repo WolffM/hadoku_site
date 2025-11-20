@@ -20,6 +20,7 @@ import {
 import { createSubmitRoutes } from './routes/submit';
 import { createAdminRoutes } from './routes/admin';
 import { createInboundRoutes } from './routes/inbound';
+import { createAppointmentsRoutes } from './routes/appointments';
 import { archiveOldSubmissions, isDatabaseNearCapacity } from './storage';
 
 interface Env {
@@ -107,6 +108,9 @@ app.get('/contact/api/health', (c) => {
 
 // Public routes (no auth required)
 app.route('/contact/api', createSubmitRoutes());
+
+// Appointment routes (public - fetch slots)
+app.route('/contact/api', createAppointmentsRoutes());
 
 // Inbound email webhook (no auth required - Resend webhooks use signature)
 app.route('/contact/api', createInboundRoutes());

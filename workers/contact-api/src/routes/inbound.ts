@@ -156,6 +156,9 @@ export function createInboundRoutes() {
 			// Extract message content (prefer text, fallback to HTML)
 			const message = emailDetails.text || emailDetails.html || '(No message body)';
 
+			// Extract the recipient email from the webhook data
+			const recipient = event.data.to?.[0] || null;
+
 			// Create a contact submission from the inbound email
 			const submission = await createSubmission(db, {
 				name: cleanEmail.split('@')[0], // Use email username as name
@@ -164,6 +167,7 @@ export function createInboundRoutes() {
 				ip_address: null, // No IP for inbound emails
 				user_agent: 'Resend Inbound Email',
 				referrer: null, // No referrer for inbound emails
+				recipient, // Set the recipient so it shows up in the correct inbox
 			});
 
 			console.log(`Created submission ${submission.id} from inbound email ${emailId}`);

@@ -23,6 +23,7 @@ export interface CreateSubmissionParams {
 	ip_address: string | null;
 	user_agent: string | null;
 	referrer: string | null;
+	recipient?: string | null;
 }
 
 /**
@@ -38,8 +39,8 @@ export async function createSubmission(
 	await db
 		.prepare(
 			`INSERT INTO contact_submissions
-			(id, name, email, message, status, created_at, ip_address, user_agent, referrer)
-			VALUES (?, ?, ?, ?, 'unread', ?, ?, ?, ?)`
+			(id, name, email, message, status, created_at, ip_address, user_agent, referrer, recipient)
+			VALUES (?, ?, ?, ?, 'unread', ?, ?, ?, ?, ?)`
 		)
 		.bind(
 			id,
@@ -49,7 +50,8 @@ export async function createSubmission(
 			created_at,
 			params.ip_address,
 			params.user_agent,
-			params.referrer
+			params.referrer,
+			params.recipient || null
 		)
 		.run();
 
@@ -63,6 +65,8 @@ export async function createSubmission(
 		ip_address: params.ip_address,
 		user_agent: params.user_agent,
 		referrer: params.referrer,
+		recipient: params.recipient || null,
+		deleted_at: null,
 	};
 }
 
@@ -359,4 +363,331 @@ export async function getAllWhitelistedEmails(db: D1Database): Promise<Whitelist
 		.all<WhitelistEntry>();
 
 	return result.results || [];
+}
+
+/**
+ * Appointment configuration operations
+ */
+
+export interface AppointmentConfig {
+	id: number;
+	timezone: string;
+	business_hours_start: string;
+	business_hours_end: string;
+	available_days: string; // Comma-separated day numbers (0-6)
+	slot_duration_options: string; // Comma-separated durations (15,30,60)
+	max_advance_days: number;
+	min_advance_hours: number;
+	meeting_platforms: string; // Comma-separated platforms
+	last_updated: number;
+}
+
+/**
+ * Get appointment configuration
+ */
+export async function getAppointmentConfig(db: D1Database): Promise<AppointmentConfig | null> {
+	const result = await db
+		.prepare(`SELECT * FROM appointment_config WHERE id = 1`)
+		.first<AppointmentConfig>();
+
+	return result;
+}
+
+/**
+ * Update appointment configuration
+ */
+export async function updateAppointmentConfig(
+	db: D1Database,
+	config: Partial<Omit<AppointmentConfig, 'id' | 'last_updated'>>
+): Promise<boolean> {
+	const lastUpdated = Date.now();
+
+	// Build update query dynamically based on provided fields
+	const fields: string[] = [];
+	const values: any[] = [];
+
+	if (config.timezone !== undefined) {
+		fields.push('timezone = ?');
+		values.push(config.timezone);
+	}
+	if (config.business_hours_start !== undefined) {
+		fields.push('business_hours_start = ?');
+		values.push(config.business_hours_start);
+	}
+	if (config.business_hours_end !== undefined) {
+		fields.push('business_hours_end = ?');
+		values.push(config.business_hours_end);
+	}
+	if (config.available_days !== undefined) {
+		fields.push('available_days = ?');
+		values.push(config.available_days);
+	}
+	if (config.slot_duration_options !== undefined) {
+		fields.push('slot_duration_options = ?');
+		values.push(config.slot_duration_options);
+	}
+	if (config.max_advance_days !== undefined) {
+		fields.push('max_advance_days = ?');
+		values.push(config.max_advance_days);
+	}
+	if (config.min_advance_hours !== undefined) {
+		fields.push('min_advance_hours = ?');
+		values.push(config.min_advance_hours);
+	}
+	if (config.meeting_platforms !== undefined) {
+		fields.push('meeting_platforms = ?');
+		values.push(config.meeting_platforms);
+	}
+
+	// Always update last_updated
+	fields.push('last_updated = ?');
+	values.push(lastUpdated);
+
+	if (fields.length === 1) {
+		// Only last_updated field, nothing to update
+		return true;
+	}
+
+	const query = `UPDATE appointment_config SET ${fields.join(', ')} WHERE id = 1`;
+	const result = await db
+		.prepare(query)
+		.bind(...values)
+		.run();
+
+	return result.success;
+}
+
+/**
+ * Appointment operations
+ */
+
+export interface StoredAppointment {
+	id: string;
+	submission_id: string | null;
+	name: string;
+	email: string;
+	message: string | null;
+	slot_id: string;
+	date: string;
+	start_time: string;
+	end_time: string;
+	duration: number;
+	timezone: string;
+	platform: 'discord' | 'google' | 'teams' | 'jitsi';
+	meeting_link: string | null;
+	meeting_id: string | null;
+	status: 'confirmed' | 'cancelled' | 'completed' | 'no_show';
+	created_at: number;
+	updated_at: number;
+	cancelled_at: number | null;
+	ip_address: string | null;
+	user_agent: string | null;
+	confirmation_sent: boolean;
+	reminder_sent: boolean;
+}
+
+export interface CreateAppointmentParams {
+	submission_id?: string;
+	name: string;
+	email: string;
+	message?: string;
+	slot_id: string;
+	date: string;
+	start_time: string;
+	end_time: string;
+	duration: number;
+	timezone: string;
+	platform: 'discord' | 'google' | 'teams' | 'jitsi';
+	meeting_link?: string;
+	meeting_id?: string;
+	ip_address?: string;
+	user_agent?: string;
+}
+
+/**
+ * Create a new appointment
+ */
+export async function createAppointment(
+	db: D1Database,
+	params: CreateAppointmentParams
+): Promise<StoredAppointment> {
+	const id = crypto.randomUUID();
+	const now = Date.now();
+
+	await db
+		.prepare(
+			`INSERT INTO appointments
+			(id, submission_id, name, email, message, slot_id, date, start_time, end_time,
+			 duration, timezone, platform, meeting_link, meeting_id, status,
+			 created_at, updated_at, ip_address, user_agent, confirmation_sent, reminder_sent)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, 0, 0)`
+		)
+		.bind(
+			id,
+			params.submission_id || null,
+			params.name,
+			params.email,
+			params.message || null,
+			params.slot_id,
+			params.date,
+			params.start_time,
+			params.end_time,
+			params.duration,
+			params.timezone,
+			params.platform,
+			params.meeting_link || null,
+			params.meeting_id || null,
+			now,
+			now,
+			params.ip_address || null,
+			params.user_agent || null
+		)
+		.run();
+
+	return {
+		id,
+		submission_id: params.submission_id || null,
+		name: params.name,
+		email: params.email,
+		message: params.message || null,
+		slot_id: params.slot_id,
+		date: params.date,
+		start_time: params.start_time,
+		end_time: params.end_time,
+		duration: params.duration,
+		timezone: params.timezone,
+		platform: params.platform,
+		meeting_link: params.meeting_link || null,
+		meeting_id: params.meeting_id || null,
+		status: 'confirmed',
+		created_at: now,
+		updated_at: now,
+		cancelled_at: null,
+		ip_address: params.ip_address || null,
+		user_agent: params.user_agent || null,
+		confirmation_sent: false,
+		reminder_sent: false,
+	};
+}
+
+/**
+ * Check if a slot is available (not already booked)
+ */
+export async function isSlotAvailable(db: D1Database, slotId: string): Promise<boolean> {
+	const result = await db
+		.prepare(
+			`SELECT id FROM appointments
+			WHERE slot_id = ? AND status = 'confirmed'
+			LIMIT 1`
+		)
+		.bind(slotId)
+		.first();
+
+	return result === null;
+}
+
+/**
+ * Get appointments for a specific date
+ */
+export async function getAppointmentsByDate(
+	db: D1Database,
+	date: string,
+	includeNonConfirmed: boolean = false
+): Promise<StoredAppointment[]> {
+	const whereClause = includeNonConfirmed
+		? 'WHERE date = ?'
+		: `WHERE date = ? AND status = 'confirmed'`;
+
+	const result = await db
+		.prepare(
+			`SELECT * FROM appointments
+			${whereClause}
+			ORDER BY start_time ASC`
+		)
+		.bind(date)
+		.all<StoredAppointment>();
+
+	return result.results || [];
+}
+
+/**
+ * Get all appointments (admin only)
+ */
+export async function getAllAppointments(
+	db: D1Database,
+	limit: number = 100,
+	offset: number = 0
+): Promise<StoredAppointment[]> {
+	const result = await db
+		.prepare(
+			`SELECT * FROM appointments
+			ORDER BY start_time DESC
+			LIMIT ? OFFSET ?`
+		)
+		.bind(limit, offset)
+		.all<StoredAppointment>();
+
+	return result.results || [];
+}
+
+/**
+ * Get appointment by ID
+ */
+export async function getAppointmentById(
+	db: D1Database,
+	id: string
+): Promise<StoredAppointment | null> {
+	const result = await db
+		.prepare(`SELECT * FROM appointments WHERE id = ?`)
+		.bind(id)
+		.first<StoredAppointment>();
+
+	return result;
+}
+
+/**
+ * Update appointment status
+ */
+export async function updateAppointmentStatus(
+	db: D1Database,
+	id: string,
+	status: 'confirmed' | 'cancelled' | 'completed' | 'no_show'
+): Promise<boolean> {
+	const now = Date.now();
+	const cancelledAt = status === 'cancelled' ? now : null;
+
+	const result = await db
+		.prepare(
+			`UPDATE appointments
+			SET status = ?, updated_at = ?, cancelled_at = ?
+			WHERE id = ?`
+		)
+		.bind(status, now, cancelledAt, id)
+		.run();
+
+	return result.success;
+}
+
+/**
+ * Mark appointment confirmation as sent
+ */
+export async function markConfirmationSent(db: D1Database, id: string): Promise<boolean> {
+	const result = await db
+		.prepare(`UPDATE appointments SET confirmation_sent = 1 WHERE id = ?`)
+		.bind(id)
+		.run();
+
+	return result.success;
+}
+
+/**
+ * Mark appointment reminder as sent
+ */
+export async function markReminderSent(db: D1Database, id: string): Promise<boolean> {
+	const result = await db
+		.prepare(`UPDATE appointments SET reminder_sent = 1 WHERE id = ?`)
+		.bind(id)
+		.run();
+
+	return result.success;
 }

@@ -172,3 +172,191 @@ export function validateReferrer(request: Request): boolean {
 		return false;
 	}
 }
+
+/**
+ * Appointment validation types
+ */
+
+export interface AppointmentData {
+	slotId: string;
+	date: string; // YYYY-MM-DD
+	startTime: string; // ISO 8601
+	endTime: string; // ISO 8601
+	duration: number; // 15, 30, or 60
+	platform: 'discord' | 'google' | 'teams' | 'jitsi';
+}
+
+export interface AppointmentValidationResult {
+	valid: boolean;
+	errors: string[];
+	sanitized?: AppointmentData;
+}
+
+/**
+ * Valid slot durations in minutes
+ */
+const VALID_DURATIONS = [15, 30, 60];
+
+/**
+ * Valid meeting platforms
+ */
+const VALID_PLATFORMS = ['discord', 'google', 'teams', 'jitsi'];
+
+/**
+ * Validate appointment data
+ */
+export function validateAppointment(data: any): AppointmentValidationResult {
+	const errors: string[] = [];
+
+	// Type check
+	if (!data || typeof data !== 'object') {
+		return { valid: false, errors: ['Invalid appointment data'] };
+	}
+
+	// Required field checks
+	if (!data.slotId || typeof data.slotId !== 'string' || data.slotId.trim().length === 0) {
+		errors.push('Slot ID is required');
+	}
+
+	if (!data.date || typeof data.date !== 'string') {
+		errors.push('Date is required');
+	}
+
+	if (!data.startTime || typeof data.startTime !== 'string') {
+		errors.push('Start time is required');
+	}
+
+	if (!data.endTime || typeof data.endTime !== 'string') {
+		errors.push('End time is required');
+	}
+
+	if (typeof data.duration !== 'number') {
+		errors.push('Duration is required');
+	}
+
+	if (!data.platform || typeof data.platform !== 'string') {
+		errors.push('Platform is required');
+	}
+
+	// If required fields missing, return early
+	if (errors.length > 0) {
+		return { valid: false, errors };
+	}
+
+	// Validate duration
+	if (!VALID_DURATIONS.includes(data.duration)) {
+		errors.push('Duration must be 15, 30, or 60 minutes');
+	}
+
+	// Validate platform
+	if (!VALID_PLATFORMS.includes(data.platform.toLowerCase())) {
+		errors.push('Platform must be discord, google, teams, or jitsi');
+	}
+
+	// Validate date format (YYYY-MM-DD)
+	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+	if (!dateRegex.test(data.date)) {
+		errors.push('Date must be in YYYY-MM-DD format');
+	} else {
+		// Validate it's a real date
+		const date = new Date(data.date);
+		if (isNaN(date.getTime())) {
+			errors.push('Invalid date');
+		}
+	}
+
+	// Validate ISO 8601 format for times
+	try {
+		const startDate = new Date(data.startTime);
+		const endDate = new Date(data.endTime);
+
+		if (isNaN(startDate.getTime())) {
+			errors.push('Invalid start time format');
+		}
+
+		if (isNaN(endDate.getTime())) {
+			errors.push('Invalid end time format');
+		}
+
+		// Validate end time is after start time
+		if (startDate.getTime() >= endDate.getTime()) {
+			errors.push('End time must be after start time');
+		}
+	} catch {
+		errors.push('Invalid time format');
+	}
+
+	// If any validation errors, return them
+	if (errors.length > 0) {
+		return { valid: false, errors };
+	}
+
+	// Return sanitized data
+	return {
+		valid: true,
+		errors: [],
+		sanitized: {
+			slotId: data.slotId.trim(),
+			date: data.date,
+			startTime: data.startTime,
+			endTime: data.endTime,
+			duration: data.duration,
+			platform: data.platform.toLowerCase() as 'discord' | 'google' | 'teams' | 'jitsi',
+		},
+	};
+}
+
+/**
+ * Validate slot fetch request
+ */
+export function validateSlotFetchRequest(
+	date: string | null,
+	duration: string | null
+): {
+	valid: boolean;
+	errors: string[];
+	parsedDate?: string;
+	parsedDuration?: number;
+} {
+	const errors: string[] = [];
+
+	if (!date) {
+		errors.push('Date parameter is required');
+	}
+
+	if (!duration) {
+		errors.push('Duration parameter is required');
+	}
+
+	if (errors.length > 0) {
+		return { valid: false, errors };
+	}
+
+	// Validate date format
+	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+	if (!dateRegex.test(date!)) {
+		errors.push('Date must be in YYYY-MM-DD format');
+	} else {
+		const parsedDate = new Date(date!);
+		if (isNaN(parsedDate.getTime())) {
+			errors.push('Invalid date');
+		}
+	}
+
+	// Validate duration
+	const parsedDuration = parseInt(duration!, 10);
+	if (isNaN(parsedDuration) || !VALID_DURATIONS.includes(parsedDuration)) {
+		errors.push('Duration must be 15, 30, or 60');
+	}
+
+	if (errors.length > 0) {
+		return { valid: false, errors };
+	}
+
+	return {
+		valid: true,
+		errors: [],
+		parsedDate: date!,
+		parsedDuration: parseInt(duration!, 10),
+	};
+}

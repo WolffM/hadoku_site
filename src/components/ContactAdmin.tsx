@@ -31,6 +31,15 @@ interface WhitelistEntry {
 	notes: string | null;
 }
 
+interface AppointmentConfig {
+	timezone: string;
+	start_hour: number;
+	end_hour: number;
+	available_days: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+	platforms: string[];
+	advance_notice_hours: number;
+}
+
 export default function ContactAdmin() {
 	const [emails, setEmails] = useState<Email[]>([]);
 	const [selectedRecipient, setSelectedRecipient] = useState<string>('all');
@@ -45,6 +54,11 @@ export default function ContactAdmin() {
 	const [showWhitelist, setShowWhitelist] = useState(false);
 	const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([]);
 	const [loadingWhitelist, setLoadingWhitelist] = useState(false);
+
+	// Appointment config state
+	const [appointmentConfig, setAppointmentConfig] = useState<AppointmentConfig | null>(null);
+	const [loadingConfig, setLoadingConfig] = useState(false);
+	const [savingConfig, setSavingConfig] = useState(false);
 
 	// Compose form state
 	const [composeFrom, setComposeFrom] = useState(VALID_RECIPIENTS[0]);
@@ -137,6 +151,14 @@ export default function ContactAdmin() {
 
 		fetchEmails();
 	}, [keyValidated, adminKey]);
+
+	// Fetch appointment config when appointments tab is active
+	useEffect(() => {
+		if (!keyValidated || !adminKey) return;
+		if (activeTab !== 'appointments') return;
+
+		fetchAppointmentConfig();
+	}, [keyValidated, adminKey, activeTab]);
 
 	async function refreshEmails() {
 		if (!adminKey) return;
@@ -276,6 +298,60 @@ export default function ContactAdmin() {
 		}
 	}
 
+	// Fetch appointment config
+	async function fetchAppointmentConfig() {
+		if (!adminKey) return;
+
+		setLoadingConfig(true);
+		try {
+			const response = await fetch('/contact/api/admin/appointments/config', {
+				headers: {
+					'X-User-Key': adminKey || '',
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch appointment config');
+			}
+
+			const data = await response.json();
+			setAppointmentConfig(data.data.config || null);
+		} catch (err) {
+			console.error('Failed to fetch appointment config:', err);
+			alert('Failed to load appointment configuration');
+		} finally {
+			setLoadingConfig(false);
+		}
+	}
+
+	// Save appointment config
+	async function saveAppointmentConfig() {
+		if (!adminKey || !appointmentConfig) return;
+
+		setSavingConfig(true);
+		try {
+			const response = await fetch('/contact/api/admin/appointments/config', {
+				method: 'PUT',
+				headers: {
+					'X-User-Key': adminKey || '',
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(appointmentConfig),
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to save appointment config');
+			}
+
+			alert('Appointment configuration saved successfully!');
+		} catch (err) {
+			console.error('Failed to save appointment config:', err);
+			alert('Failed to save appointment configuration');
+		} finally {
+			setSavingConfig(false);
+		}
+	}
+
 	async function sendEmail(e: React.FormEvent) {
 		e.preventDefault();
 		setSending(true);
@@ -297,7 +373,7 @@ export default function ContactAdmin() {
 					to: composeTo,
 					subject: composeSubject,
 					text: composeMessage,
-					replyTo: selectedEmail?.email,
+					replyTo: composeFrom, // Allow recipients to reply directly
 				}),
 			});
 
@@ -790,13 +866,187 @@ export default function ContactAdmin() {
 				</div>
 			)}
 
-			{/* Appointments Tab Content (Placeholder) */}
+			{/* Appointments Tab Content */}
 			{activeTab === 'appointments' && (
-				<div className="flex-1 flex items-center justify-center text-text-secondary">
-					<div className="text-center">
-						<div className="text-4xl mb-4">📅</div>
-						<div className="text-xl">Appointments</div>
-						<div className="text-sm mt-2">Coming soon...</div>
+				<div className="flex-1 p-6 overflow-y-auto">
+					<div className="max-w-4xl mx-auto">
+						<h2 className="text-2xl font-bold text-text mb-6">Appointment Configuration</h2>
+
+						{loadingConfig ? (
+							<div className="text-center py-12">
+								<div className="text-text-secondary">Loading configuration...</div>
+							</div>
+						) : appointmentConfig ? (
+							<div className="space-y-6">
+								{/* Timezone */}
+								<div className="bg-bg-secondary p-6 rounded-lg border border-border">
+									<label className="block text-sm font-medium text-text mb-2">Timezone</label>
+									<select
+										value={appointmentConfig.timezone}
+										onChange={(e) =>
+											setAppointmentConfig({ ...appointmentConfig, timezone: e.target.value })
+										}
+										className="w-full px-3 py-2 bg-bg border border-border rounded text-text"
+									>
+										<option value="America/Los_Angeles">Pacific Time (PST/PDT)</option>
+										<option value="America/Denver">Mountain Time (MST/MDT)</option>
+										<option value="America/Chicago">Central Time (CST/CDT)</option>
+										<option value="America/New_York">Eastern Time (EST/EDT)</option>
+										<option value="UTC">UTC</option>
+									</select>
+								</div>
+
+								{/* Business Hours */}
+								<div className="bg-bg-secondary p-6 rounded-lg border border-border">
+									<h3 className="text-lg font-semibold text-text mb-4">Business Hours</h3>
+									<div className="grid grid-cols-2 gap-4">
+										<div>
+											<label className="block text-sm font-medium text-text mb-2">
+												Start Time (24h)
+											</label>
+											<input
+												type="number"
+												min="0"
+												max="23"
+												value={appointmentConfig.start_hour}
+												onChange={(e) =>
+													setAppointmentConfig({
+														...appointmentConfig,
+														start_hour: parseInt(e.target.value),
+													})
+												}
+												className="w-full px-3 py-2 bg-bg border border-border rounded text-text"
+											/>
+											<div className="text-xs text-text-secondary mt-1">
+												Current: {appointmentConfig.start_hour}:00
+											</div>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-text mb-2">
+												End Time (24h)
+											</label>
+											<input
+												type="number"
+												min="0"
+												max="23"
+												value={appointmentConfig.end_hour}
+												onChange={(e) =>
+													setAppointmentConfig({
+														...appointmentConfig,
+														end_hour: parseInt(e.target.value),
+													})
+												}
+												className="w-full px-3 py-2 bg-bg border border-border rounded text-text"
+											/>
+											<div className="text-xs text-text-secondary mt-1">
+												Current: {appointmentConfig.end_hour}:00
+											</div>
+										</div>
+									</div>
+								</div>
+
+								{/* Available Days */}
+								<div className="bg-bg-secondary p-6 rounded-lg border border-border">
+									<h3 className="text-lg font-semibold text-text mb-4">Available Days</h3>
+									<div className="grid grid-cols-7 gap-2">
+										{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+											<button
+												key={day}
+												onClick={() => {
+													const days = appointmentConfig.available_days.includes(index)
+														? appointmentConfig.available_days.filter((d) => d !== index)
+														: [...appointmentConfig.available_days, index].sort();
+													setAppointmentConfig({ ...appointmentConfig, available_days: days });
+												}}
+												className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+													appointmentConfig.available_days.includes(index)
+														? 'bg-primary text-primary-dark'
+														: 'bg-bg border border-border text-text-secondary hover:text-text'
+												}`}
+											>
+												{day}
+											</button>
+										))}
+									</div>
+								</div>
+
+								{/* Meeting Platforms */}
+								<div className="bg-bg-secondary p-6 rounded-lg border border-border">
+									<h3 className="text-lg font-semibold text-text mb-4">Meeting Platforms</h3>
+									<div className="space-y-2">
+										{['discord', 'google', 'teams', 'jitsi'].map((platform) => (
+											<label key={platform} className="flex items-center space-x-3">
+												<input
+													type="checkbox"
+													checked={appointmentConfig.platforms.includes(platform)}
+													onChange={(e) => {
+														const platforms = e.target.checked
+															? [...appointmentConfig.platforms, platform]
+															: appointmentConfig.platforms.filter((p) => p !== platform);
+														setAppointmentConfig({ ...appointmentConfig, platforms });
+													}}
+													className="w-4 h-4"
+												/>
+												<span className="text-text capitalize">{platform}</span>
+												{platform === 'google' && (
+													<span className="text-xs text-text-secondary">
+														(TODO: Integrate Google Calendar API)
+													</span>
+												)}
+												{platform === 'teams' && (
+													<span className="text-xs text-text-secondary">
+														(TODO: Integrate Microsoft Graph API)
+													</span>
+												)}
+												{platform === 'jitsi' && (
+													<span className="text-xs text-text-secondary">
+														(TODO: Login to meet.jit.si)
+													</span>
+												)}
+											</label>
+										))}
+									</div>
+								</div>
+
+								{/* Advance Notice */}
+								<div className="bg-bg-secondary p-6 rounded-lg border border-border">
+									<label className="block text-sm font-medium text-text mb-2">
+										Advance Notice (hours)
+									</label>
+									<input
+										type="number"
+										min="0"
+										max="168"
+										value={appointmentConfig.advance_notice_hours}
+										onChange={(e) =>
+											setAppointmentConfig({
+												...appointmentConfig,
+												advance_notice_hours: parseInt(e.target.value),
+											})
+										}
+										className="w-full px-3 py-2 bg-bg border border-border rounded text-text"
+									/>
+									<div className="text-xs text-text-secondary mt-1">
+										Minimum hours required between booking and appointment
+									</div>
+								</div>
+
+								{/* Save Button */}
+								<div className="flex justify-end space-x-4">
+									<button
+										onClick={saveAppointmentConfig}
+										disabled={savingConfig}
+										className="px-6 py-2 bg-primary text-primary-dark rounded hover:bg-primary-dark hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+									>
+										{savingConfig ? 'Saving...' : 'Save Configuration'}
+									</button>
+								</div>
+							</div>
+						) : (
+							<div className="text-center py-12">
+								<div className="text-text-secondary">No configuration found</div>
+							</div>
+						)}
 					</div>
 				</div>
 			)}

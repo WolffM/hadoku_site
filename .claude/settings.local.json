@@ -17,11 +17,9 @@
       "Bash(wrangler tail:*)",
       "Bash(wrangler d1 execute:*)",
       "Bash(pnpm exec wrangler:*)",
-      "Bash(CLOUDFLARE_API_TOKEN=oM9Rn4-IZz2AWvwDawJvB6mRgqK6e1y5dmk2XtTO pnpm run migrate:remote:*)",
       "Bash(for i in {1..6})",
       "Bash(do echo \"Attempt $i:\")",
       "Bash(done)",
-      "Bash(CLOUDFLARE_API_TOKEN=oM9Rn4-IZz2AWvwDawJvB6mRgqK6e1y5dmk2XtTO pnpm exec wrangler d1 execute:*)",
       "Bash(npx prettier --check src/**/*.ts)",
       "Bash(npx prettier --write src/**/*.ts)",
       "Bash(cat:*)",
@@ -41,7 +39,15 @@
       "Bash(npx wrangler:*)",
       "Bash(npm run deploy:*)",
       "Bash(npm run build:*)",
-      "Bash(pnpm wrangler pages deploy:*)"
+      "Bash(pnpm wrangler pages deploy:*)",
+      "Bash(pnpm list:*)",
+      "Bash(python:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(git push)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(pnpm run build:*)"
     ],
     "deny": [],
     "ask": []

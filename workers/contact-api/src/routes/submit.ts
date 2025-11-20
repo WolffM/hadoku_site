@@ -13,16 +13,30 @@ import { Hono } from 'hono';
 import { badRequest, serverError } from '@hadoku/worker-utils';
 import {
 	validateContactSubmission,
+	validateAppointment,
 	extractClientIP,
 	extractReferrer,
 	validateReferrer,
 } from '../validation';
-import { createSubmission, isEmailWhitelisted, addToWhitelist } from '../storage';
+import {
+	createSubmission,
+	isEmailWhitelisted,
+	addToWhitelist,
+	createAppointment,
+	isSlotAvailable,
+	getAppointmentsByDate,
+	getAppointmentConfig,
+} from '../storage';
 import { checkRateLimit, recordSubmission } from '../rate-limit';
+import { generateMeetingLink } from '../services/meeting-links';
+import { createEmailProvider } from '../email';
+import { formatAppointmentConfirmation, formatAppointmentDateTime } from '../email/templates';
 
 interface Env {
 	DB: D1Database;
 	RATE_LIMIT_KV: KVNamespace;
+	EMAIL_PROVIDER?: string;
+	RESEND_API_KEY?: string;
 }
 
 export function createSubmitRoutes() {
@@ -129,7 +143,149 @@ export function createSubmitRoutes() {
 				);
 			}
 
-			// Success response - simple format for contact form
+			// Check if appointment is included
+			if (body.appointment) {
+				// Validate appointment data
+				const appointmentValidation = validateAppointment(body.appointment);
+				if (!appointmentValidation.valid) {
+					return c.json(
+						{
+							success: false,
+							error: 'Appointment validation failed',
+							errors: appointmentValidation.errors,
+						},
+						400
+					);
+				}
+
+				const appointmentData = appointmentValidation.sanitized!;
+
+				// Check if slot is still available (atomic check)
+				const slotAvailable = await isSlotAvailable(db, appointmentData.slotId);
+
+				if (!slotAvailable) {
+					// Slot was taken, fetch updated available slots
+					const updatedSlots = await getAppointmentsByDate(db, appointmentData.date);
+
+					return c.json(
+						{
+							success: false,
+							message: 'This time slot was just booked by someone else',
+							conflict: {
+								reason: 'slot_taken',
+								updatedSlots: updatedSlots
+									.filter((s) => s.status === 'confirmed')
+									.map((s) => ({
+										id: s.slot_id,
+										startTime: s.start_time,
+										endTime: s.end_time,
+										available: false,
+									})),
+							},
+						},
+						409
+					);
+				}
+
+				// Generate meeting link
+				const meetingLinkResult = await generateMeetingLink(
+					appointmentData.platform,
+					{
+						slotId: appointmentData.slotId,
+						name: sanitized.name,
+						email: sanitized.email,
+						startTime: appointmentData.startTime,
+						endTime: appointmentData.endTime,
+						message: sanitized.message,
+					},
+					c.env
+				);
+
+				// Create appointment in database
+				const config = await getAppointmentConfig(db);
+				const timezone = config?.timezone || 'America/Los_Angeles';
+
+				const appointment = await createAppointment(db, {
+					submission_id: submission.id,
+					name: sanitized.name,
+					email: sanitized.email,
+					message: sanitized.message,
+					slot_id: appointmentData.slotId,
+					date: appointmentData.date,
+					start_time: appointmentData.startTime,
+					end_time: appointmentData.endTime,
+					duration: appointmentData.duration,
+					timezone,
+					platform: appointmentData.platform,
+					meeting_link: meetingLinkResult.success ? meetingLinkResult.meetingLink : undefined,
+					meeting_id: meetingLinkResult.success ? meetingLinkResult.meetingId : undefined,
+					ip_address: ipAddress,
+					user_agent: userAgent,
+				});
+
+				// Send confirmation email with meeting details
+				try {
+					const providerName = c.env.EMAIL_PROVIDER || 'resend';
+					const emailProvider = createEmailProvider(providerName, c.env.RESEND_API_KEY);
+
+					// Format date and time for email
+					const formattedDateTime = formatAppointmentDateTime(
+						appointmentData.date,
+						appointmentData.startTime,
+						appointmentData.endTime,
+						timezone
+					);
+
+					// Generate email content
+					const emailContent = formatAppointmentConfirmation({
+						recipientName: sanitized.name,
+						recipientEmail: sanitized.email,
+						appointmentDate: formattedDateTime.date,
+						startTime: formattedDateTime.startTime,
+						endTime: formattedDateTime.endTime,
+						timezone,
+						duration: appointmentData.duration,
+						platform: appointmentData.platform,
+						meetingLink: meetingLinkResult.success ? meetingLinkResult.meetingLink : undefined,
+						message: sanitized.message,
+					});
+
+					// Send confirmation email
+					const emailResult = await emailProvider.sendEmail({
+						from: 'matthaeus@hadoku.me',
+						to: sanitized.email,
+						subject: emailContent.subject,
+						text: emailContent.text,
+						replyTo: 'matthaeus@hadoku.me',
+					});
+
+					if (!emailResult.success) {
+						console.error('Failed to send appointment confirmation email:', emailResult.error);
+						// Don't fail the request - appointment was still created
+					} else {
+						console.log(
+							`Appointment confirmation email sent to ${sanitized.email} (${emailResult.messageId})`
+						);
+					}
+				} catch (emailError) {
+					console.error('Error sending appointment confirmation email:', emailError);
+					// Don't fail the request - appointment was still created
+				}
+
+				// Success response with appointment
+				return c.json(
+					{
+						success: true,
+						id: submission.id,
+						appointmentId: appointment.id,
+						message: 'Your message has been sent and appointment booked!',
+						meetingLink: meetingLinkResult.success ? meetingLinkResult.meetingLink : undefined,
+					},
+					201
+				);
+			}
+
+			// Success response - simple format for contact form without appointment
 			return c.json(
 				{
 					success: true,

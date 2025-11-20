@@ -19,6 +19,11 @@ import {
 	addToWhitelist,
 	getAllWhitelistedEmails,
 	removeFromWhitelist,
+	getAppointmentConfig,
+	updateAppointmentConfig,
+	getAllAppointments,
+	getAppointmentById,
+	updateAppointmentStatus,
 } from '../storage';
 import { resetRateLimit } from '../rate-limit';
 import { createEmailProvider } from '../email';
@@ -402,6 +407,154 @@ export function createAdminRoutes() {
 		} catch (error) {
 			console.error('Error removing from whitelist:', error);
 			return serverError(c, 'Failed to remove from whitelist');
+		}
+	});
+
+	/**
+	 * Appointment Configuration Endpoints
+	 */
+
+	/**
+	 * GET /admin/appointments/config
+	 * Get appointment configuration
+	 */
+	app.get('/appointments/config', async (c) => {
+		try {
+			const config = await getAppointmentConfig(c.env.DB);
+
+			if (!config) {
+				return notFound(c, 'Appointment configuration not found');
+			}
+
+			// Parse comma-separated values into arrays for frontend
+			return ok(c, {
+				config: {
+					...config,
+					available_days: config.available_days.split(',').map((d) => parseInt(d.trim())),
+					slot_duration_options: config.slot_duration_options
+						.split(',')
+						.map((d) => parseInt(d.trim())),
+					meeting_platforms: config.meeting_platforms.split(',').map((p) => p.trim()),
+				},
+			});
+		} catch (error) {
+			console.error('Error fetching appointment config:', error);
+			return serverError(c, 'Failed to fetch appointment configuration');
+		}
+	});
+
+	/**
+	 * PUT /admin/appointments/config
+	 * Update appointment configuration
+	 */
+	app.put('/appointments/config', async (c) => {
+		try {
+			const body = await c.req.json();
+
+			// Convert arrays back to comma-separated strings if provided
+			const updates: any = { ...body };
+
+			if (Array.isArray(body.available_days)) {
+				updates.available_days = body.available_days.join(',');
+			}
+
+			if (Array.isArray(body.slot_duration_options)) {
+				updates.slot_duration_options = body.slot_duration_options.join(',');
+			}
+
+			if (Array.isArray(body.meeting_platforms)) {
+				updates.meeting_platforms = body.meeting_platforms.join(',');
+			}
+
+			const success = await updateAppointmentConfig(c.env.DB, updates);
+
+			if (!success) {
+				return serverError(c, 'Failed to update configuration');
+			}
+
+			return ok(c, {
+				success: true,
+				message: 'Appointment configuration updated successfully',
+			});
+		} catch (error) {
+			console.error('Error updating appointment config:', error);
+			return serverError(c, 'Failed to update appointment configuration');
+		}
+	});
+
+	/**
+	 * GET /admin/appointments
+	 * Get all appointments
+	 */
+	app.get('/appointments', async (c) => {
+		try {
+			const limit = Number(c.req.query('limit')) || 100;
+			const offset = Number(c.req.query('offset')) || 0;
+
+			const appointments = await getAllAppointments(c.env.DB, limit, offset);
+
+			return ok(c, {
+				appointments,
+				pagination: {
+					limit,
+					offset,
+				},
+			});
+		} catch (error) {
+			console.error('Error fetching appointments:', error);
+			return serverError(c, 'Failed to fetch appointments');
+		}
+	});
+
+	/**
+	 * GET /admin/appointments/:id
+	 * Get a single appointment by ID
+	 */
+	app.get('/appointments/:id', async (c) => {
+		try {
+			const id = c.req.param('id');
+			const appointment = await getAppointmentById(c.env.DB, id);
+
+			if (!appointment) {
+				return notFound(c, 'Appointment not found');
+			}
+
+			return ok(c, { appointment });
+		} catch (error) {
+			console.error('Error fetching appointment:', error);
+			return serverError(c, 'Failed to fetch appointment');
+		}
+	});
+
+	/**
+	 * PATCH /admin/appointments/:id/status
+	 * Update appointment status
+	 */
+	app.patch('/appointments/:id/status', async (c) => {
+		try {
+			const id = c.req.param('id');
+			const body = await c.req.json();
+
+			if (
+				!body.status ||
+				!['confirmed', 'cancelled', 'completed', 'no_show'].includes(body.status)
+			) {
+				return badRequest(
+					c,
+					'Invalid status. Must be: confirmed, cancelled, completed, or no_show'
+				);
+			}
+
+			const success = await updateAppointmentStatus(c.env.DB, id, body.status);
+
+			if (!success) {
+				return notFound(c, 'Appointment not found');
+			}
+
+			return ok(c, { success: true, message: 'Appointment status updated successfully' });
+		} catch (error) {
+			console.error('Error updating appointment status:', error);
+			return serverError(c, 'Failed to update appointment status');
 		}
 	});
 
