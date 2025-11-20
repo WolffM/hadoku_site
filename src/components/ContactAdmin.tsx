@@ -298,7 +298,7 @@ export default function ContactAdmin() {
 						<button
 							onClick={refreshEmails}
 							disabled={refreshing}
-							className="px-4 py-2 rounded bg-primary-light hover:bg-primary-hover disabled:opacity-50"
+							className="px-4 py-2 rounded bg-white/10 hover:bg-white/20 disabled:opacity-50 transition-colors"
 							title="Refresh emails"
 						>
 							{refreshing ? '↻ Refreshing...' : '↻ Refresh'}
@@ -306,8 +306,8 @@ export default function ContactAdmin() {
 					)}
 					<button
 						onClick={() => setView('compose')}
-						className={`px-4 py-2 rounded ${
-							view === 'compose' ? 'bg-primary-dark' : 'bg-primary-light hover:bg-primary-hover'
+						className={`px-4 py-2 rounded transition-colors ${
+							view === 'compose' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'
 						}`}
 					>
 						{view === 'compose' ? '✓ Composing' : '✉ Compose'}
@@ -469,7 +469,7 @@ export default function ContactAdmin() {
 											<>
 												<button
 													onClick={() => restoreEmail(selectedEmail.id)}
-													className="px-4 py-1 text-sm bg-success text-white rounded hover:bg-success-dark"
+													className="px-4 py-1 text-sm bg-success text-success-text rounded hover:opacity-90 transition-opacity"
 												>
 													↩ Restore
 												</button>
@@ -499,13 +499,13 @@ export default function ContactAdmin() {
 														setComposeSubject(`Re: Message from ${selectedEmail.name}`);
 														setView('compose');
 													}}
-													className="px-4 py-1 text-sm bg-primary text-white rounded hover:bg-primary-hover"
+													className="px-4 py-1 text-sm bg-primary text-primary-text rounded hover:opacity-90 transition-opacity"
 												>
 													Reply
 												</button>
 												<button
 													onClick={() => deleteEmail(selectedEmail.id)}
-													className="px-4 py-1 text-sm bg-danger text-white rounded hover:bg-danger-dark"
+													className="px-4 py-1 text-sm bg-danger text-danger-text rounded hover:opacity-90 transition-opacity"
 												>
 													Delete
 												</button>
