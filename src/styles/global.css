@@ -1,5 +1,5 @@
 /* Import Hadoku themes */
-@import '@wolffm/themes/themes.css';
+@import '@wolffm/themes/style.css';
 
 /* Tailwind directives */
 @tailwind base;

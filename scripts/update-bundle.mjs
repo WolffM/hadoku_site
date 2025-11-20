@@ -26,7 +26,7 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/task': {
 		targetDir: 'task',
-		cssSource: 'task.css', // Will be 'style.css' in future package versions
+		cssSource: 'style.css',
 	},
 	'@wolffm/watchparty-ui': {
 		targetDir: 'watchparty',
@@ -38,10 +38,7 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/themes': {
 		targetDir: 'themes',
-		copyAll: true, // Copy dist directory for JS utilities
-		extraFiles: [
-			{ from: 'src/themes.css', to: 'style.css' }, // CSS is in src/, output as style.css
-		],
+		cssSource: 'style.css',
 	},
 	'@wolffm/task-ui-components': {
 		targetDir: 'ui-components',
