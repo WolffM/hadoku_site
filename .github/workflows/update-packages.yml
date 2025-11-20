@@ -154,7 +154,6 @@ jobs:
 
       - name: Update packages
         id: update
-        continue-on-error: true
         run: |
           PACKAGES='${{ steps.parse.outputs.packages }}'
           echo "📦 Updating packages..."
@@ -224,8 +223,8 @@ jobs:
             echo "❌ Failed: ${FAILED_PACKAGES%,}"
             echo "✅ Success: ${SUCCESS_PACKAGES%,}"
             echo "status=partial" >> $GITHUB_OUTPUT
-            # Don't fail the step - let it continue
-            exit 0
+            # Fail the workflow to alert about issues
+            exit 1
           else
             echo "✅ All packages updated successfully"
             echo "status=success" >> $GITHUB_OUTPUT
