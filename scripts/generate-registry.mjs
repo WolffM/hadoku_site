@@ -35,83 +35,45 @@ if (existsSync(envPath)) {
 // Get environment variables
 const MODE = process.env.MODE || 'development';
 
-// Watchparty config
-const watchpartyConfig =
-	MODE === 'production'
-		? {
-				basename: '/watchparty',
-				serverOrigin: 'https://api.hadoku.me',
-				environment: MODE,
-				userType: 'public', // Default, will be overridden by client-side loader
-			}
-		: {
-				basename: '/watchparty',
-				serverOrigin: 'http://localhost:8080',
-				environment: MODE,
-				userType: 'public', // Default, will be overridden by client-side loader
-			};
+/**
+ * Builder function to create registry entries with consistent structure
+ * @param {string} name - The app name (e.g., 'resume', 'task')
+ * @param {string} version - Version for cache busting
+ * @param {object} additionalProps - Additional props specific to this app
+ * @param {boolean} hasCSS - Whether this app has a CSS file
+ */
+function createApp(name, version, additionalProps = {}, hasCSS = true) {
+	const path = name === 'home' ? '/' : `/${name}`;
 
-// Task config - provides default props that will be enhanced at runtime
-const taskConfig = {
-	basename: '/task',
-	apiUrl: undefined, // Task app uses internal service worker API
-	environment: MODE,
-	userType: 'public', // Default, will be overridden by client-side loader
-};
+	return {
+		url: `/mf/${name}/index.js?v=${version}`,
+		...(hasCSS && { css: `/mf/${name}/style.css?v=${version}` }),
+		basename: path,
+		props: {
+			basename: path,
+			...additionalProps,
+		},
+	};
+}
 
 // Generate registry with cache-busting query parameters
 const registry = {
-	home: {
-		url: `/mf/home/index.js?v=${timestamp}`,
-		basename: '/',
-		props: {
-			basename: '/',
-			environment: MODE,
-			userType: 'public', // Default, will be overridden by client-side loader
-		},
-	},
-	resume: {
-		url: `/mf/resume/index.js?v=${resumeVersion}`,
-		css: `/mf/resume/style.css?v=${resumeVersion}`,
-		basename: '/resume',
-		props: {
-			basename: '/resume',
-			environment: MODE,
-			userType: 'public', // Default, will be overridden by client-side loader
-		},
-	},
-	watchparty: {
-		url: `/mf/watchparty/index.js?v=${watchpartyVersion}`,
-		css: `/mf/watchparty/style.css?v=${watchpartyVersion}`,
-		basename: '/watchparty',
-		props: watchpartyConfig,
-	},
-	task: {
-		url: `/mf/task/index.js?v=${taskVersion}`,
-		css: `/mf/task/style.css?v=${taskVersion}`,
-		basename: '/task',
-		props: taskConfig,
-	},
-	contact: {
-		url: `/mf/contact/index.js?v=${contactVersion}`,
-		css: `/mf/contact/style.css?v=${contactVersion}`,
-		basename: '/contact',
-		props: {
-			basename: '/contact',
-			environment: MODE,
-			userType: 'public', // Default, will be overridden by client-side loader
-		},
-	},
-	herodraft: {
-		url: `/mf/herodraft/index.js?v=${timestamp}`,
-		basename: '/herodraft',
-		props: {
-			basename: '/herodraft',
-			environment: MODE,
-			userType: 'public', // Default, will be overridden by client-side loader
-		},
-	},
+	home: createApp('home', timestamp, {}, false),
+	resume: createApp('resume', resumeVersion),
+	watchparty: createApp('watchparty', watchpartyVersion, {
+		serverOrigin: MODE === 'production' ? 'https://api.hadoku.me' : 'http://localhost:8080',
+	}),
+	task: createApp('task', taskVersion, {
+		userType: 'public', // Default, will be overridden by client-side loader
+	}),
+	contact: createApp('contact', contactVersion),
+	herodraft: createApp('herodraft', timestamp, {}, false),
 };
+
+// Inject theme to all apps
+Object.keys(registry).forEach((key) => {
+	registry[key].props.theme = 'default'; // or whatever theme logic you want
+});
 
 // Write to public/mf/registry.json
 const registryPath = join(__dirname, '..', 'public', 'mf', 'registry.json');

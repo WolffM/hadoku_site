@@ -41,11 +41,13 @@ This checklist ensures all necessary files are updated when adding a new micro-f
   ```javascript
   '@wolffm/<package-name>': {
       targetDir: '<app-name>',
-      cssSource: 'style.css', // Optional, if package includes CSS
+      cssSource: 'style.css', // IMPORTANT: Required if package includes CSS!
   },
   ```
 
 **Lines to modify:** ~22-48 (PACKAGE_CONFIGS object)
+
+**⚠️ IMPORTANT:** If your package includes CSS (check `node_modules/@wolffm/<package-name>/dist/` for `style.css`), you MUST include `cssSource: 'style.css'` in the config. Without this, the CSS won't be copied to `public/mf/<app>/` and your app will load without styles!
 
 ---
 
@@ -63,7 +65,7 @@ This checklist ensures all necessary files are updated when adding a new micro-f
   ```javascript
   <appname>: {
       url: `/mf/<app>/index.js?v=${<app>Version}`,
-      css: `/mf/<app>/style.css?v=${<app>Version}`, // Optional
+      css: `/mf/<app>/style.css?v=${<app>Version}`, // IMPORTANT: Include this if your app has CSS!
       basename: '/<app>',
       props: {
           basename: '/<app>',
@@ -75,6 +77,8 @@ This checklist ensures all necessary files are updated when adding a new micro-f
   ```
 
 **Lines to modify:** ~12-17 (version constants), ~63-113 (registry object)
+
+**⚠️ IMPORTANT:** The `css` property must match the `cssSource` configuration in Step 2. If you configured `cssSource: 'style.css'` in `update-bundle.mjs`, you MUST include the `css` line in the registry. Without this, the browser won't load the stylesheet and your app will appear unstyled!
 
 ---
 
@@ -232,11 +236,43 @@ Key commits:
 - Verify `HADOKU_SITE_TOKEN` is set in child repo
 - Check workflow permissions (contents: write, packages: read)
 
+### App loads but has no styles (CSS missing)
+**This is a common issue!** Check these in order:
+
+1. **Verify CSS exists in package:**
+   ```bash
+   ls node_modules/@wolffm/<package-name>/dist/
+   # Should show: index.js, style.css (or similar)
+   ```
+
+2. **Check `update-bundle.mjs` configuration:**
+   - Must include `cssSource: 'style.css'` in the package config
+   - Without this, CSS won't be copied to `public/mf/<app>/`
+
+3. **Check `generate-registry.mjs` registry entry:**
+   - Must include `css: '/mf/<app>/style.css?v=${<app>Version}'`
+   - Without this, browser won't load the stylesheet
+
+4. **Verify CSS was copied:**
+   ```bash
+   ls public/mf/<app>/
+   # Should show: index.js, style.css
+   ```
+
+5. **Regenerate registry:**
+   ```bash
+   pnpm run generate-registry
+   # Check public/mf/registry.json includes css property
+   ```
+
+6. **Hard refresh browser:** Clear cache or use Ctrl+Shift+R / Cmd+Shift+R
+
 ---
 
 ## Notes
 
 - **Auth Keys (ADMIN_KEYS, FRIEND_KEYS)** are managed directly in Cloudflare via `wrangler secret put`, NOT in GitHub
-- **CSS is optional** - some apps may only need JavaScript
+- **CSS is optional** - some apps may only need JavaScript, but most will need CSS
+- **CSS must be configured in TWO places:** `update-bundle.mjs` (to copy the file) AND `generate-registry.mjs` (to load it in the browser)
 - **Registry props** can be customized per app (e.g., API URLs, environment config)
 - **Version numbers** from package.json are used for cache busting in production
