@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-interface Submission {
+interface Email {
 	id: string;
 	name: string;
 	email: string;
@@ -9,83 +9,76 @@ interface Submission {
 	created_at: number;
 	ip_address: string;
 	referrer: string | null;
+	recipient?: string; // Which email address they sent to
 }
 
 interface ContactAdminProps {
 	adminKey: string;
 }
 
+const VALID_RECIPIENTS = [
+	'matthaeus@hadoku.me',
+	'mw@hadoku.me',
+	'business@hadoku.me',
+	'support@hadoku.me',
+	'no-reply@hadoku.me',
+	'hello@hadoku.me',
+];
+
 export default function ContactAdmin({ adminKey }: ContactAdminProps) {
-	const [submissions, setSubmissions] = useState<Submission[]>([]);
-	const [stats, setStats] = useState({ total: 0, unread: 0, read: 0, archived: 0 });
+	const [emails, setEmails] = useState<Email[]>([]);
+	const [selectedRecipient, setSelectedRecipient] = useState<string>('all');
+	const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+	const [view, setView] = useState<'inbox' | 'compose'>('inbox');
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [sessionId, setSessionId] = useState<string | null>(null);
 
-	// Create session on mount
+	// Compose form state
+	const [composeFrom, setComposeFrom] = useState(VALID_RECIPIENTS[0]);
+	const [composeTo, setComposeTo] = useState('');
+	const [composeSubject, setComposeSubject] = useState('');
+	const [composeMessage, setComposeMessage] = useState('');
+	const [pastRecipients, setPastRecipients] = useState<string[]>([]);
+	const [sending, setSending] = useState(false);
+
+	// Fetch emails on mount
 	useEffect(() => {
-		async function createSession() {
+		async function fetchEmails() {
 			try {
-				const response = await fetch('/session/create', {
-					method: 'POST',
+				const response = await fetch('/contact/api/admin/submissions?limit=100&offset=0', {
 					headers: {
 						'X-User-Key': adminKey,
-						'Content-Type': 'application/json',
 					},
 				});
 
 				if (!response.ok) {
-					throw new Error('Failed to create session');
-				}
-
-				const data = await response.json();
-				setSessionId(data.sessionId);
-			} catch (err) {
-				setError('Authentication failed');
-				setLoading(false);
-			}
-		}
-
-		createSession();
-	}, [adminKey]);
-
-	// Fetch submissions once session is created
-	useEffect(() => {
-		if (!sessionId) return;
-
-		async function fetchSubmissions() {
-			try {
-				const response = await fetch('/contact/api/admin/submissions?limit=50&offset=0', {
-					headers: {
-						'X-Session-Id': sessionId,
-					},
-				});
-
-				if (!response.ok) {
-					throw new Error('Failed to fetch submissions');
+					throw new Error('Failed to fetch emails');
 				}
 
 				const result = await response.json();
-				setSubmissions(result.data.submissions);
-				setStats(result.data.stats);
+				setEmails(result.data.submissions);
 				setLoading(false);
+
+				// Load past recipients from localStorage
+				const stored = localStorage.getItem('hadoku_past_recipients');
+				if (stored) {
+					setPastRecipients(JSON.parse(stored));
+				}
 			} catch (err) {
 				setError((err as Error).message);
 				setLoading(false);
 			}
 		}
 
-		fetchSubmissions();
-	}, [sessionId]);
+		fetchEmails();
+	}, [adminKey]);
 
 	async function updateStatus(id: string, status: 'unread' | 'read' | 'archived') {
-		if (!sessionId) return;
-
 		try {
 			const response = await fetch(`/contact/api/admin/submissions/${id}/status`, {
 				method: 'PATCH',
 				headers: {
-					'X-Session-Id': sessionId,
+					'X-User-Key': adminKey,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({ status }),
@@ -95,100 +88,331 @@ export default function ContactAdmin({ adminKey }: ContactAdminProps) {
 				throw new Error('Failed to update status');
 			}
 
-			// Update local state
-			setSubmissions((prev) => prev.map((sub) => (sub.id === id ? { ...sub, status } : sub)));
-
-			// Update stats
-			setStats((prev) => {
-				const old = submissions.find((s) => s.id === id);
-				if (!old) return prev;
-
-				return {
-					...prev,
-					[old.status]: prev[old.status] - 1,
-					[status]: prev[status] + 1,
-				};
-			});
+			setEmails((prev) => prev.map((email) => (email.id === id ? { ...email, status } : email)));
 		} catch (err) {
 			alert('Failed to update status: ' + (err as Error).message);
 		}
 	}
 
+	async function sendEmail(e: React.FormEvent) {
+		e.preventDefault();
+		setSending(true);
+
+		try {
+			// TODO: Implement actual email sending API
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
+			// Save recipient to past recipients
+			if (composeTo && !pastRecipients.includes(composeTo)) {
+				const updated = [...pastRecipients, composeTo];
+				setPastRecipients(updated);
+				localStorage.setItem('hadoku_past_recipients', JSON.stringify(updated));
+			}
+
+			// Clear form
+			setComposeTo('');
+			setComposeSubject('');
+			setComposeMessage('');
+			setView('inbox');
+			alert('Email sent successfully!');
+		} catch (err) {
+			alert('Failed to send email: ' + (err as Error).message);
+		} finally {
+			setSending(false);
+		}
+	}
+
+	const filteredEmails =
+		selectedRecipient === 'all'
+			? emails
+			: emails.filter((email) => email.recipient === selectedRecipient);
+
+	const unreadCount = filteredEmails.filter((e) => e.status === 'unread').length;
+
 	if (loading) {
 		return (
-			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
-				<div className="text-lg text-gray-600">Loading submissions...</div>
+			<div className="h-screen bg-white flex items-center justify-center">
+				<div className="text-gray-600">Loading...</div>
 			</div>
 		);
 	}
 
 	if (error) {
 		return (
-			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
-				<div className="text-lg text-red-600">Error: {error}</div>
+			<div className="h-screen bg-white flex items-center justify-center">
+				<div className="text-red-600">Error: {error}</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="min-h-screen bg-gray-50 p-8">
-			<div className="max-w-6xl mx-auto">
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2">Contact Submissions</h1>
-					<div className="flex gap-4 text-sm text-gray-600">
-						<span>Total: {stats.total}</span>
-						<span>Unread: {stats.unread}</span>
-						<span>Read: {stats.read}</span>
-						<span>Archived: {stats.archived}</span>
-					</div>
-				</div>
-
-				<div className="space-y-4">
-					{submissions.map((submission) => (
-						<div
-							key={submission.id}
-							className={`bg-white rounded-lg shadow p-6 ${
-								submission.status === 'unread' ? 'border-l-4 border-blue-500' : ''
-							}`}
-						>
-							<div className="flex justify-between items-start mb-4">
-								<div>
-									<h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
-									<a href={`mailto:${submission.email}`} className="text-blue-600 hover:underline">
-										{submission.email}
-									</a>
-									<div className="text-sm text-gray-500 mt-1">
-										{new Date(submission.created_at).toLocaleString()} • {submission.ip_address}
-									</div>
-								</div>
-								<div className="flex gap-2">
-									<select
-										value={submission.status}
-										onChange={(e) =>
-											updateStatus(submission.id, e.target.value as 'unread' | 'read' | 'archived')
-										}
-										className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-									>
-										<option value="unread">Unread</option>
-										<option value="read">Read</option>
-										<option value="archived">Archived</option>
-									</select>
-								</div>
-							</div>
-							<div className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded">
-								{submission.message}
-							</div>
-							{submission.referrer && (
-								<div className="mt-2 text-xs text-gray-500">Referrer: {submission.referrer}</div>
-							)}
-						</div>
-					))}
-
-					{submissions.length === 0 && (
-						<div className="text-center py-12 text-gray-500">No submissions yet</div>
-					)}
+		<div className="h-screen flex flex-col bg-white">
+			{/* Top Bar */}
+			<div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-blue-600 text-white">
+				<h1 className="text-xl font-semibold">Hadoku Mail</h1>
+				<div className="flex gap-2">
+					<button
+						onClick={() => setView('inbox')}
+						className={`px-4 py-2 rounded ${
+							view === 'inbox' ? 'bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+						}`}
+					>
+						Inbox
+					</button>
+					<button
+						onClick={() => setView('compose')}
+						className={`px-4 py-2 rounded ${
+							view === 'compose' ? 'bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+						}`}
+					>
+						Compose
+					</button>
 				</div>
 			</div>
+
+			{view === 'inbox' ? (
+				<div className="flex flex-1 overflow-hidden">
+					{/* Sidebar */}
+					<div className="w-64 border-r border-gray-200 bg-gray-50">
+						<div className="p-4">
+							<h2 className="text-sm font-semibold text-gray-700 mb-3">FOLDERS</h2>
+							<div className="space-y-1">
+								<button
+									onClick={() => {
+										setSelectedRecipient('all');
+										setSelectedEmail(null);
+									}}
+									className={`w-full text-left px-3 py-2 rounded text-sm ${
+										selectedRecipient === 'all'
+											? 'bg-blue-100 text-blue-700 font-medium'
+											: 'text-gray-700 hover:bg-gray-100'
+									}`}
+								>
+									<span className="flex justify-between">
+										<span>All Mail</span>
+										<span className="text-gray-500">{emails.length}</span>
+									</span>
+								</button>
+								{VALID_RECIPIENTS.map((recipient) => {
+									const count = emails.filter((e) => e.recipient === recipient).length;
+									if (count === 0) return null;
+									return (
+										<button
+											key={recipient}
+											onClick={() => {
+												setSelectedRecipient(recipient);
+												setSelectedEmail(null);
+											}}
+											className={`w-full text-left px-3 py-2 rounded text-sm ${
+												selectedRecipient === recipient
+													? 'bg-blue-100 text-blue-700 font-medium'
+													: 'text-gray-700 hover:bg-gray-100'
+											}`}
+										>
+											<span className="flex justify-between">
+												<span className="truncate">{recipient}</span>
+												<span className="text-gray-500">{count}</span>
+											</span>
+										</button>
+									);
+								})}
+							</div>
+						</div>
+					</div>
+
+					{/* Email List */}
+					<div className="w-96 border-r border-gray-200 bg-white overflow-y-auto">
+						<div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3">
+							<h2 className="font-semibold text-gray-900">
+								{selectedRecipient === 'all' ? 'All Mail' : selectedRecipient}
+							</h2>
+							<p className="text-sm text-gray-500">
+								{unreadCount} unread of {filteredEmails.length}
+							</p>
+						</div>
+						<div>
+							{filteredEmails.map((email) => (
+								<button
+									key={email.id}
+									onClick={() => {
+										setSelectedEmail(email);
+										if (email.status === 'unread') {
+											updateStatus(email.id, 'read');
+										}
+									}}
+									className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 ${
+										selectedEmail?.id === email.id ? 'bg-blue-50' : ''
+									} ${email.status === 'unread' ? 'bg-blue-50/30' : ''}`}
+								>
+									<div className="flex justify-between items-start mb-1">
+										<span
+											className={`font-medium text-sm ${
+												email.status === 'unread' ? 'text-gray-900' : 'text-gray-600'
+											}`}
+										>
+											{email.name}
+										</span>
+										<span className="text-xs text-gray-500">
+											{new Date(email.created_at).toLocaleDateString()}
+										</span>
+									</div>
+									<div className="text-xs text-gray-500 mb-1">{email.email}</div>
+									<div className="text-sm text-gray-600 truncate">{email.message}</div>
+								</button>
+							))}
+							{filteredEmails.length === 0 && (
+								<div className="text-center py-12 text-gray-500">No emails</div>
+							)}
+						</div>
+					</div>
+
+					{/* Email Detail */}
+					<div className="flex-1 bg-white overflow-y-auto">
+						{selectedEmail ? (
+							<div className="p-6">
+								<div className="mb-6 pb-6 border-b border-gray-200">
+									<h2 className="text-2xl font-semibold text-gray-900 mb-2">
+										Message from {selectedEmail.name}
+									</h2>
+									<div className="flex gap-4 text-sm text-gray-600 mb-4">
+										<span>
+											<strong>From:</strong> {selectedEmail.email}
+										</span>
+										<span>
+											<strong>Date:</strong> {new Date(selectedEmail.created_at).toLocaleString()}
+										</span>
+									</div>
+									<div className="flex gap-2">
+										<select
+											value={selectedEmail.status}
+											onChange={(e) =>
+												updateStatus(
+													selectedEmail.id,
+													e.target.value as 'unread' | 'read' | 'archived'
+												)
+											}
+											className="px-3 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+										>
+											<option value="unread">Unread</option>
+											<option value="read">Read</option>
+											<option value="archived">Archived</option>
+										</select>
+										<button
+											onClick={() => {
+												setComposeTo(selectedEmail.email);
+												setComposeSubject(`Re: Message from ${selectedEmail.name}`);
+												setView('compose');
+											}}
+											className="px-4 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+										>
+											Reply
+										</button>
+									</div>
+								</div>
+								<div className="prose max-w-none">
+									<div className="whitespace-pre-wrap text-gray-800">{selectedEmail.message}</div>
+								</div>
+								<div className="mt-6 pt-6 border-t border-gray-200 text-sm text-gray-500">
+									<div>IP Address: {selectedEmail.ip_address}</div>
+									{selectedEmail.referrer && <div>Referrer: {selectedEmail.referrer}</div>}
+								</div>
+							</div>
+						) : (
+							<div className="flex items-center justify-center h-full text-gray-500">
+								Select an email to read
+							</div>
+						)}
+					</div>
+				</div>
+			) : (
+				/* Compose View */
+				<div className="flex-1 overflow-y-auto bg-gray-50">
+					<div className="max-w-4xl mx-auto p-8">
+						<h2 className="text-2xl font-semibold text-gray-900 mb-6">New Message</h2>
+						<form
+							onSubmit={sendEmail}
+							className="bg-white rounded-lg shadow-sm border border-gray-200"
+						>
+							<div className="p-6 space-y-4">
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-1">From</label>
+									<select
+										value={composeFrom}
+										onChange={(e) => setComposeFrom(e.target.value)}
+										className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+										required
+									>
+										{VALID_RECIPIENTS.map((email) => (
+											<option key={email} value={email}>
+												{email}
+											</option>
+										))}
+									</select>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+									<input
+										type="email"
+										value={composeTo}
+										onChange={(e) => setComposeTo(e.target.value)}
+										list="past-recipients"
+										className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+										placeholder="recipient@example.com"
+										required
+									/>
+									<datalist id="past-recipients">
+										{pastRecipients.map((recipient) => (
+											<option key={recipient} value={recipient} />
+										))}
+									</datalist>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+									<input
+										type="text"
+										value={composeSubject}
+										onChange={(e) => setComposeSubject(e.target.value)}
+										className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+										placeholder="Subject"
+										required
+									/>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+									<textarea
+										value={composeMessage}
+										onChange={(e) => setComposeMessage(e.target.value)}
+										className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+										rows={12}
+										placeholder="Write your message here..."
+										required
+									/>
+								</div>
+							</div>
+
+							<div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
+								<button
+									type="submit"
+									disabled={sending}
+									className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+								>
+									{sending ? 'Sending...' : 'Send'}
+								</button>
+								<button
+									type="button"
+									onClick={() => setView('inbox')}
+									className="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50"
+								>
+									Cancel
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
