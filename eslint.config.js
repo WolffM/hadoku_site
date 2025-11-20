@@ -46,6 +46,8 @@ export default [
 				window: 'readonly',
 				document: 'readonly',
 				navigator: 'readonly',
+				alert: 'readonly',
+				confirm: 'readonly',
 				// Cloudflare Workers globals
 				Request: 'readonly',
 				Response: 'readonly',

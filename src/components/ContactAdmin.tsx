@@ -42,6 +42,15 @@ export default function ContactAdmin() {
 	const [pastRecipients, setPastRecipients] = useState<string[]>([]);
 	const [sending, setSending] = useState(false);
 	const [refreshing, setRefreshing] = useState(false);
+	const [readEmails, setReadEmails] = useState<Set<string>>(new Set());
+
+	// Load read emails from localStorage on mount
+	useEffect(() => {
+		const stored = localStorage.getItem('hadoku_read_emails');
+		if (stored) {
+			setReadEmails(new Set(JSON.parse(stored)));
+		}
+	}, []);
 
 	// Validate key from URL on mount
 	useEffect(() => {
@@ -75,7 +84,7 @@ export default function ContactAdmin() {
 				// Key is valid, save it
 				setAdminKey(key);
 				setKeyValidated(true);
-			} catch (err) {
+			} catch {
 				setError('Failed to validate admin key');
 				setLoading(false);
 			}
@@ -134,31 +143,9 @@ export default function ContactAdmin() {
 			const result = await response.json();
 			setEmails(result.data.submissions);
 		} catch (err) {
-			alert('Failed to refresh emails: ' + (err as Error).message);
+			alert(`Failed to refresh emails: ${  (err as Error).message}`);
 		} finally {
 			setRefreshing(false);
-		}
-	}
-
-	async function updateStatus(id: string, status: 'unread' | 'read' | 'archived') {
-		if (!adminKey) return;
-		try {
-			const response = await fetch(`/contact/api/admin/submissions/${id}/status`, {
-				method: 'PATCH',
-				headers: {
-					'X-User-Key': adminKey,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ status }),
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to update status');
-			}
-
-			setEmails((prev) => prev.map((email) => (email.id === id ? { ...email, status } : email)));
-		} catch (err) {
-			alert('Failed to update status: ' + (err as Error).message);
 		}
 	}
 
@@ -190,7 +177,7 @@ export default function ContactAdmin() {
 				setSelectedEmail(null);
 			}
 		} catch (err) {
-			alert('Failed to delete email: ' + (err as Error).message);
+			alert(`Failed to delete email: ${  (err as Error).message}`);
 		}
 	}
 
@@ -221,7 +208,7 @@ export default function ContactAdmin() {
 				);
 			}
 		} catch (err) {
-			alert('Failed to restore email: ' + (err as Error).message);
+			alert(`Failed to restore email: ${  (err as Error).message}`);
 		}
 	}
 
@@ -247,7 +234,7 @@ export default function ContactAdmin() {
 			setView('inbox');
 			alert('Email sent successfully!');
 		} catch (err) {
-			alert('Failed to send email: ' + (err as Error).message);
+			alert(`Failed to send email: ${  (err as Error).message}`);
 		} finally {
 			setSending(false);
 		}
@@ -261,7 +248,7 @@ export default function ContactAdmin() {
 					(email) => email.recipient === selectedRecipient && email.status !== 'deleted'
 				);
 
-	const unreadCount = filteredEmails.filter((e) => e.status === 'unread').length;
+	const unreadCount = filteredEmails.filter((e) => !readEmails.has(e.id)).length;
 	const deletedCount = emails.filter((e) => e.status === 'deleted').length;
 
 	if (loading) {
@@ -291,8 +278,8 @@ export default function ContactAdmin() {
 		<div className="h-screen flex flex-col bg-bg">
 			{/* Top Bar */}
 			<div className="flex items-center justify-between px-6 py-3 border-b border-border bg-primary text-white">
-				<h1 className="text-xl font-semibold">Hadoku Mail</h1>
-				<div className="flex gap-2 items-center">
+				<div className="flex items-center gap-4">
+					<h1 className="text-xl font-semibold">Hadoku Mail</h1>
 					<ThemePickerWrapper />
 				</div>
 			</div>
@@ -407,35 +394,42 @@ export default function ContactAdmin() {
 							</p>
 						</div>
 						<div>
-							{filteredEmails.map((email) => (
-								<button
-									key={email.id}
-									onClick={() => {
-										setSelectedEmail(email);
-										if (email.status === 'unread') {
-											updateStatus(email.id, 'read');
-										}
-									}}
-									className={`w-full text-left px-4 py-3 border-b border-border-light hover:bg-bg-card ${
-										selectedEmail?.id === email.id ? 'bg-primary-bg' : ''
-									} ${email.status === 'unread' ? 'bg-primary-bg/30' : ''}`}
-								>
-									<div className="flex justify-between items-start mb-1">
-										<span
-											className={`font-medium text-sm ${
-												email.status === 'unread' ? 'text-text' : 'text-text-secondary'
-											}`}
-										>
-											{email.name}
-										</span>
-										<span className="text-xs text-text-secondary">
-											{new Date(email.created_at).toLocaleDateString()}
-										</span>
-									</div>
-									<div className="text-xs text-text-secondary mb-1">{email.email}</div>
-									<div className="text-sm text-text-secondary truncate">{email.message}</div>
-								</button>
-							))}
+							{filteredEmails.map((email) => {
+								const isUnread = !readEmails.has(email.id);
+								return (
+									<button
+										key={email.id}
+										onClick={() => {
+											setSelectedEmail(email);
+											// Mark as read in localStorage
+											if (!readEmails.has(email.id)) {
+												const updated = new Set(readEmails);
+												updated.add(email.id);
+												setReadEmails(updated);
+												localStorage.setItem('hadoku_read_emails', JSON.stringify([...updated]));
+											}
+										}}
+										className={`w-full text-left px-4 py-3 border-b border-border-light hover:bg-bg-card ${
+											selectedEmail?.id === email.id ? 'bg-primary-bg' : ''
+										} ${isUnread ? 'bg-primary-bg/20' : ''}`}
+									>
+										<div className="flex justify-between items-start mb-1">
+											<span
+												className={`font-medium text-sm ${
+													isUnread ? 'text-text' : 'text-text-secondary'
+												}`}
+											>
+												{email.name}
+											</span>
+											<span className="text-xs text-text-secondary">
+												{new Date(email.created_at).toLocaleDateString()}
+											</span>
+										</div>
+										<div className="text-xs text-text-secondary mb-1">{email.email}</div>
+										<div className="text-sm text-text-secondary truncate">{email.message}</div>
+									</button>
+								);
+							})}
 							{filteredEmails.length === 0 && (
 								<div className="text-center py-12 text-text-secondary">No emails</div>
 							)}
@@ -479,20 +473,6 @@ export default function ContactAdmin() {
 											</>
 										) : (
 											<>
-												<select
-													value={selectedEmail.status}
-													onChange={(e) =>
-														updateStatus(
-															selectedEmail.id,
-															e.target.value as 'unread' | 'read' | 'archived'
-														)
-													}
-													className="px-3 py-1 text-sm border border-border bg-bg text-text rounded focus:outline-none focus:shadow-focus"
-												>
-													<option value="unread">Unread</option>
-													<option value="read">Read</option>
-													<option value="archived">Archived</option>
-												</select>
 												<button
 													onClick={() => {
 														setComposeTo(selectedEmail.email);

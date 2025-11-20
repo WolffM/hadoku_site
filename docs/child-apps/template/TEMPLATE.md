@@ -28,16 +28,19 @@ Template for building React-based child apps that integrate with the hadoku pare
 
 ```typescript
 import { createRoot } from 'react-dom/client';
+import { logger } from '@wolffm/task-ui-components'; // REQUIRED
 import '@wolffm/themes/style.css'; // REQUIRED
 
 export function mount(el: HTMLElement, props = {}) {
   const root = createRoot(el);
   root.render(<App {...props} />);
   (el as any).__root = root;
+  logger.info('[your-app] Mounted successfully', { theme: props.theme });
 }
 
 export function unmount(el: HTMLElement) {
   ((el as any).__root)?.unmount();
+  logger.info('[your-app] Unmounted successfully');
 }
 ```
 
@@ -107,6 +110,45 @@ rollupOptions: {
 
 ---
 
+## Logging (MANDATORY)
+
+### ✅ Use Logger, Not Console
+
+**Always use the logger from `@wolffm/task-ui-components`:**
+
+```typescript
+import { logger } from '@wolffm/task-ui-components'
+
+// ✅ Correct
+logger.info('User action completed', { userId: 123 })
+logger.error('Failed to load data', error)
+logger.debug('Internal state', { count: 5 })
+
+// ❌ Wrong - DO NOT use console
+console.log('Something happened') // NO!
+console.error('Error occurred') // NO!
+```
+
+### Logger Benefits
+
+- **Admin-only visibility**: Logs only shown in dev mode OR when authenticated as admin
+- **Structured logging**: Consistent format with timestamps and context
+- **Production-safe**: No console clutter for regular users
+- **Type-safe**: Full TypeScript support
+
+### Available Methods
+
+```typescript
+logger.info(message: string, context?: LogContext)   // Info messages
+logger.error(message: string, context?: any)         // Errors
+logger.warn(message: string, context?: LogContext)   // Warnings
+logger.debug(message: string, context?: LogContext)  // Debug info
+```
+
+**Note**: `LogContext` is `Record<string, string | number | boolean | null | undefined>`
+
+---
+
 ## Development
 
 ```bash
@@ -173,6 +215,8 @@ Push to `main` triggers:
 - [ ] Repository URL in `package.json`
 - [ ] Description in `package.json` and `README.md`
 - [ ] `HADOKU_SITE_TOKEN` in GitHub secrets
+- [ ] Replace all `console.log/error/warn` with `logger.info/error/warn`
+- [ ] Import logger in all files: `import { logger } from '@wolffm/task-ui-components'`
 - [ ] Test: `pnpm build` succeeds
 
 ---

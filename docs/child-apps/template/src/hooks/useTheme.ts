@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { setTheme as applyTheme } from '@wolffm/themes'
+import { logger } from '@wolffm/task-ui-components'
 import { getThemeFamilies } from '../app/themeConfig'
 
 interface UseThemeOptions {
@@ -100,7 +101,7 @@ export function useTheme(options: UseThemeOptions = {}) {
     try {
       sessionStorage.setItem('hadoku-theme', newTheme)
     } catch (err) {
-      console.error('[useTheme] Failed to save theme:', err)
+      logger.error('[useTheme] Failed to save theme:', err)
     }
   }
 

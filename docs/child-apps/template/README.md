@@ -23,6 +23,19 @@ pnpm lint:fix
 pnpm format
 ```
 
+### Logging
+
+**Important**: Use the logger from `@wolffm/task-ui-components` instead of `console.log`:
+
+```typescript
+import { logger } from '@wolffm/task-ui-components'
+
+logger.info('Message', { key: 'value' })
+logger.error('Error occurred', error)
+```
+
+See [TEMPLATE.md](./TEMPLATE.md#logging-mandatory) for complete logging guidelines.
+
 ## Integration
 
 This app is a child component of the [hadoku_site](https://github.com/WolffM/hadoku_site) parent application.

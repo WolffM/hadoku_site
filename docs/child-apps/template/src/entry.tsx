@@ -1,4 +1,5 @@
 import { createRoot, type Root } from 'react-dom/client'
+import { logger } from '@wolffm/task-ui-components'
 import App from './App'
 // REQUIRED: Import @wolffm/themes CSS - DO NOT REMOVE
 import '@wolffm/themes/style.css'
@@ -21,11 +22,11 @@ export function mount(el: HTMLElement, props: YourAppProps = {}) {
   const root = createRoot(el)
   root.render(<App {...props} />)
   ;(el as YourAppElement).__root = root
-  console.log('[your-app] Mounted successfully', props)
+  logger.info('[your-app] Mounted successfully', { theme: props.theme })
 }
 
 // Unmount function - called by parent to cleanup your app
 export function unmount(el: HTMLElement) {
   ;(el as YourAppElement).__root?.unmount()
-  console.log('[your-app] Unmounted successfully')
+  logger.info('[your-app] Unmounted successfully')
 }
