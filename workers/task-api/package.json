@@ -20,7 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "@hadoku/worker-utils": "workspace:*",
-    "@wolffm/task": "^3.4.0",
+    "@wolffm/task": "^3.4.2",
     "@wolffm/task-ui-components": "^1.0.3",
     "hono": "^4.10.3"
   },
