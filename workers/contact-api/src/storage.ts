@@ -7,11 +7,13 @@ export interface StoredSubmission {
 	name: string;
 	email: string;
 	message: string;
-	status: 'unread' | 'read' | 'archived';
+	status: 'unread' | 'read' | 'archived' | 'deleted';
 	created_at: number;
+	deleted_at: number | null;
 	ip_address: string | null;
 	user_agent: string | null;
 	referrer: string | null;
+	recipient: string | null;
 }
 
 export interface CreateSubmissionParams {
@@ -67,15 +69,19 @@ export async function createSubmission(
 /**
  * Get all contact submissions (admin only)
  * Returns newest first
+ * Excludes deleted items by default
  */
 export async function getAllSubmissions(
 	db: D1Database,
 	limit: number = 100,
-	offset: number = 0
+	offset: number = 0,
+	includeDeleted: boolean = false
 ): Promise<StoredSubmission[]> {
+	const whereClause = includeDeleted ? '' : `WHERE status != 'deleted'`;
 	const result = await db
 		.prepare(
 			`SELECT * FROM contact_submissions
+			${whereClause}
 			ORDER BY created_at DESC
 			LIMIT ? OFFSET ?`
 		)
@@ -117,35 +123,70 @@ export async function updateSubmissionStatus(
 }
 
 /**
- * Delete a submission permanently
+ * Soft delete a submission (move to trash)
  */
 export async function deleteSubmission(db: D1Database, id: string): Promise<boolean> {
-	const result = await db.prepare(`DELETE FROM contact_submissions WHERE id = ?`).bind(id).run();
+	const deleted_at = Date.now();
+	const result = await db
+		.prepare(`UPDATE contact_submissions SET status = 'deleted', deleted_at = ? WHERE id = ?`)
+		.bind(deleted_at, id)
+		.run();
 
 	return result.success;
 }
 
 /**
+ * Restore a submission from trash
+ */
+export async function restoreSubmission(db: D1Database, id: string): Promise<boolean> {
+	const result = await db
+		.prepare(`UPDATE contact_submissions SET status = 'unread', deleted_at = NULL WHERE id = ?`)
+		.bind(id)
+		.run();
+
+	return result.success;
+}
+
+/**
+ * Permanently delete submissions that have been in trash for more than 7 days
+ */
+export async function purgeOldDeletedSubmissions(db: D1Database): Promise<number> {
+	const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+	const result = await db
+		.prepare(
+			`DELETE FROM contact_submissions WHERE status = 'deleted' AND deleted_at IS NOT NULL AND deleted_at < ?`
+		)
+		.bind(sevenDaysAgo)
+		.run();
+
+	return result.meta?.changes || 0;
+}
+
+/**
  * Get count of submissions by status
+ * Excludes deleted items from total count
  */
 export async function getSubmissionStats(db: D1Database): Promise<{
 	total: number;
 	unread: number;
 	read: number;
 	archived: number;
+	deleted: number;
 }> {
 	const result = await db
 		.prepare(
 			`SELECT
-				COUNT(*) as total,
+				SUM(CASE WHEN status != 'deleted' THEN 1 ELSE 0 END) as total,
 				SUM(CASE WHEN status = 'unread' THEN 1 ELSE 0 END) as unread,
 				SUM(CASE WHEN status = 'read' THEN 1 ELSE 0 END) as read,
-				SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived
+				SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived,
+				SUM(CASE WHEN status = 'deleted' THEN 1 ELSE 0 END) as deleted
 			FROM contact_submissions`
 		)
-		.first<{ total: number; unread: number; read: number; archived: number }>();
+		.first<{ total: number; unread: number; read: number; archived: number; deleted: number }>();
 
-	return result || { total: 0, unread: 0, read: 0, archived: 0 };
+	return result || { total: 0, unread: 0, read: 0, archived: 0, deleted: 0 };
 }
 
 /**

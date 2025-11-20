@@ -6,8 +6,9 @@ interface Email {
 	name: string;
 	email: string;
 	message: string;
-	status: 'unread' | 'read' | 'archived';
+	status: 'unread' | 'read' | 'archived' | 'deleted';
 	created_at: number;
+	deleted_at?: number | null;
 	ip_address: string;
 	referrer: string | null;
 	recipient?: string; // Which email address they sent to
@@ -31,6 +32,7 @@ export default function ContactAdmin() {
 	const [error, setError] = useState<string | null>(null);
 	const [adminKey, setAdminKey] = useState<string | null>(null);
 	const [keyValidated, setKeyValidated] = useState(false);
+	const [showTrash, setShowTrash] = useState(false);
 
 	// Compose form state
 	const [composeFrom, setComposeFrom] = useState(VALID_RECIPIENTS[0]);
@@ -162,7 +164,7 @@ export default function ContactAdmin() {
 
 	async function deleteEmail(id: string) {
 		if (!adminKey) return;
-		if (!confirm('Are you sure you want to delete this email? This cannot be undone.')) {
+		if (!confirm('Move this email to trash?')) {
 			return;
 		}
 
@@ -178,13 +180,48 @@ export default function ContactAdmin() {
 				throw new Error('Failed to delete email');
 			}
 
-			// Remove from state and clear selection if it was selected
-			setEmails((prev) => prev.filter((email) => email.id !== id));
+			// Update status to deleted in state
+			setEmails((prev) =>
+				prev.map((email) =>
+					email.id === id ? { ...email, status: 'deleted' as const, deleted_at: Date.now() } : email
+				)
+			);
 			if (selectedEmail?.id === id) {
 				setSelectedEmail(null);
 			}
 		} catch (err) {
 			alert('Failed to delete email: ' + (err as Error).message);
+		}
+	}
+
+	async function restoreEmail(id: string) {
+		if (!adminKey) return;
+
+		try {
+			const response = await fetch(`/contact/api/admin/submissions/${id}/restore`, {
+				method: 'POST',
+				headers: {
+					'X-User-Key': adminKey,
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to restore email');
+			}
+
+			// Update status to unread in state
+			setEmails((prev) =>
+				prev.map((email) =>
+					email.id === id ? { ...email, status: 'unread' as const, deleted_at: null } : email
+				)
+			);
+			if (selectedEmail?.id === id) {
+				setSelectedEmail((prev) =>
+					prev ? { ...prev, status: 'unread' as const, deleted_at: null } : null
+				);
+			}
+		} catch (err) {
+			alert('Failed to restore email: ' + (err as Error).message);
 		}
 	}
 
@@ -216,12 +253,16 @@ export default function ContactAdmin() {
 		}
 	}
 
-	const filteredEmails =
-		selectedRecipient === 'all'
-			? emails
-			: emails.filter((email) => email.recipient === selectedRecipient);
+	const filteredEmails = showTrash
+		? emails.filter((email) => email.status === 'deleted')
+		: selectedRecipient === 'all'
+			? emails.filter((email) => email.status !== 'deleted')
+			: emails.filter(
+					(email) => email.recipient === selectedRecipient && email.status !== 'deleted'
+				);
 
 	const unreadCount = filteredEmails.filter((e) => e.status === 'unread').length;
+	const deletedCount = emails.filter((e) => e.status === 'deleted').length;
 
 	if (loading) {
 		return (
@@ -284,31 +325,37 @@ export default function ContactAdmin() {
 								<button
 									onClick={() => {
 										setSelectedRecipient('all');
+										setShowTrash(false);
 										setSelectedEmail(null);
 									}}
 									className={`w-full text-left px-3 py-2 rounded text-sm ${
-										selectedRecipient === 'all'
+										selectedRecipient === 'all' && !showTrash
 											? 'bg-primary-bg text-primary font-medium'
 											: 'text-text hover:bg-bg-card'
 									}`}
 								>
 									<span className="flex justify-between">
 										<span>All Mail</span>
-										<span className="text-text-secondary">{emails.length}</span>
+										<span className="text-text-secondary">
+											{emails.filter((e) => e.status !== 'deleted').length}
+										</span>
 									</span>
 								</button>
 								{VALID_RECIPIENTS.map((recipient) => {
-									const count = emails.filter((e) => e.recipient === recipient).length;
+									const count = emails.filter(
+										(e) => e.recipient === recipient && e.status !== 'deleted'
+									).length;
 									if (count === 0) return null;
 									return (
 										<button
 											key={recipient}
 											onClick={() => {
 												setSelectedRecipient(recipient);
+												setShowTrash(false);
 												setSelectedEmail(null);
 											}}
 											className={`w-full text-left px-3 py-2 rounded text-sm ${
-												selectedRecipient === recipient
+												selectedRecipient === recipient && !showTrash
 													? 'bg-primary-bg text-primary font-medium'
 													: 'text-text hover:bg-bg-card'
 											}`}
@@ -321,6 +368,25 @@ export default function ContactAdmin() {
 									);
 								})}
 							</div>
+							<div className="mt-6 pt-6 border-t border-border">
+								<h2 className="text-sm font-semibold text-text-secondary mb-3">SPECIAL</h2>
+								<button
+									onClick={() => {
+										setShowTrash(true);
+										setSelectedEmail(null);
+									}}
+									className={`w-full text-left px-3 py-2 rounded text-sm ${
+										showTrash
+											? 'bg-primary-bg text-primary font-medium'
+											: 'text-text hover:bg-bg-card'
+									}`}
+								>
+									<span className="flex justify-between">
+										<span>🗑️ Trash</span>
+										<span className="text-text-secondary">{deletedCount}</span>
+									</span>
+								</button>
+							</div>
 						</div>
 					</div>
 
@@ -328,10 +394,16 @@ export default function ContactAdmin() {
 					<div className="w-96 border-r border-border bg-bg overflow-y-auto">
 						<div className="sticky top-0 bg-bg border-b border-border px-4 py-3">
 							<h2 className="font-semibold text-text">
-								{selectedRecipient === 'all' ? 'All Mail' : selectedRecipient}
+								{showTrash
+									? '🗑️ Trash'
+									: selectedRecipient === 'all'
+										? 'All Mail'
+										: selectedRecipient}
 							</h2>
 							<p className="text-sm text-text-secondary">
-								{unreadCount} unread of {filteredEmails.length}
+								{showTrash
+									? `${filteredEmails.length} deleted`
+									: `${unreadCount} unread of ${filteredEmails.length}`}
 							</p>
 						</div>
 						<div>
@@ -385,38 +457,60 @@ export default function ContactAdmin() {
 										<span>
 											<strong>Date:</strong> {new Date(selectedEmail.created_at).toLocaleString()}
 										</span>
+										{selectedEmail.status === 'deleted' && selectedEmail.deleted_at && (
+											<span>
+												<strong>Deleted:</strong>{' '}
+												{new Date(selectedEmail.deleted_at).toLocaleString()}
+											</span>
+										)}
 									</div>
 									<div className="flex gap-2">
-										<select
-											value={selectedEmail.status}
-											onChange={(e) =>
-												updateStatus(
-													selectedEmail.id,
-													e.target.value as 'unread' | 'read' | 'archived'
-												)
-											}
-											className="px-3 py-1 text-sm border border-border bg-bg text-text rounded focus:outline-none focus:shadow-focus"
-										>
-											<option value="unread">Unread</option>
-											<option value="read">Read</option>
-											<option value="archived">Archived</option>
-										</select>
-										<button
-											onClick={() => {
-												setComposeTo(selectedEmail.email);
-												setComposeSubject(`Re: Message from ${selectedEmail.name}`);
-												setView('compose');
-											}}
-											className="px-4 py-1 text-sm bg-primary text-white rounded hover:bg-primary-hover"
-										>
-											Reply
-										</button>
-										<button
-											onClick={() => deleteEmail(selectedEmail.id)}
-											className="px-4 py-1 text-sm bg-danger text-white rounded hover:bg-danger-dark"
-										>
-											Delete
-										</button>
+										{selectedEmail.status === 'deleted' ? (
+											<>
+												<button
+													onClick={() => restoreEmail(selectedEmail.id)}
+													className="px-4 py-1 text-sm bg-success text-white rounded hover:bg-success-dark"
+												>
+													↩ Restore
+												</button>
+												<div className="text-sm text-text-secondary py-1 px-2">
+													This email is in trash
+												</div>
+											</>
+										) : (
+											<>
+												<select
+													value={selectedEmail.status}
+													onChange={(e) =>
+														updateStatus(
+															selectedEmail.id,
+															e.target.value as 'unread' | 'read' | 'archived'
+														)
+													}
+													className="px-3 py-1 text-sm border border-border bg-bg text-text rounded focus:outline-none focus:shadow-focus"
+												>
+													<option value="unread">Unread</option>
+													<option value="read">Read</option>
+													<option value="archived">Archived</option>
+												</select>
+												<button
+													onClick={() => {
+														setComposeTo(selectedEmail.email);
+														setComposeSubject(`Re: Message from ${selectedEmail.name}`);
+														setView('compose');
+													}}
+													className="px-4 py-1 text-sm bg-primary text-white rounded hover:bg-primary-hover"
+												>
+													Reply
+												</button>
+												<button
+													onClick={() => deleteEmail(selectedEmail.id)}
+													className="px-4 py-1 text-sm bg-danger text-white rounded hover:bg-danger-dark"
+												>
+													Delete
+												</button>
+											</>
+										)}
 									</div>
 								</div>
 								<div className="prose max-w-none">

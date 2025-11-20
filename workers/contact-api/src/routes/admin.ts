@@ -11,6 +11,8 @@ import {
 	getSubmissionById,
 	updateSubmissionStatus,
 	deleteSubmission,
+	restoreSubmission,
+	purgeOldDeletedSubmissions,
 	getSubmissionStats,
 	getDatabaseSize,
 	archiveOldSubmissions,
@@ -136,7 +138,7 @@ export function createAdminRoutes() {
 
 	/**
 	 * DELETE /admin/submissions/:id
-	 * Delete a submission permanently
+	 * Soft delete a submission (move to trash)
 	 */
 	app.delete('/submissions/:id', async (c) => {
 		try {
@@ -148,10 +150,50 @@ export function createAdminRoutes() {
 				return notFound(c, 'Submission not found');
 			}
 
-			return ok(c, { success: true, message: 'Submission deleted successfully' });
+			return ok(c, { success: true, message: 'Submission moved to trash' });
 		} catch (error) {
 			console.error('Error deleting submission:', error);
 			return serverError(c, 'Failed to delete submission');
+		}
+	});
+
+	/**
+	 * POST /admin/submissions/:id/restore
+	 * Restore a submission from trash
+	 */
+	app.post('/submissions/:id/restore', async (c) => {
+		try {
+			const id = c.req.param('id');
+
+			const success = await restoreSubmission(c.env.DB, id);
+
+			if (!success) {
+				return notFound(c, 'Submission not found');
+			}
+
+			return ok(c, { success: true, message: 'Submission restored successfully' });
+		} catch (error) {
+			console.error('Error restoring submission:', error);
+			return serverError(c, 'Failed to restore submission');
+		}
+	});
+
+	/**
+	 * POST /admin/purge-deleted
+	 * Permanently delete submissions that have been in trash for more than 7 days
+	 */
+	app.post('/purge-deleted', async (c) => {
+		try {
+			const purgedCount = await purgeOldDeletedSubmissions(c.env.DB);
+
+			return ok(c, {
+				success: true,
+				message: `Permanently deleted ${purgedCount} submission(s) from trash`,
+				purgedCount,
+			});
+		} catch (error) {
+			console.error('Error purging deleted submissions:', error);
+			return serverError(c, 'Failed to purge deleted submissions');
 		}
 	});
 
