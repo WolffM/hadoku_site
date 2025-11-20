@@ -10,7 +10,7 @@
  */
 
 import { Hono } from 'hono';
-import { created, badRequest, serverError } from '@hadoku/worker-utils';
+import { badRequest, serverError } from '@hadoku/worker-utils';
 import {
 	validateContactSubmission,
 	extractClientIP,
@@ -40,14 +40,14 @@ export function createSubmitRoutes() {
 		try {
 			// Security Layer 1: Referrer validation
 			if (!validateReferrer(request)) {
-				return badRequest(c, 'Invalid request origin');
+				return c.json({ success: false, message: 'Invalid request origin' }, 400);
 			}
 
 			// Security Layer 2: Extract client IP for rate limiting
 			const ipAddress = extractClientIP(request);
 			if (!ipAddress) {
 				console.error('Could not extract client IP');
-				return badRequest(c, 'Could not identify client');
+				return c.json({ success: false, message: 'Could not identify client' }, 400);
 			}
 
 			// Security Layer 3: Rate limiting check
@@ -74,7 +74,7 @@ export function createSubmitRoutes() {
 			try {
 				body = await c.req.json();
 			} catch {
-				return badRequest(c, 'Invalid JSON in request body');
+				return c.json({ success: false, message: 'Invalid JSON in request body' }, 400);
 			}
 
 			// Security Layer 4: Validate and sanitize input (includes honeypot check)
@@ -110,15 +110,18 @@ export function createSubmitRoutes() {
 			// Record this submission for rate limiting
 			await recordSubmission(kv, ipAddress);
 
-			// Success response
-			return created(c, {
-				success: true,
-				id: submission.id,
-				message: 'Your message has been sent successfully!',
-			});
+			// Success response - simple format for contact form
+			return c.json(
+				{
+					success: true,
+					id: submission.id,
+					message: 'Your message has been sent successfully!',
+				},
+				201
+			);
 		} catch (error) {
 			console.error('Error processing contact submission:', error);
-			return serverError(c, 'Failed to process submission');
+			return c.json({ success: false, message: 'Failed to process submission' }, 500);
 		}
 	});
 
