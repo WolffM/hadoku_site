@@ -1,6 +1,32 @@
 /**
  * Email templates for appointment confirmations and reminders
+ *
+ * Templates are now stored in D1 database with KV caching.
+ * This file provides the rendering logic and helper functions.
  */
+
+/**
+ * Simple Mustache-like template renderer
+ * Supports {{variable}} syntax
+ */
+export function renderTemplate(template: string, data: Record<string, any>): string {
+	let result = template;
+
+	// Replace {{#if variable}} blocks
+	result = result.replace(
+		/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
+		(match, varName, content) => {
+			return data[varName] ? content : '';
+		}
+	);
+
+	// Replace {{variable}} placeholders
+	result = result.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+		return data[varName] !== undefined && data[varName] !== null ? String(data[varName]) : '';
+	});
+
+	return result;
+}
 
 export interface AppointmentEmailData {
 	recipientName: string;
@@ -16,13 +42,18 @@ export interface AppointmentEmailData {
 }
 
 /**
- * Format appointment confirmation email
+ * Format appointment confirmation email (using stored template)
  * Sent from matthaeus@hadoku.me when appointment is booked
+ *
+ * This function prepares data for template rendering. The actual templates
+ * are stored in D1 and fetched via getEmailTemplate() in submit route.
  */
 export function formatAppointmentConfirmation(data: AppointmentEmailData): {
 	subject: string;
 	text: string;
 } {
+	// Fallback to hardcoded template if database template not available
+	// This ensures the system works even if templates aren't loaded yet
 	const subject = `Appointment Confirmed - ${data.appointmentDate} at ${data.startTime}`;
 
 	const text = `Hi ${data.recipientName},
@@ -117,6 +148,33 @@ hadoku.me
 Reply to this email to reach me directly at matthaeus@hadoku.me.`;
 
 	return { subject, text };
+}
+
+/**
+ * Prepare template variables for appointment confirmation email
+ * Returns data object ready for template rendering
+ */
+export function prepareAppointmentTemplateData(data: AppointmentEmailData): Record<string, any> {
+	// Get platform-specific instructions
+	const platformInstructions = getPlatformInstructions(data.platform, data.meetingLink);
+
+	// Capitalize platform name
+	const platformName = data.platform.charAt(0).toUpperCase() + data.platform.slice(1);
+
+	return {
+		recipientName: data.recipientName,
+		recipientEmail: data.recipientEmail,
+		appointmentDate: data.appointmentDate,
+		startTime: data.startTime,
+		endTime: data.endTime,
+		timezone: data.timezone,
+		duration: data.duration,
+		platform: data.platform,
+		platformName,
+		meetingLink: data.meetingLink || '',
+		message: data.message || '',
+		platformInstructions,
+	};
 }
 
 /**

@@ -14,6 +14,11 @@ database_id = "eca9e75c-3ea1-4ebe-87d7-a7ee915c24a2"
 binding = "RATE_LIMIT_KV"
 id = "67a22575cb1e4ff79b65b5cf8e11729b"
 
+# KV Namespace - Template caching (for fast runtime reads)
+[[kv_namespaces]]
+binding = "TEMPLATES_KV"
+id = "e445c7b9dae643ac9b3b999cd85a239c"
+
 # Cron trigger for auto-archiving old submissions (daily at 3 AM UTC)
 [triggers]
 crons = ["0 3 * * *"]

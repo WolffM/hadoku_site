@@ -24,6 +24,11 @@ import {
 	getAllAppointments,
 	getAppointmentById,
 	updateAppointmentStatus,
+	listEmailTemplates,
+	getEmailTemplate,
+	upsertEmailTemplate,
+	deleteEmailTemplate,
+	getTemplateVersionHistory,
 } from '../storage';
 import { resetRateLimit } from '../rate-limit';
 import { createEmailProvider } from '../email';
@@ -31,6 +36,7 @@ import { createEmailProvider } from '../email';
 interface Env {
 	DB: D1Database;
 	RATE_LIMIT_KV: KVNamespace;
+	TEMPLATES_KV: KVNamespace;
 	ADMIN_KEYS?: string;
 	EMAIL_PROVIDER?: string;
 	RESEND_API_KEY?: string;
@@ -555,6 +561,183 @@ export function createAdminRoutes() {
 		} catch (error) {
 			console.error('Error updating appointment status:', error);
 			return serverError(c, 'Failed to update appointment status');
+		}
+	});
+
+	/**
+	 * GET /admin/templates
+	 * List all email templates
+	 */
+	app.get('/templates', async (c) => {
+		try {
+			const status = c.req.query('status') as 'active' | 'draft' | 'archived' | undefined;
+			const language = c.req.query('language');
+			const limit = Number(c.req.query('limit')) || 100;
+			const offset = Number(c.req.query('offset')) || 0;
+
+			const templates = await listEmailTemplates(c.env.DB, {
+				status,
+				language,
+				limit,
+				offset,
+			});
+
+			return ok(c, {
+				templates,
+				pagination: { limit, offset, total: templates.length },
+			});
+		} catch (error) {
+			console.error('Error fetching templates:', error);
+			return serverError(c, 'Failed to fetch templates');
+		}
+	});
+
+	/**
+	 * GET /admin/templates/:id
+	 * Get specific template by ID
+	 */
+	app.get('/templates/:id', async (c) => {
+		try {
+			const id = c.req.param('id');
+
+			const template = await c.env.DB.prepare(`SELECT * FROM email_templates WHERE id = ?`)
+				.bind(id)
+				.first();
+
+			if (!template) {
+				return notFound(c, 'Template not found');
+			}
+
+			return ok(c, { template });
+		} catch (error) {
+			console.error('Error fetching template:', error);
+			return serverError(c, 'Failed to fetch template');
+		}
+	});
+
+	/**
+	 * POST /admin/templates
+	 * Create new email template
+	 */
+	app.post('/templates', async (c) => {
+		try {
+			const body = await c.req.json();
+
+			// Validate required fields
+			if (!body.name || typeof body.name !== 'string') {
+				return badRequest(c, 'name field is required');
+			}
+			if (!body.body || typeof body.body !== 'string') {
+				return badRequest(c, 'body field is required');
+			}
+
+			const auth = c.get('authContext');
+			const changedBy = auth?.sessionId || 'admin';
+
+			const template = await upsertEmailTemplate(
+				c.env.DB,
+				c.env.TEMPLATES_KV,
+				{
+					name: body.name,
+					type: body.type || 'email',
+					subject: body.subject || null,
+					body: body.body,
+					language: body.language || 'en',
+					status: body.status || 'active',
+					created_by: changedBy,
+					metadata: body.metadata ? JSON.stringify(body.metadata) : null,
+				},
+				changedBy
+			);
+
+			return ok(c, { template, message: 'Template created successfully' });
+		} catch (error) {
+			console.error('Error creating template:', error);
+			return serverError(c, 'Failed to create template');
+		}
+	});
+
+	/**
+	 * PUT /admin/templates/:id
+	 * Update existing email template
+	 */
+	app.put('/templates/:id', async (c) => {
+		try {
+			const id = c.req.param('id');
+			const body = await c.req.json();
+
+			// Check if template exists
+			const existing = await c.env.DB.prepare(`SELECT id FROM email_templates WHERE id = ?`)
+				.bind(id)
+				.first();
+
+			if (!existing) {
+				return notFound(c, 'Template not found');
+			}
+
+			const auth = c.get('authContext');
+			const changedBy = auth?.sessionId || 'admin';
+
+			const template = await upsertEmailTemplate(
+				c.env.DB,
+				c.env.TEMPLATES_KV,
+				{
+					id,
+					name: body.name,
+					type: body.type || 'email',
+					subject: body.subject || null,
+					body: body.body,
+					language: body.language || 'en',
+					status: body.status || 'active',
+					created_by: changedBy,
+					metadata: body.metadata ? JSON.stringify(body.metadata) : null,
+				},
+				changedBy
+			);
+
+			return ok(c, { template, message: 'Template updated successfully' });
+		} catch (error) {
+			console.error('Error updating template:', error);
+			return serverError(c, 'Failed to update template');
+		}
+	});
+
+	/**
+	 * DELETE /admin/templates/:id
+	 * Delete (archive) email template
+	 */
+	app.delete('/templates/:id', async (c) => {
+		try {
+			const id = c.req.param('id');
+
+			const success = await deleteEmailTemplate(c.env.DB, c.env.TEMPLATES_KV, id);
+
+			if (!success) {
+				return notFound(c, 'Template not found');
+			}
+
+			return ok(c, { success: true, message: 'Template archived successfully' });
+		} catch (error) {
+			console.error('Error deleting template:', error);
+			return serverError(c, 'Failed to delete template');
+		}
+	});
+
+	/**
+	 * GET /admin/templates/:id/versions
+	 * Get template version history
+	 */
+	app.get('/templates/:id/versions', async (c) => {
+		try {
+			const id = c.req.param('id');
+			const limit = Number(c.req.query('limit')) || 20;
+
+			const versions = await getTemplateVersionHistory(c.env.DB, id, 'email', limit);
+
+			return ok(c, { versions });
+		} catch (error) {
+			console.error('Error fetching template versions:', error);
+			return serverError(c, 'Failed to fetch template versions');
 		}
 	});
 

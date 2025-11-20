@@ -26,8 +26,11 @@ import { archiveOldSubmissions, isDatabaseNearCapacity } from './storage';
 interface Env {
 	DB: D1Database;
 	RATE_LIMIT_KV: KVNamespace;
+	TEMPLATES_KV: KVNamespace;
 	ADMIN_KEYS?: string;
 	FRIEND_KEYS?: string;
+	EMAIL_PROVIDER?: string;
+	RESEND_API_KEY?: string;
 }
 
 type AppContext = {

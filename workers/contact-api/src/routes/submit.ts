@@ -30,11 +30,18 @@ import {
 import { checkRateLimit, recordSubmission } from '../rate-limit';
 import { generateMeetingLink } from '../services/meeting-links';
 import { createEmailProvider } from '../email';
-import { formatAppointmentConfirmation, formatAppointmentDateTime } from '../email/templates';
+import {
+	formatAppointmentConfirmation,
+	formatAppointmentDateTime,
+	renderTemplate,
+	prepareAppointmentTemplateData,
+} from '../email/templates';
+import { getEmailTemplate } from '../storage';
 
 interface Env {
 	DB: D1Database;
 	RATE_LIMIT_KV: KVNamespace;
+	TEMPLATES_KV: KVNamespace;
 	EMAIL_PROVIDER?: string;
 	RESEND_API_KEY?: string;
 }
@@ -236,8 +243,8 @@ export function createSubmitRoutes() {
 						timezone
 					);
 
-					// Generate email content
-					const emailContent = formatAppointmentConfirmation({
+					// Prepare template data
+					const templateData = prepareAppointmentTemplateData({
 						recipientName: sanitized.name,
 						recipientEmail: sanitized.email,
 						appointmentDate: formattedDateTime.date,
@@ -250,12 +257,45 @@ export function createSubmitRoutes() {
 						message: sanitized.message,
 					});
 
+					// Try to fetch template from storage (hybrid: KV -> D1)
+					const storedTemplate = await getEmailTemplate(
+						db,
+						c.env.TEMPLATES_KV,
+						'appointment_confirmation',
+						'en'
+					);
+
+					let subject: string;
+					let text: string;
+
+					if (storedTemplate) {
+						// Use stored template with variable substitution
+						subject = renderTemplate(storedTemplate.subject || '', templateData);
+						text = renderTemplate(storedTemplate.body, templateData);
+					} else {
+						// Fallback to hardcoded template
+						const emailContent = formatAppointmentConfirmation({
+							recipientName: sanitized.name,
+							recipientEmail: sanitized.email,
+							appointmentDate: formattedDateTime.date,
+							startTime: formattedDateTime.startTime,
+							endTime: formattedDateTime.endTime,
+							timezone,
+							duration: appointmentData.duration,
+							platform: appointmentData.platform,
+							meetingLink: meetingLinkResult.success ? meetingLinkResult.meetingLink : undefined,
+							message: sanitized.message,
+						});
+						subject = emailContent.subject;
+						text = emailContent.text;
+					}
+
 					// Send confirmation email
 					const emailResult = await emailProvider.sendEmail({
 						from: 'matthaeus@hadoku.me',
 						to: sanitized.email,
-						subject: emailContent.subject,
-						text: emailContent.text,
+						subject,
+						text,
 						replyTo: 'matthaeus@hadoku.me',
 					});
 
