@@ -3,35 +3,8 @@ import Base from '../layouts/Base.astro';
 import ContactAdmin from '../components/ContactAdmin';
 
 const title = 'Admin - Contact Submissions';
-
-// Get the key from URL parameter
-const key = Astro.url.searchParams.get('key');
-
-// Validate the key server-side
-let isValidKey = false;
-if (key) {
-	try {
-		// Call session create endpoint to validate the key
-		const response = await fetch('https://hadoku.me/session/create', {
-			method: 'POST',
-			headers: {
-				'X-User-Key': key,
-				'Content-Type': 'application/json',
-			},
-		});
-		isValidKey = response.ok;
-	} catch (error) {
-		// If validation fails, isValidKey remains false
-		console.error('Key validation error:', error);
-	}
-}
-
-// If invalid key or no key, return 404
-if (!isValidKey) {
-	return Astro.redirect('/404', 404);
-}
 ---
 
 <Base title={title}>
-	<ContactAdmin adminKey={key} client:load />
+	<ContactAdmin client:only="react" />
 </Base>

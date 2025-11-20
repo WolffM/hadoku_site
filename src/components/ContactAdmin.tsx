@@ -12,10 +12,6 @@ interface Email {
 	recipient?: string; // Which email address they sent to
 }
 
-interface ContactAdminProps {
-	adminKey: string;
-}
-
 const VALID_RECIPIENTS = [
 	'matthaeus@hadoku.me',
 	'mw@hadoku.me',
@@ -25,13 +21,15 @@ const VALID_RECIPIENTS = [
 	'hello@hadoku.me',
 ];
 
-export default function ContactAdmin({ adminKey }: ContactAdminProps) {
+export default function ContactAdmin() {
 	const [emails, setEmails] = useState<Email[]>([]);
 	const [selectedRecipient, setSelectedRecipient] = useState<string>('all');
 	const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
 	const [view, setView] = useState<'inbox' | 'compose'>('inbox');
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [adminKey, setAdminKey] = useState<string | null>(null);
+	const [keyValidated, setKeyValidated] = useState(false);
 
 	// Compose form state
 	const [composeFrom, setComposeFrom] = useState(VALID_RECIPIENTS[0]);
@@ -41,8 +39,50 @@ export default function ContactAdmin({ adminKey }: ContactAdminProps) {
 	const [pastRecipients, setPastRecipients] = useState<string[]>([]);
 	const [sending, setSending] = useState(false);
 
-	// Fetch emails on mount
+	// Validate key from URL on mount
 	useEffect(() => {
+		async function validateKey() {
+			// Get key from URL
+			const urlParams = new URLSearchParams(window.location.search);
+			const key = urlParams.get('key');
+
+			if (!key) {
+				setError('No admin key provided');
+				setLoading(false);
+				return;
+			}
+
+			try {
+				// Validate key by calling session endpoint
+				const response = await fetch('https://hadoku.me/session/create', {
+					method: 'POST',
+					headers: {
+						'X-User-Key': key,
+						'Content-Type': 'application/json',
+					},
+				});
+
+				if (!response.ok) {
+					setError('Invalid admin key');
+					setLoading(false);
+					return;
+				}
+
+				// Key is valid, save it
+				setAdminKey(key);
+				setKeyValidated(true);
+			} catch (err) {
+				setError('Failed to validate admin key');
+				setLoading(false);
+			}
+		}
+
+		validateKey();
+	}, []);
+
+	// Fetch emails on mount (after key validation)
+	useEffect(() => {
+		if (!keyValidated || !adminKey) return;
 		async function fetchEmails() {
 			try {
 				const response = await fetch('/contact/api/admin/submissions?limit=100&offset=0', {
@@ -71,9 +111,10 @@ export default function ContactAdmin({ adminKey }: ContactAdminProps) {
 		}
 
 		fetchEmails();
-	}, [adminKey]);
+	}, [keyValidated, adminKey]);
 
 	async function updateStatus(id: string, status: 'unread' | 'read' | 'archived') {
+		if (!adminKey) return;
 		try {
 			const response = await fetch(`/contact/api/admin/submissions/${id}/status`, {
 				method: 'PATCH',
@@ -140,7 +181,14 @@ export default function ContactAdmin({ adminKey }: ContactAdminProps) {
 	if (error) {
 		return (
 			<div className="h-screen bg-bg flex items-center justify-center">
-				<div className="text-danger">Error: {error}</div>
+				<div className="text-center">
+					<div className="text-danger text-lg mb-2">Error: {error}</div>
+					{error.includes('key') && (
+						<div className="text-text-secondary text-sm">
+							Please check your admin key and try again.
+						</div>
+					)}
+				</div>
 			</div>
 		);
 	}
