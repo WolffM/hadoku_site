@@ -38,7 +38,7 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/themes': {
 		targetDir: 'themes',
-		cssSource: 'style.css',
+		cssSource: '../src/themes.css', // CSS is in src/, not dist/
 	},
 	'@wolffm/task-ui-components': {
 		targetDir: 'ui-components',
