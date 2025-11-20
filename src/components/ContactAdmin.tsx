@@ -294,24 +294,6 @@ export default function ContactAdmin() {
 				<h1 className="text-xl font-semibold">Hadoku Mail</h1>
 				<div className="flex gap-2 items-center">
 					<ThemePickerWrapper />
-					{view === 'inbox' && (
-						<button
-							onClick={refreshEmails}
-							disabled={refreshing}
-							className="px-4 py-2 rounded bg-white/10 hover:bg-white/20 disabled:opacity-50 transition-colors"
-							title="Refresh emails"
-						>
-							{refreshing ? '↻ Refreshing...' : '↻ Refresh'}
-						</button>
-					)}
-					<button
-						onClick={() => setView('compose')}
-						className={`px-4 py-2 rounded transition-colors ${
-							view === 'compose' ? 'bg-white/30' : 'bg-white/10 hover:bg-white/20'
-						}`}
-					>
-						{view === 'compose' ? '✓ Composing' : '✉ Compose'}
-					</button>
 				</div>
 			</div>
 
@@ -320,6 +302,24 @@ export default function ContactAdmin() {
 					{/* Sidebar */}
 					<div className="w-64 border-r border-border bg-bg-alt">
 						<div className="p-4">
+							{/* Action Buttons */}
+							<div className="space-y-2 mb-6">
+								<button
+									onClick={() => setView('compose')}
+									className="w-full px-4 py-2 rounded bg-primary text-primary-text hover:opacity-90 transition-opacity"
+								>
+									✉ Compose
+								</button>
+								<button
+									onClick={refreshEmails}
+									disabled={refreshing}
+									className="w-full px-4 py-2 rounded border border-border bg-bg text-text hover:bg-bg-card disabled:opacity-50 transition-colors"
+									title="Refresh emails"
+								>
+									{refreshing ? '↻ Refreshing...' : '↻ Refresh'}
+								</button>
+							</div>
+
 							<h2 className="text-sm font-semibold text-text-secondary mb-3">FOLDERS</h2>
 							<div className="space-y-1">
 								<button
@@ -532,7 +532,15 @@ export default function ContactAdmin() {
 				/* Compose View */
 				<div className="flex-1 overflow-y-auto bg-bg-alt">
 					<div className="max-w-4xl mx-auto p-8">
-						<h2 className="text-2xl font-semibold text-text mb-6">New Message</h2>
+						<div className="flex items-center gap-4 mb-6">
+							<button
+								onClick={() => setView('inbox')}
+								className="px-4 py-2 rounded border border-border bg-bg text-text hover:bg-bg-card transition-colors"
+							>
+								← Back to Inbox
+							</button>
+							<h2 className="text-2xl font-semibold text-text">New Message</h2>
+						</div>
 						<form
 							onSubmit={sendEmail}
 							className="bg-bg-card rounded-lg shadow-sm border border-border"
