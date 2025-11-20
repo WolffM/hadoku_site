@@ -54,6 +54,8 @@ export default [
 				fetch: 'readonly',
 				crypto: 'readonly',
 				Headers: 'readonly',
+				HeadersInit: 'readonly',
+				RequestInit: 'readonly',
 				URL: 'readonly',
 				URLSearchParams: 'readonly',
 				ReadableStream: 'readonly',

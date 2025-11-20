@@ -27,7 +27,7 @@ export class ContactAdminClient {
 	/**
 	 * Create headers with admin key
 	 */
-	private getHeaders(includeContentType: boolean = false): Record<string, string> {
+	private getHeaders(includeContentType: boolean = false): HeadersInit {
 		const headers: Record<string, string> = {
 			'X-User-Key': this.adminKey,
 		};
@@ -42,7 +42,7 @@ export class ContactAdminClient {
 	/**
 	 * Generic fetch wrapper with error handling
 	 */
-	private async fetch<T = unknown>(url: string, options: Record<string, unknown> = {}): Promise<T> {
+	private async fetch<T = unknown>(url: string, options: RequestInit = {}): Promise<T> {
 		try {
 			const response = await fetch(url, {
 				...options,
