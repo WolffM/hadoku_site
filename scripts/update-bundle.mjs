@@ -26,7 +26,7 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/task': {
 		targetDir: 'task',
-		cssSource: 'task.css', // Package exports "./style.css" -> "./dist/task.css"
+		cssSource: 'style.css',
 	},
 	'@wolffm/watchparty-ui': {
 		targetDir: 'watchparty',
@@ -38,14 +38,11 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/themes': {
 		targetDir: 'themes',
-		copyAll: true, // Copy entire dist + CSS from src
-		extraFiles: [
-			{ from: 'src/themes.css', to: 'themes.css' },
-		],
+		cssSource: 'style.css',
 	},
 	'@wolffm/task-ui-components': {
 		targetDir: 'ui-components',
-		copyAll: true, // Copy entire dist directory
+		copyAll: true,
 	},
 };
 
@@ -130,25 +127,6 @@ function main() {
 			}
 		}
 	}
-
-	// Copy extra files (e.g., CSS from src/ for themes)
-	if (config.extraFiles) {
-		for (const file of config.extraFiles) {
-			const from = join(packageRoot, file.from);
-			const to = join(targetDir, file.to);
-			try {
-				if (existsSync(from)) {
-					copyFileSync(from, to);
-					console.log(`✓ Copied ${file.to} (from ${file.from})`);
-				} else {
-					console.log(`ℹ ${file.from} not found (may be optional)`);
-				}
-			} catch (err) {
-				console.log(`⚠ Could not copy ${file.from}:`, err.message);
-			}
-		}
-	}
-
 	console.log(`✅ ${packageShortName} bundle updated`);
 }
 
