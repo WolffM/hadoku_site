@@ -35,7 +35,7 @@
     "@types/react-dom": "^19.2.2",
     "@wolffm/contact-ui": "^1.0.4",
     "@wolffm/resume-bot": "^1.0.6",
-    "@wolffm/task": "^3.4.0",
+    "@wolffm/task": "^3.4.2",
     "@wolffm/task-ui-components": "^1.2.3",
     "@wolffm/themes": "1.1.9",
     "@wolffm/watchparty-ui": "^0.1.11",
