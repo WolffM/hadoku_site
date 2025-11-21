@@ -472,9 +472,19 @@ export function createAdminRoutes() {
 		try {
 			const body = await c.req.json();
 
-			// Convert arrays back to comma-separated strings if provided
-			const updates: Record<string, unknown> = { ...body };
+			// Build updates object with only valid database fields
+			const updates: Record<string, unknown> = {};
 
+			// Valid fields that map directly
+			if (body.timezone !== undefined) updates.timezone = body.timezone;
+			if (body.business_hours_start !== undefined)
+				updates.business_hours_start = body.business_hours_start;
+			if (body.business_hours_end !== undefined)
+				updates.business_hours_end = body.business_hours_end;
+			if (body.max_advance_days !== undefined) updates.max_advance_days = body.max_advance_days;
+			if (body.min_advance_hours !== undefined) updates.min_advance_hours = body.min_advance_hours;
+
+			// Convert arrays to comma-separated strings
 			if (Array.isArray(body.available_days)) {
 				updates.available_days = body.available_days.join(',');
 			}
@@ -486,6 +496,9 @@ export function createAdminRoutes() {
 			if (Array.isArray(body.meeting_platforms)) {
 				updates.meeting_platforms = body.meeting_platforms.join(',');
 			}
+
+			// Ignore computed/alias fields like 'platforms', 'start_hour', 'end_hour', 'advance_notice_hours'
+			// These are derived from database fields for frontend convenience
 
 			const success = await updateAppointmentConfig(
 				c.env.DB,
