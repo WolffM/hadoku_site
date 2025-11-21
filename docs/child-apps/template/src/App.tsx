@@ -9,7 +9,7 @@ export default function App(props: YourAppProps = {}) {
 
   // Detect system preference for loading skeleton
   const [systemPrefersDark] = useState(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
+    if (window.matchMedia) {
       return window.matchMedia('(prefers-color-scheme: dark)').matches
     }
     return false
@@ -43,8 +43,8 @@ export default function App(props: YourAppProps = {}) {
             themeFamilies={THEME_FAMILIES}
             currentTheme={theme}
             onThemeChange={setTheme}
-            getThemeIcon={themeName => {
-              const Icon = THEME_ICON_MAP[themeName as keyof typeof THEME_ICON_MAP]
+            getThemeIcon={(themeName: keyof typeof THEME_ICON_MAP) => {
+              const Icon = THEME_ICON_MAP[themeName]
               return Icon ? <Icon /> : null
             }}
           />

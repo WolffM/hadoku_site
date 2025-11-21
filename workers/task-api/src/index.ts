@@ -42,12 +42,12 @@ interface Env {
 }
 
 // Define a custom context type for Hono
-type AppContext = {
+interface AppContext {
 	Bindings: Env;
 	Variables: {
 		authContext: TaskAuthContext & { key?: string };
 	};
-};
+}
 
 const app = new Hono<AppContext>();
 

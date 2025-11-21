@@ -13,12 +13,18 @@ export interface ContactSubmission {
 	name: string;
 	email: string;
 	message: string;
+	recipient?: string; // Optional recipient email
 	website?: string; // Honeypot field - should always be empty
+}
+
+export interface ValidationError {
+	path: string[];
+	message: string;
 }
 
 export interface ValidationResult {
 	valid: boolean;
-	errors: string[];
+	errors: ValidationError[];
 	sanitized?: ContactSubmission;
 }
 
@@ -47,33 +53,48 @@ function isHoneypotFilled(website?: string): boolean {
  * 4. Honeypot detection
  * 5. String sanitization
  */
-export function validateContactSubmission(data: any): ValidationResult {
-	const errors: string[] = [];
+export function validateContactSubmission(data: unknown): ValidationResult {
+	const errors: ValidationError[] = [];
 
 	// Type check
 	if (!data || typeof data !== 'object') {
-		return { valid: false, errors: ['Invalid submission data'] };
+		return { valid: false, errors: [{ path: ['body'], message: 'Invalid submission data' }] };
 	}
 
+	// Cast to a type we can work with
+	const submission = data as Record<string, unknown>;
+
 	// Honeypot check (do this first, before other validation)
-	if (isHoneypotFilled(data.website)) {
+	if (isHoneypotFilled(submission.website as string | undefined)) {
 		return {
 			valid: false,
-			errors: ['Submission rejected - bot detected'],
+			errors: [{ path: ['website'], message: 'Submission rejected - bot detected' }],
 		};
 	}
 
 	// Required field checks
-	if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
-		errors.push('Name is required');
+	if (
+		!submission.name ||
+		typeof submission.name !== 'string' ||
+		submission.name.trim().length === 0
+	) {
+		errors.push({ path: ['name'], message: 'Name is required' });
 	}
 
-	if (!data.email || typeof data.email !== 'string' || data.email.trim().length === 0) {
-		errors.push('Email is required');
+	if (
+		!submission.email ||
+		typeof submission.email !== 'string' ||
+		submission.email.trim().length === 0
+	) {
+		errors.push({ path: ['email'], message: 'Email is required' });
 	}
 
-	if (!data.message || typeof data.message !== 'string' || data.message.trim().length === 0) {
-		errors.push('Message is required');
+	if (
+		!submission.message ||
+		typeof submission.message !== 'string' ||
+		submission.message.trim().length === 0
+	) {
+		errors.push({ path: ['message'], message: 'Message is required' });
 	}
 
 	// If required fields missing, return early
@@ -81,27 +102,82 @@ export function validateContactSubmission(data: any): ValidationResult {
 		return { valid: false, errors };
 	}
 
-	// Sanitize and validate individual fields
-	const name = sanitizeString(data.name, VALIDATION_CONSTRAINTS.NAME_MAX_LENGTH);
-	const email = sanitizeString(data.email, VALIDATION_CONSTRAINTS.EMAIL_MAX_LENGTH);
-	const message = sanitizeString(data.message, VALIDATION_CONSTRAINTS.MESSAGE_MAX_LENGTH);
+	// Type narrowing - we know these are strings now
+	const nameStr = submission.name as string;
+	const emailStr = submission.email as string;
+	const messageStr = submission.message as string;
 
-	// Length validation (after sanitization)
+	// Recipient validation (optional field)
+	let recipient: string | undefined;
+	if (submission.recipient) {
+		if (typeof submission.recipient !== 'string') {
+			errors.push({ path: ['recipient'], message: 'Recipient must be a string' });
+		} else {
+			recipient = submission.recipient.trim();
+			// Validate recipient email format
+			if (!VALIDATION_CONSTRAINTS.EMAIL_REGEX.test(recipient)) {
+				errors.push({ path: ['recipient'], message: 'Invalid recipient email format' });
+			}
+			// Validate recipient is from allowed domain
+			const domain = recipient.split('@')[1];
+			if (domain && !['hadoku.me'].includes(domain.toLowerCase())) {
+				errors.push({ path: ['recipient'], message: 'Recipient must be from hadoku.me domain' });
+			}
+		}
+	}
+
+	// Length validation BEFORE sanitization (to reject too-long inputs)
+	if (nameStr.trim().length > VALIDATION_CONSTRAINTS.NAME_MAX_LENGTH) {
+		errors.push({
+			path: ['name'],
+			message: `Name must not exceed ${VALIDATION_CONSTRAINTS.NAME_MAX_LENGTH} characters`,
+		});
+	}
+
+	if (emailStr.trim().length > VALIDATION_CONSTRAINTS.EMAIL_MAX_LENGTH) {
+		errors.push({
+			path: ['email'],
+			message: `Email must not exceed ${VALIDATION_CONSTRAINTS.EMAIL_MAX_LENGTH} characters`,
+		});
+	}
+
+	if (messageStr.trim().length > VALIDATION_CONSTRAINTS.MESSAGE_MAX_LENGTH) {
+		errors.push({
+			path: ['message'],
+			message: `Message must not exceed ${VALIDATION_CONSTRAINTS.MESSAGE_MAX_LENGTH} characters`,
+		});
+	}
+
+	// Sanitize and validate individual fields
+	const name = sanitizeString(nameStr, VALIDATION_CONSTRAINTS.NAME_MAX_LENGTH);
+	const email = sanitizeString(emailStr, VALIDATION_CONSTRAINTS.EMAIL_MAX_LENGTH);
+	const message = sanitizeString(messageStr, VALIDATION_CONSTRAINTS.MESSAGE_MAX_LENGTH);
+
+	// Minimum length validation (after sanitization)
 	if (name.length < VALIDATION_CONSTRAINTS.NAME_MIN_LENGTH) {
-		errors.push(`Name must be at least ${VALIDATION_CONSTRAINTS.NAME_MIN_LENGTH} characters`);
+		errors.push({
+			path: ['name'],
+			message: `Name must be at least ${VALIDATION_CONSTRAINTS.NAME_MIN_LENGTH} characters`,
+		});
 	}
 
 	if (email.length < VALIDATION_CONSTRAINTS.EMAIL_MIN_LENGTH) {
-		errors.push(`Email must be at least ${VALIDATION_CONSTRAINTS.EMAIL_MIN_LENGTH} characters`);
+		errors.push({
+			path: ['email'],
+			message: `Email must be at least ${VALIDATION_CONSTRAINTS.EMAIL_MIN_LENGTH} characters`,
+		});
 	}
 
 	if (message.length < VALIDATION_CONSTRAINTS.MESSAGE_MIN_LENGTH) {
-		errors.push(`Message must be at least ${VALIDATION_CONSTRAINTS.MESSAGE_MIN_LENGTH} characters`);
+		errors.push({
+			path: ['message'],
+			message: `Message must be at least ${VALIDATION_CONSTRAINTS.MESSAGE_MIN_LENGTH} characters`,
+		});
 	}
 
 	// Email format validation
 	if (!VALIDATION_CONSTRAINTS.EMAIL_REGEX.test(email)) {
-		errors.push('Email format is invalid');
+		errors.push({ path: ['email'], message: 'Email format is invalid' });
 	}
 
 	// If any validation errors, return them
@@ -117,6 +193,7 @@ export function validateContactSubmission(data: any): ValidationResult {
 			name,
 			email,
 			message,
+			recipient,
 			website: '', // Always set to empty (honeypot)
 		},
 	};
@@ -148,7 +225,7 @@ export function extractClientIP(request: Request): string | null {
  * Extract referrer from request
  */
 export function extractReferrer(request: Request): string | null {
-	return request.headers.get('Referer') || request.headers.get('Referrer') || null;
+	return request.headers.get('Referer') ?? request.headers.get('Referrer') ?? null;
 }
 
 /**
@@ -191,44 +268,54 @@ export interface AppointmentData {
 
 export interface AppointmentValidationResult {
 	valid: boolean;
-	errors: string[];
+	errors: ValidationError[];
 	sanitized?: AppointmentData;
 }
 
 /**
  * Validate appointment data
  */
-export function validateAppointment(data: any): AppointmentValidationResult {
-	const errors: string[] = [];
+export function validateAppointment(data: unknown): AppointmentValidationResult {
+	const errors: ValidationError[] = [];
 
 	// Type check
 	if (!data || typeof data !== 'object') {
-		return { valid: false, errors: ['Invalid appointment data'] };
+		return {
+			valid: false,
+			errors: [{ path: ['appointment'], message: 'Invalid appointment data' }],
+		};
 	}
+
+	// Cast to a type we can work with
+	const appointment = data as Record<string, unknown>;
 
 	// Required field checks
-	if (!data.slotId || typeof data.slotId !== 'string' || data.slotId.trim().length === 0) {
-		errors.push('Slot ID is required');
+	if (
+		!appointment.slotId ||
+		typeof appointment.slotId !== 'string' ||
+		(appointment.slotId).trim().length === 0
+	) {
+		errors.push({ path: ['appointment', 'slotId'], message: 'Slot ID is required' });
 	}
 
-	if (!data.date || typeof data.date !== 'string') {
-		errors.push('Date is required');
+	if (!appointment.date || typeof appointment.date !== 'string') {
+		errors.push({ path: ['appointment', 'date'], message: 'Date is required' });
 	}
 
-	if (!data.startTime || typeof data.startTime !== 'string') {
-		errors.push('Start time is required');
+	if (!appointment.startTime || typeof appointment.startTime !== 'string') {
+		errors.push({ path: ['appointment', 'startTime'], message: 'Start time is required' });
 	}
 
-	if (!data.endTime || typeof data.endTime !== 'string') {
-		errors.push('End time is required');
+	if (!appointment.endTime || typeof appointment.endTime !== 'string') {
+		errors.push({ path: ['appointment', 'endTime'], message: 'End time is required' });
 	}
 
-	if (typeof data.duration !== 'number') {
-		errors.push('Duration is required');
+	if (typeof appointment.duration !== 'number') {
+		errors.push({ path: ['appointment', 'duration'], message: 'Duration is required' });
 	}
 
-	if (!data.platform || typeof data.platform !== 'string') {
-		errors.push('Platform is required');
+	if (!appointment.platform || typeof appointment.platform !== 'string') {
+		errors.push({ path: ['appointment', 'platform'], message: 'Platform is required' });
 	}
 
 	// If required fields missing, return early
@@ -237,47 +324,56 @@ export function validateAppointment(data: any): AppointmentValidationResult {
 	}
 
 	// Validate duration
-	if (!APPOINTMENT_CONFIG.VALID_DURATIONS.includes(data.duration)) {
-		errors.push(
-			`Duration must be one of: ${APPOINTMENT_CONFIG.VALID_DURATIONS.join(', ')} minutes`
-		);
+	if (!APPOINTMENT_CONFIG.VALID_DURATIONS.includes(appointment.duration as 15 | 30 | 60)) {
+		errors.push({
+			path: ['appointment', 'duration'],
+			message: `Duration must be one of: ${APPOINTMENT_CONFIG.VALID_DURATIONS.join(', ')} minutes`,
+		});
 	}
 
 	// Validate platform
-	if (!APPOINTMENT_CONFIG.VALID_PLATFORMS.includes(data.platform.toLowerCase())) {
-		errors.push(`Platform must be one of: ${APPOINTMENT_CONFIG.VALID_PLATFORMS.join(', ')}`);
+	const platformLower = (appointment.platform as string).toLowerCase();
+	if (
+		!APPOINTMENT_CONFIG.VALID_PLATFORMS.includes(
+			platformLower as 'discord' | 'google' | 'teams' | 'jitsi'
+		)
+	) {
+		errors.push({
+			path: ['appointment', 'platform'],
+			message: `Platform must be one of: ${APPOINTMENT_CONFIG.VALID_PLATFORMS.join(', ')}`,
+		});
 	}
 
 	// Validate date format (YYYY-MM-DD)
-	if (!VALIDATION_CONSTRAINTS.DATE_FORMAT_REGEX.test(data.date)) {
-		errors.push('Date must be in YYYY-MM-DD format');
+	if (!VALIDATION_CONSTRAINTS.DATE_FORMAT_REGEX.test(appointment.date as string)) {
+		errors.push({ path: ['appointment', 'date'], message: 'Date must be in YYYY-MM-DD format' });
 	} else {
 		// Validate it's a real date
-		const date = new Date(data.date);
+		const date = new Date(appointment.date as string);
 		if (isNaN(date.getTime())) {
-			errors.push('Invalid date');
+			errors.push({ path: ['appointment', 'date'], message: 'Invalid date' });
 		}
 	}
 
 	// Validate ISO 8601 format for times
 	try {
-		const startDate = new Date(data.startTime);
-		const endDate = new Date(data.endTime);
+		const startDate = new Date(appointment.startTime as string);
+		const endDate = new Date(appointment.endTime as string);
 
 		if (isNaN(startDate.getTime())) {
-			errors.push('Invalid start time format');
+			errors.push({ path: ['appointment', 'startTime'], message: 'Invalid start time format' });
 		}
 
 		if (isNaN(endDate.getTime())) {
-			errors.push('Invalid end time format');
+			errors.push({ path: ['appointment', 'endTime'], message: 'Invalid end time format' });
 		}
 
 		// Validate end time is after start time
 		if (startDate.getTime() >= endDate.getTime()) {
-			errors.push('End time must be after start time');
+			errors.push({ path: ['appointment'], message: 'End time must be after start time' });
 		}
 	} catch {
-		errors.push('Invalid time format');
+		errors.push({ path: ['appointment'], message: 'Invalid time format' });
 	}
 
 	// If any validation errors, return them
@@ -290,12 +386,12 @@ export function validateAppointment(data: any): AppointmentValidationResult {
 		valid: true,
 		errors: [],
 		sanitized: {
-			slotId: data.slotId.trim(),
-			date: data.date,
-			startTime: data.startTime,
-			endTime: data.endTime,
-			duration: data.duration,
-			platform: data.platform.toLowerCase() as AppointmentPlatform,
+			slotId: (appointment.slotId as string).trim(),
+			date: appointment.date as string,
+			startTime: appointment.startTime as string,
+			endTime: appointment.endTime as string,
+			duration: appointment.duration as number,
+			platform: (appointment.platform as string).toLowerCase() as AppointmentPlatform,
 		},
 	};
 }
@@ -326,21 +422,30 @@ export function validateSlotFetchRequest(
 		return { valid: false, errors };
 	}
 
+	// At this point, date and duration are guaranteed to be non-null (we returned early if either was null)
+	if (!date || !duration) {
+		// TypeScript guard - should never happen due to above checks
+		return { valid: false, errors: ['Missing required parameters'] };
+	}
+
+	const dateValue = date;
+	const durationValue = duration;
+
 	// Validate date format
-	if (!VALIDATION_CONSTRAINTS.DATE_FORMAT_REGEX.test(date!)) {
+	if (!VALIDATION_CONSTRAINTS.DATE_FORMAT_REGEX.test(dateValue)) {
 		errors.push('Date must be in YYYY-MM-DD format');
 	} else {
-		const parsedDate = new Date(date!);
+		const parsedDate = new Date(dateValue);
 		if (isNaN(parsedDate.getTime())) {
 			errors.push('Invalid date');
 		}
 	}
 
 	// Validate duration
-	const parsedDuration = parseInt(duration!, 10);
+	const parsedDuration = parseInt(durationValue, 10);
 	if (
 		isNaN(parsedDuration) ||
-		!APPOINTMENT_CONFIG.VALID_DURATIONS.includes(parsedDuration as any)
+		!APPOINTMENT_CONFIG.VALID_DURATIONS.includes(parsedDuration as 15 | 30 | 60)
 	) {
 		errors.push(`Duration must be one of: ${APPOINTMENT_CONFIG.VALID_DURATIONS.join(', ')}`);
 	}
@@ -352,7 +457,7 @@ export function validateSlotFetchRequest(
 	return {
 		valid: true,
 		errors: [],
-		parsedDate: date!,
-		parsedDuration: parseInt(duration!, 10),
+		parsedDate: dateValue,
+		parsedDuration: parseInt(durationValue, 10),
 	};
 }

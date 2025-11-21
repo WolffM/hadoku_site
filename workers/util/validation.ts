@@ -107,7 +107,7 @@ export function validateFields(
 	data: Record<string, any>,
 	rules: ValidationRule[]
 ): ValidationResult {
-	const errors: Array<{ field: string; message: string }> = [];
+	const errors: { field: string; message: string }[] = [];
 
 	for (const rule of rules) {
 		const value = data[rule.field];

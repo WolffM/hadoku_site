@@ -41,8 +41,12 @@ export function createAppointmentsRoutes() {
 				);
 			}
 
-			const requestDate = validation.parsedDate!;
-			const requestDuration = validation.parsedDuration!;
+			const requestDate = validation.parsedDate;
+			const requestDuration = validation.parsedDuration;
+
+			if (!requestDate || !requestDuration) {
+				return c.json({ message: 'Invalid date or duration' }, 400);
+			}
 
 			// Get appointment configuration
 			const config = await getAppointmentConfig(db);
@@ -138,8 +142,8 @@ async function generateTimeSlots(
 	duration: number,
 	businessHoursStart: string,
 	businessHoursEnd: string,
-	timezone: string
-): Promise<Array<{ id: string; startTime: string; endTime: string; available: boolean }>> {
+	_timezone: string
+): Promise<{ id: string; startTime: string; endTime: string; available: boolean }[]> {
 	// Get existing appointments for this date
 	const existingAppointments = await getAppointmentsByDate(db, date);
 	const bookedSlotIds = new Set(existingAppointments.map((apt) => apt.slot_id));

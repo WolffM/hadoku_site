@@ -50,12 +50,12 @@ export async function addToWhitelist(
 				email.toLowerCase(),
 				whitelistedAt,
 				whitelistedBy,
-				contactId || null,
-				notes || null,
+				contactId ?? null,
+				notes ?? null,
 				whitelistedAt,
 				whitelistedBy,
-				contactId || null,
-				notes || null
+				contactId ?? null,
+				notes ?? null
 			)
 			.run();
 
@@ -90,5 +90,5 @@ export async function getAllWhitelistedEmails(db: D1Database): Promise<Whitelist
 		)
 		.all<WhitelistEntry>();
 
-	return result.results || [];
+	return result.results ?? [];
 }

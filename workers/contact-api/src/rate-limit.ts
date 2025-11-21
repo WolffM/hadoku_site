@@ -35,7 +35,9 @@ export async function checkRateLimit(kv: KVNamespace, ipAddress: string): Promis
 
 	// Get existing rate limit entry
 	const existingData = await kv.get(key, 'text');
-	const existing: RateLimitEntry | null = existingData ? JSON.parse(existingData) : null;
+	const existing: RateLimitEntry | null = existingData
+		? (JSON.parse(existingData) as RateLimitEntry)
+		: null;
 
 	// If no existing entry or window has expired, allow and create new window
 	if (!existing || now - existing.windowStart >= RATE_LIMIT_WINDOW_MS) {
@@ -80,7 +82,9 @@ export async function recordSubmission(kv: KVNamespace, ipAddress: string): Prom
 
 	// Get existing entry
 	const existingData = await kv.get(key, 'text');
-	const existing: RateLimitEntry | null = existingData ? JSON.parse(existingData) : null;
+	const existing: RateLimitEntry | null = existingData
+		? (JSON.parse(existingData) as RateLimitEntry)
+		: null;
 
 	let entry: RateLimitEntry;
 

@@ -287,7 +287,7 @@ export function loggerMiddleware(config: LoggerConfig = {}, contextKey = 'logger
  * @param error - Error object
  * @returns Formatted error object
  */
-export function formatError(error: Error | unknown): Record<string, any> {
+export function formatError(error: Error | string): Record<string, any> {
 	if (error instanceof Error) {
 		return {
 			name: error.name,

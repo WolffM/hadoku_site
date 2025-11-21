@@ -2,6 +2,7 @@
  * Email compose view
  */
 
+import type { FormEvent } from 'react';
 import { VALID_RECIPIENTS } from '../../../config/contact-admin';
 
 interface MailComposeProps {
@@ -33,9 +34,9 @@ export function MailCompose({
 	onSend,
 	onCancel,
 }: MailComposeProps) {
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = (e: FormEvent) => {
 		e.preventDefault();
-		await onSend();
+		void onSend();
 	};
 
 	return (

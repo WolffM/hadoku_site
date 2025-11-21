@@ -1,5 +1,5 @@
 {
-  "name": "task-api",
+  "name": "@hadoku/task-api",
   "version": "1.0.0",
   "description": "Task API Worker with GitHub-backed storage",
   "main": "src/index.ts",

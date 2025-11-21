@@ -47,7 +47,7 @@ export function useAdminAuth(): UseAdminAuthResult {
 			}
 		}
 
-		validateKey();
+		validateKey().catch(console.error);
 	}, []);
 
 	return {

@@ -241,7 +241,7 @@ export function serverError(
  */
 export function validationError(
 	c: Context,
-	errors: Array<{ field: string; message: string }>,
+	errors: { field: string; message: string }[],
 	message = 'Validation failed'
 ): Response {
 	const response: ErrorResponse = {

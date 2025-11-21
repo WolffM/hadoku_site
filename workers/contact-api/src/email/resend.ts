@@ -29,19 +29,20 @@ export class ResendProvider implements EmailProvider {
 				const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
 				return {
 					success: false,
-					error: `Resend API error: ${response.status} - ${errorData.message || 'Unknown error'}`,
+					error: `Resend API error: ${response.status} - ${errorData.message ?? 'Unknown error'}`,
 				};
 			}
 
 			const data = await response.json();
 			return {
 				success: true,
-				messageId: data.id,
+				messageId: data.id as string,
 			};
 		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 			return {
 				success: false,
-				error: `Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				error: `Failed to send email: ${errorMessage}`,
 			};
 		}
 	}

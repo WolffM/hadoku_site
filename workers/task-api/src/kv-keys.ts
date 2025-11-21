@@ -16,7 +16,7 @@ import { DEFAULT_SESSION_ID, KV_PREFIXES } from './constants';
  * Format: boards:{sessionId}
  */
 export function boardsKey(sessionId?: string): string {
-	return `${KV_PREFIXES.BOARDS}:${sessionId || DEFAULT_SESSION_ID}`;
+	return `${KV_PREFIXES.BOARDS}:${sessionId ?? DEFAULT_SESSION_ID}`;
 }
 
 /**
@@ -24,7 +24,7 @@ export function boardsKey(sessionId?: string): string {
  * Format: tasks:{sessionId}:{boardId}
  */
 export function tasksKey(sessionId: string | undefined, boardId: string): string {
-	return `${KV_PREFIXES.TASKS}:${sessionId || DEFAULT_SESSION_ID}:${boardId}`;
+	return `${KV_PREFIXES.TASKS}:${sessionId ?? DEFAULT_SESSION_ID}:${boardId}`;
 }
 
 // ============================================================================

@@ -60,7 +60,7 @@ export function createSubmitRoutes() {
 
 		try {
 			// Parse request body early to check email whitelist
-			let body: any;
+			let body: Record<string, unknown>;
 			try {
 				body = await c.req.json();
 			} catch {
@@ -68,7 +68,7 @@ export function createSubmitRoutes() {
 			}
 
 			// Quick validation check for email field
-			const email = body?.email?.trim().toLowerCase();
+			const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : undefined;
 
 			// Security Layer 1: Check if email is whitelisted
 			// Whitelisted emails bypass referrer restrictions
@@ -76,7 +76,7 @@ export function createSubmitRoutes() {
 
 			// Security Layer 2: Referrer validation (skip if whitelisted)
 			if (!isWhitelisted && !validateReferrer(request)) {
-				return c.json({ success: false, message: 'Invalid request origin' }, 400);
+				return c.json({ success: false, message: 'Invalid referrer' }, 400);
 			}
 
 			// Security Layer 3: Extract client IP for rate limiting
@@ -119,7 +119,10 @@ export function createSubmitRoutes() {
 			}
 
 			// At this point, validation.sanitized is guaranteed to exist
-			const sanitized = validation.sanitized!;
+			const sanitized = validation.sanitized;
+			if (!sanitized) {
+				return c.json({ success: false, message: 'Validation failed' }, 400);
+			}
 
 			// Extract metadata for storage
 			const userAgent = request.headers.get('User-Agent');
@@ -130,6 +133,7 @@ export function createSubmitRoutes() {
 				name: sanitized.name,
 				email: sanitized.email,
 				message: sanitized.message,
+				recipient: sanitized.recipient,
 				ip_address: ipAddress,
 				user_agent: userAgent,
 				referrer,
@@ -165,7 +169,17 @@ export function createSubmitRoutes() {
 					);
 				}
 
-				const appointmentData = appointmentValidation.sanitized!;
+				const appointmentData = appointmentValidation.sanitized;
+				if (!appointmentData) {
+					return c.json(
+						{
+							success: false,
+							error: 'Appointment validation failed',
+							errors: ['Invalid appointment data'],
+						},
+						400
+					);
+				}
 
 				// Check if slot is still available (atomic check)
 				const slotAvailable = await isSlotAvailable(db, appointmentData.slotId);
@@ -195,7 +209,7 @@ export function createSubmitRoutes() {
 				}
 
 				// Generate meeting link
-				const meetingLinkResult = await generateMeetingLink(
+				const meetingLinkResult = generateMeetingLink(
 					appointmentData.platform,
 					{
 						slotId: appointmentData.slotId,
@@ -210,7 +224,7 @@ export function createSubmitRoutes() {
 
 				// Create appointment in database
 				const config = await getAppointmentConfig(db);
-				const timezone = config?.timezone || APPOINTMENT_CONFIG.DEFAULT_TIMEZONE;
+				const timezone = config?.timezone ?? APPOINTMENT_CONFIG.DEFAULT_TIMEZONE;
 
 				const appointment = await createAppointment(db, {
 					submission_id: submission.id,
@@ -226,13 +240,13 @@ export function createSubmitRoutes() {
 					platform: appointmentData.platform,
 					meeting_link: meetingLinkResult.success ? meetingLinkResult.meetingLink : undefined,
 					meeting_id: meetingLinkResult.success ? meetingLinkResult.meetingId : undefined,
-					ip_address: ipAddress || undefined,
-					user_agent: userAgent || undefined,
+					ip_address: ipAddress ?? undefined,
+					user_agent: userAgent ?? undefined,
 				});
 
 				// Send confirmation email with meeting details
 				try {
-					const providerName = c.env.EMAIL_PROVIDER || 'resend';
+					const providerName = c.env.EMAIL_PROVIDER ?? 'resend';
 					const emailProvider = createEmailProvider(providerName, c.env.RESEND_API_KEY);
 
 					// Format date and time for email
@@ -270,7 +284,7 @@ export function createSubmitRoutes() {
 
 					if (storedTemplate) {
 						// Use stored template with variable substitution
-						subject = renderTemplate(storedTemplate.subject || '', templateData);
+						subject = renderTemplate(storedTemplate.subject ?? '', templateData);
 						text = renderTemplate(storedTemplate.body, templateData);
 					} else {
 						// Fallback to hardcoded template
@@ -330,7 +344,7 @@ export function createSubmitRoutes() {
 				{
 					success: true,
 					id: submission.id,
-					message: 'Your message has been sent successfully!',
+					message: 'Message submitted successfully',
 				},
 				201
 			);

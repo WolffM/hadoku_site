@@ -120,7 +120,6 @@ export async function getSessionMapping(
  * Note: This should only be called AFTER session-info has been successfully saved
  * to prevent orphaned session references (mystery sessions)
  */
-/* eslint-disable no-await-in-loop */
 export async function updateSessionMapping(
 	kv: KVNamespace,
 	authKey: string,
@@ -205,7 +204,6 @@ export async function updateSessionMapping(
 		);
 	}
 }
-/* eslint-enable no-await-in-loop */
 
 // ============================================================================
 // Session Handshake Logic
@@ -291,7 +289,7 @@ export async function handleSessionHandshake(
 	// This handles migration from old storage format (prefs:authKey) to new format (prefs:sessionId)
 	if (!preferences) {
 		const legacyKey = preferencesKey(authKey);
-		const legacyPrefs = (await kv.get(legacyKey, 'json')) as UserPreferences | null;
+		const legacyPrefs = await kv.get<UserPreferences>(legacyKey, 'json');
 		if (legacyPrefs) {
 			preferences = legacyPrefs;
 			migratedFrom = authKey;
@@ -375,7 +373,7 @@ async function cleanupStaleSessions(kv: KVNamespace, authKey: string): Promise<v
 	try {
 		// Get session mapping for this user
 		const mapping = await getSessionMapping(kv, authKey);
-		if (!mapping || !mapping.sessionIds || mapping.sessionIds.length === 0) {
+		if (!mapping?.sessionIds || mapping.sessionIds.length === 0) {
 			return;
 		}
 

@@ -3,8 +3,7 @@
  *
  * Handles user preference management (theme, buttons, experimental flags, layout)
  */
-import { Hono } from 'hono';
-import type { Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import { badRequest, logRequest, logError } from '../../../util';
 import {
 	getPreferencesBySessionId,
@@ -14,9 +13,9 @@ import {
 import { getSessionIdFromRequest, maskSessionId, maskKey } from '../request-utils';
 import { DEFAULT_SESSION_ID, DEFAULT_THEME } from '../constants';
 
-type Env = {
+interface Env {
 	TASKS_KV: KVNamespace;
-};
+}
 
 export function createPreferencesRoutes() {
 	const app = new Hono<{ Bindings: Env }>();

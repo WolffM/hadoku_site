@@ -3,15 +3,14 @@
  *
  * Handles tag management and batch operations on tasks
  */
-import { Hono } from 'hono';
-import type { Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
 import { badRequest, logRequest, logError, requireFields } from '../../../util';
 import { getContext, handleOperation, handleBatchOperation, withBoardLock } from './route-utils';
 
-type Env = {
+interface Env {
 	TASKS_KV: KVNamespace;
-};
+}
 
 export function createTagsBatchRoutes() {
 	const app = new Hono<{ Bindings: Env }>();

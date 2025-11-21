@@ -105,6 +105,9 @@ importers:
       eslint-plugin-prettier:
         specifier: ^5.5.4
         version: 5.5.4(eslint-config-prettier@10.1.8(eslint@9.39.1(jiti@1.21.7)))(eslint@9.39.1(jiti@1.21.7))(prettier@3.6.2)
+      globals:
+        specifier: ^16.5.0
+        version: 16.5.0
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -1467,12 +1470,22 @@ packages:
     peerDependencies:
       '@wolffm/task-ui-components': ^1.0.0
       react: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@wolffm/task-ui-components':
+        optional: true
+      react:
+        optional: true
 
   '@wolffm/themes@1.1.12':
     resolution: {integrity: sha512-/aZl3JkwBdur0+0qQChWCi619M2X9Rw/tKqo5N+HCnYtR27TMRJEj1HYQa94LTJXsVfS4vJsRihllC4fFhA+nQ==, tarball: https://npm.pkg.github.com/download/@wolffm/themes/1.1.12/238db27853b452ed997343753f76d374aa4f474c}
     peerDependencies:
       '@wolffm/task-ui-components': ^1.0.0
       react: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@wolffm/task-ui-components':
+        optional: true
+      react:
+        optional: true
 
   '@wolffm/watchparty-ui@0.1.11':
     resolution: {integrity: sha512-vaC28th0dogsjGvPThHjOZ+CIrZQHe+VuopHcZPGCU4Lc5Sebd5dnSeU7wM+UEMkhk/8FmIQhngCQpcRnsVHsA==, tarball: https://npm.pkg.github.com/download/@wolffm/watchparty-ui/0.1.11/59ef70be8045fb217ab883418914a564fad8f9e2}
@@ -2198,6 +2211,10 @@ packages:
 
   globals@14.0.0:
     resolution: {integrity: sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ==}
+    engines: {node: '>=18'}
+
+  globals@16.5.0:
+    resolution: {integrity: sha512-c/c15i26VrJ4IRt5Z89DnIzCGDn9EcebibhAOjw5ibqEHsE1wLUgkPn9RDmNcUKyU87GeaL633nyJ+pplFR2ZQ==}
     engines: {node: '>=18'}
 
   gopd@1.2.0:
@@ -4978,12 +4995,12 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
 
   '@wolffm/themes@1.1.11(@wolffm/task-ui-components@1.2.4(react@19.2.0))(react@19.2.0)':
-    dependencies:
+    optionalDependencies:
       '@wolffm/task-ui-components': 1.2.4(react@19.2.0)
       react: 19.2.0
 
   '@wolffm/themes@1.1.12(@wolffm/task-ui-components@1.2.4(react@19.2.0))(react@19.2.0)':
-    dependencies:
+    optionalDependencies:
       '@wolffm/task-ui-components': 1.2.4(react@19.2.0)
       react: 19.2.0
 
@@ -5850,6 +5867,8 @@ snapshots:
       path-scurry: 1.11.1
 
   globals@14.0.0: {}
+
+  globals@16.5.0: {}
 
   gopd@1.2.0: {}
 

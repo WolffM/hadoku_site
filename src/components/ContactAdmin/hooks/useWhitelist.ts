@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { ContactAdminClient } from '../../../lib/api/contact-admin-client';
+import type { ContactAdminClient } from '../../../lib/api/contact-admin-client';
 import type { WhitelistEntry } from '../../../lib/api/types';
 
 interface UseWhitelistResult {
@@ -64,7 +64,7 @@ export function useWhitelist(client: ContactAdminClient | null): UseWhitelistRes
 		setShowModal(true);
 		// Fetch whitelist when opening modal
 		if (client) {
-			fetchWhitelist();
+			fetchWhitelist().catch(console.error);
 		}
 	}, [client, fetchWhitelist]);
 

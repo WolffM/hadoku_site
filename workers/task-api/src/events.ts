@@ -83,8 +83,8 @@ export async function getBoardTimeline(
 	db: D1Database,
 	userKey: string,
 	boardId: string,
-	limit: number = 100
-): Promise<Array<{ timestamp: string; event: string; id: string }>> {
+	limit = 100
+): Promise<{ timestamp: string; event: string; id: string }[]> {
 	const result = await db
 		.prepare(
 			`
@@ -120,7 +120,7 @@ export async function getBoardTimeline(
 export async function getTaskHistory(
 	db: D1Database,
 	taskId: string
-): Promise<Array<{ timestamp: string; eventType: string; metadata?: unknown }>> {
+): Promise<{ timestamp: string; eventType: string; metadata?: unknown }[]> {
 	const result = await db
 		.prepare(
 			`

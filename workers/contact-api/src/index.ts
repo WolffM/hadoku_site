@@ -34,7 +34,7 @@ interface Env {
 	RESEND_API_KEY?: string;
 }
 
-type AppContext = {
+interface AppContext {
 	Bindings: Env;
 	Variables: {
 		authContext: {
@@ -42,7 +42,7 @@ type AppContext = {
 			sessionId: string;
 		};
 	};
-};
+}
 
 const app = new Hono<AppContext>();
 
@@ -91,7 +91,7 @@ app.use(
 
 			return {
 				userType,
-				sessionId: credential || 'public',
+				sessionId: credential ?? 'public',
 			};
 		},
 	})
@@ -193,7 +193,7 @@ export default {
 
 	// Handle scheduled events (cron triggers)
 	// eslint-disable-next-line no-undef
-	async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+	scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): void {
 		// Use waitUntil to ensure the scheduled task completes
 		ctx.waitUntil(handleScheduled(env));
 	},

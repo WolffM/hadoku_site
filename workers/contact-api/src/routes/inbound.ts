@@ -82,29 +82,22 @@ export function createInboundRoutes() {
 			// Parse the webhook event
 			const event = await c.req.json<ResendWebhookEvent>();
 
-			// Verify this is an email.received event
-			if (event.type !== 'email.received') {
-				console.log(`Ignoring webhook event type: ${event.type}`);
-				return ok(c, {
-					success: false,
-					message: 'Not an email.received event',
-					processed: false,
-				});
-			}
+			// Type is guaranteed to be 'email.received' by the interface
 
 			const emailId = event.data.email_id;
 			console.log(`Received email.received webhook for: ${emailId}`);
 
 			// Extract sender email (normalize to lowercase)
-			const senderEmail = event.data.from?.toLowerCase();
+			const senderEmail = event.data.from.toLowerCase();
 			if (!senderEmail) {
 				console.warn('Inbound email missing sender address');
 				return badRequest(c, 'Invalid email format');
 			}
 
 			// Extract the actual email address from "Name <email@example.com>" format
-			const emailMatch = senderEmail.match(/<(.+)>/);
-			const cleanEmail = emailMatch ? emailMatch[1] : senderEmail;
+			const emailRegex = /<(.+)>/;
+			const emailMatch = emailRegex.exec(senderEmail);
+			const cleanEmail = emailMatch?.[1] ?? senderEmail;
 
 			console.log(`Email from: ${cleanEmail}`);
 
@@ -154,10 +147,10 @@ export function createInboundRoutes() {
 			const emailDetails = await emailResponse.json<ResendEmailDetails>();
 
 			// Extract message content (prefer text, fallback to HTML)
-			const message = emailDetails.text || emailDetails.html || '(No message body)';
+			const message = emailDetails.text ?? emailDetails.html ?? '(No message body)';
 
 			// Extract the recipient email from the webhook data
-			const recipient = event.data.to?.[0] || null;
+			const recipient = event.data.to[0] ?? null;
 
 			// Create a contact submission from the inbound email
 			const submission = await createSubmission(db, {

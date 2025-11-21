@@ -230,7 +230,7 @@ describe('Email Whitelist in Contact Submission', () => {
 
 		expect(response.status).toBe(400);
 		const data = await response.json();
-		expect(data.message).toBe('Invalid request origin');
+		expect(data.message).toBe('Invalid referrer');
 	});
 
 	it('should allow non-whitelisted email with valid referrer', async () => {

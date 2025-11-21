@@ -3,8 +3,7 @@
  *
  * Handles administrative endpoints for monitoring and management
  */
-import { Hono } from 'hono';
-import type { Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import { logRequest } from '../../../util';
 import {
 	getThrottleState,
@@ -18,9 +17,9 @@ import { getSessionMapping } from '../session';
 import { maskSessionId, maskKey } from '../request-utils';
 import { USER_TYPES } from '../constants';
 
-type Env = {
+interface Env {
 	TASKS_KV: KVNamespace;
-};
+}
 
 export function createAdminRoutes() {
 	const app = new Hono<{ Bindings: Env }>();

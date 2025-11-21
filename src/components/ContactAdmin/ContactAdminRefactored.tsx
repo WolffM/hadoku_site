@@ -163,7 +163,9 @@ export default function ContactAdminRefactored() {
 						onSelectRecipient={handleSelectRecipient}
 						onShowTrash={handleShowTrash}
 						onCompose={() => setView('compose')}
-						onRefresh={emailsHook.refreshEmails}
+						onRefresh={() => {
+							emailsHook.refreshEmails().catch(console.error);
+						}}
 						onOpenWhitelist={whitelistHook.openModal}
 						refreshing={emailsHook.refreshing}
 					/>
@@ -184,12 +186,12 @@ export default function ContactAdminRefactored() {
 							onReply={handleReply}
 							onDelete={() => {
 								if (emailsHook.selectedEmail) {
-									emailsHook.deleteEmail(emailsHook.selectedEmail.id);
+									emailsHook.deleteEmail(emailsHook.selectedEmail.id).catch(console.error);
 								}
 							}}
 							onRestore={() => {
 								if (emailsHook.selectedEmail) {
-									emailsHook.restoreEmail(emailsHook.selectedEmail.id);
+									emailsHook.restoreEmail(emailsHook.selectedEmail.id).catch(console.error);
 								}
 							}}
 						/>
@@ -226,7 +228,9 @@ export default function ContactAdminRefactored() {
 					loading={appointmentHook.loading}
 					saving={appointmentHook.saving}
 					onUpdate={appointmentHook.updateConfig}
-					onSave={appointmentHook.saveConfig}
+					onSave={() => {
+						appointmentHook.saveConfig().catch(console.error);
+					}}
 				/>
 			)}
 
@@ -236,7 +240,9 @@ export default function ContactAdminRefactored() {
 					whitelist={whitelistHook.whitelist}
 					loading={whitelistHook.loading}
 					onClose={whitelistHook.closeModal}
-					onRemove={whitelistHook.removeFromWhitelist}
+					onRemove={(email) => {
+						whitelistHook.removeFromWhitelist(email).catch(console.error);
+					}}
 				/>
 			)}
 		</div>

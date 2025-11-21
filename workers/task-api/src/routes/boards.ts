@@ -3,17 +3,16 @@
  *
  * Handles board CRUD operations
  */
-import { Hono } from 'hono';
-import type { Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
 import { badRequest, logRequest, logError, requireFields } from '../../../util';
 import { getContext, withBoardLock } from './route-utils';
 import { validateBoardId } from '../request-utils';
 import { boardsKey } from '../kv-keys';
 
-type Env = {
+interface Env {
 	TASKS_KV: KVNamespace;
-};
+}
 
 export function createBoardRoutes() {
 	const app = new Hono<{ Bindings: Env }>();
@@ -93,7 +92,7 @@ export function createBoardRoutes() {
 		}
 
 		// After validation, we know boardId is valid
-		const boardId = boardIdParam as string;
+		const boardId = boardIdParam;
 
 		logRequest('DELETE', `/task/api/boards/${boardId}`, {
 			userType: c.get('authContext').userType,

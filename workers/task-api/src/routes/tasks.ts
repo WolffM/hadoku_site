@@ -3,17 +3,16 @@
  *
  * Handles task CRUD operations and task-related endpoints
  */
-import { Hono } from 'hono';
-import type { Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
 import { badRequest, logRequest, logError, requireFields, extractField } from '../../../util';
 import { getContext, handleOperation, handleBoardOperation } from './route-utils';
 import { createTaskOperationHandler } from '../request-utils';
 import { DEFAULT_BOARD_ID } from '../constants';
 
-type Env = {
+interface Env {
 	TASKS_KV: KVNamespace;
-};
+}
 
 export function createTaskRoutes() {
 	const app = new Hono<{ Bindings: Env }>();

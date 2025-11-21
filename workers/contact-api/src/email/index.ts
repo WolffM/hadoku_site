@@ -22,10 +22,7 @@ export type { EmailProvider, EmailParams, EmailResponse } from './provider';
  * @param apiKey - API key for the provider (required for Resend, SendGrid, etc.)
  * @returns EmailProvider instance
  */
-export function createEmailProvider(
-	providerName: string = 'resend',
-	apiKey?: string
-): EmailProvider {
+export function createEmailProvider(providerName = 'resend', apiKey?: string): EmailProvider {
 	switch (providerName.toLowerCase()) {
 		case 'resend':
 			if (!apiKey) {

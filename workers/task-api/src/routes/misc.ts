@@ -3,17 +3,16 @@
  *
  * Handles utility endpoints: health check, key validation, legacy endpoints
  */
-import { Hono } from 'hono';
-import type { Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import { TaskHandlers } from '@wolffm/task/api';
 import { healthCheck, logRequest } from '../../../util';
 import { handleOperation } from './route-utils';
 
-type Env = {
+interface Env {
 	TASKS_KV: KVNamespace;
 	ADMIN_KEYS?: string;
 	FRIEND_KEYS?: string;
-};
+}
 
 export function createMiscRoutes() {
 	const app = new Hono<{ Bindings: Env }>();
@@ -35,7 +34,7 @@ export function createMiscRoutes() {
 	 * Checks if the key provided in X-User-Key header is valid
 	 * Returns the validation result from the auth middleware
 	 */
-	app.post('/validate-key', async (c: Context) => {
+	app.post('/validate-key', (c: Context) => {
 		// Auth middleware has already validated the key and set authContext
 		const authContext = c.get('authContext');
 		const userType = authContext.userType;
@@ -76,7 +75,7 @@ export function createMiscRoutes() {
 	 * This endpoint is deprecated in v3.0.39+
 	 * The API now only uses sessionId
 	 */
-	app.post('/migrate-userid', async (c: Context) => {
+	app.post('/migrate-userid', (c: Context) => {
 		return c.json(
 			{
 				error:

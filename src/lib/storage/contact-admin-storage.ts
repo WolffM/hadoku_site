@@ -11,7 +11,7 @@ import { STORAGE_KEYS } from '../../config/contact-admin';
 function getFromStorage<T>(key: string, defaultValue: T): T {
 	try {
 		const item = window.localStorage.getItem(key);
-		return item ? JSON.parse(item) : defaultValue;
+		return item ? (JSON.parse(item) as T) : defaultValue;
 	} catch (error) {
 		console.error(`Failed to read from localStorage: ${key}`, error);
 		return defaultValue;
@@ -59,7 +59,7 @@ export const ContactAdminStorage = {
 	 * Get set of read email IDs
 	 */
 	getReadEmails(): Set<string> {
-		const ids = getFromStorage<string[]>(STORAGE_KEYS.READ_EMAILS, []);
+		const ids: string[] = getFromStorage<string[]>(STORAGE_KEYS.READ_EMAILS, []);
 		return new Set(ids);
 	},
 

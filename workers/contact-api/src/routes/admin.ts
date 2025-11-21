@@ -4,7 +4,7 @@
  * All routes require admin authentication
  */
 
-import { Hono } from 'hono';
+import { Hono, type Context, type Next } from 'hono';
 import { ok, badRequest, notFound, serverError } from '@hadoku/worker-utils';
 import {
 	getAllSubmissions,
@@ -28,6 +28,7 @@ import {
 	upsertEmailTemplate,
 	deleteEmailTemplate,
 	getTemplateVersionHistory,
+	type AppointmentConfig,
 } from '../storage';
 import { resetRateLimit } from '../rate-limit';
 import { createEmailProvider } from '../email';
@@ -42,7 +43,7 @@ interface Env {
 	RESEND_API_KEY?: string;
 }
 
-type AppContext = {
+interface AppContext {
 	Bindings: Env;
 	Variables: {
 		authContext?: {
@@ -50,17 +51,16 @@ type AppContext = {
 			sessionId: string;
 		};
 	};
-};
+}
 
 /**
  * Middleware to require admin access
  */
 function requireAdmin() {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return async (c: any, next: any) => {
+	return async (c: Context<AppContext>, next: Next) => {
 		const auth = c.get('authContext');
 
-		if (!auth || auth.userType !== 'admin') {
+		if (!auth?.userType || auth.userType !== 'admin') {
 			return c.json(
 				{
 					success: false,
@@ -141,7 +141,11 @@ export function createAdminRoutes() {
 				return badRequest(c, 'Invalid status. Must be: unread, read, or archived');
 			}
 
-			const success = await updateSubmissionStatus(c.env.DB, id, body.status);
+			const success = await updateSubmissionStatus(
+				c.env.DB,
+				id,
+				body.status as 'unread' | 'read' | 'archived'
+			);
 
 			if (!success) {
 				return notFound(c, 'Submission not found');
@@ -245,8 +249,8 @@ export function createAdminRoutes() {
 	 */
 	app.post('/archive', async (c) => {
 		try {
-			const body = await c.req.json().catch(() => ({}));
-			const daysOld = Number(body.daysOld) || RETENTION_CONFIG.ARCHIVE_AFTER_DAYS;
+			const body = (await c.req.json().catch(() => ({}))) as { daysOld?: number };
+			const daysOld = body.daysOld ? Number(body.daysOld) : RETENTION_CONFIG.ARCHIVE_AFTER_DAYS;
 
 			if (daysOld < 1 || daysOld > 365) {
 				return badRequest(c, 'daysOld must be between 1 and 365');
@@ -313,7 +317,7 @@ export function createAdminRoutes() {
 
 			// Validate sender is from allowed domain
 			const fromDomain = body.from.split('@')[1];
-			if (!EMAIL_CONFIG.VALID_DOMAINS.includes(fromDomain)) {
+			if (!fromDomain || !EMAIL_CONFIG.VALID_DOMAINS.includes(fromDomain as 'hadoku.me')) {
 				return badRequest(
 					c,
 					`from address must be from one of: ${EMAIL_CONFIG.VALID_DOMAINS.join(', ')}`
@@ -326,7 +330,7 @@ export function createAdminRoutes() {
 			}
 
 			// Get email provider (defaults to resend)
-			const providerName = c.env.EMAIL_PROVIDER || 'resend';
+			const providerName = c.env.EMAIL_PROVIDER ?? 'resend';
 			const emailProvider = createEmailProvider(providerName, c.env.RESEND_API_KEY);
 
 			// Send email
@@ -335,21 +339,21 @@ export function createAdminRoutes() {
 				to: body.to,
 				subject: body.subject,
 				text: body.text,
-				replyTo: body.replyTo,
+				replyTo: typeof body.replyTo === 'string' ? body.replyTo : undefined,
 			});
 
 			if (!result.success) {
 				console.error('Email sending failed:', result.error);
-				return serverError(c, result.error || 'Failed to send email');
+				return serverError(c, result.error ?? 'Failed to send email');
 			}
 
 			// Automatically whitelist the recipient email address
 			// This allows them to contact us directly in the future, bypassing referrer restrictions
 			const auth = c.get('authContext');
-			const adminIdentifier = auth?.sessionId || 'admin';
+			const adminIdentifier = auth?.sessionId ?? 'admin';
 
 			// Extract contact submission ID if this is a reply (from body.replyTo or body.contactId)
-			const contactId = body.contactId || null;
+			const contactId = typeof body.contactId === 'string' ? body.contactId : undefined;
 
 			await addToWhitelist(
 				c.env.DB,
@@ -459,7 +463,7 @@ export function createAdminRoutes() {
 			const body = await c.req.json();
 
 			// Convert arrays back to comma-separated strings if provided
-			const updates: any = { ...body };
+			const updates: Record<string, unknown> = { ...body };
 
 			if (Array.isArray(body.available_days)) {
 				updates.available_days = body.available_days.join(',');
@@ -473,7 +477,10 @@ export function createAdminRoutes() {
 				updates.meeting_platforms = body.meeting_platforms.join(',');
 			}
 
-			const success = await updateAppointmentConfig(c.env.DB, updates);
+			const success = await updateAppointmentConfig(
+				c.env.DB,
+				updates as Partial<Omit<AppointmentConfig, 'id' | 'last_updated'>>
+			);
 
 			if (!success) {
 				return serverError(c, 'Failed to update configuration');
@@ -552,7 +559,11 @@ export function createAdminRoutes() {
 				);
 			}
 
-			const success = await updateAppointmentStatus(c.env.DB, id, body.status);
+			const success = await updateAppointmentStatus(
+				c.env.DB,
+				id,
+				body.status as 'confirmed' | 'cancelled' | 'completed' | 'no_show'
+			);
 
 			if (!success) {
 				return notFound(c, 'Appointment not found');
@@ -633,18 +644,31 @@ export function createAdminRoutes() {
 			}
 
 			const auth = c.get('authContext');
-			const changedBy = auth?.sessionId || 'admin';
+			const changedBy = auth?.sessionId ?? 'admin';
+
+			const name = body.name;
+			const templateBody = body.body;
+			const type = (typeof body.type === 'string' ? body.type : 'email') as
+				| 'email'
+				| 'sms'
+				| 'push';
+			const subject = typeof body.subject === 'string' ? body.subject : null;
+			const language = typeof body.language === 'string' ? body.language : 'en';
+			const status = (typeof body.status === 'string' ? body.status : 'active') as
+				| 'active'
+				| 'draft'
+				| 'archived';
 
 			const template = await upsertEmailTemplate(
 				c.env.DB,
 				c.env.TEMPLATES_KV,
 				{
-					name: body.name,
-					type: body.type || 'email',
-					subject: body.subject || null,
-					body: body.body,
-					language: body.language || 'en',
-					status: body.status || 'active',
+					name,
+					type,
+					subject,
+					body: templateBody,
+					language,
+					status,
 					created_by: changedBy,
 					metadata: body.metadata ? JSON.stringify(body.metadata) : null,
 				},
@@ -677,19 +701,40 @@ export function createAdminRoutes() {
 			}
 
 			const auth = c.get('authContext');
-			const changedBy = auth?.sessionId || 'admin';
+			const changedBy = auth?.sessionId ?? 'admin';
+
+			// Validate required fields
+			if (!body.name || typeof body.name !== 'string') {
+				return badRequest(c, 'name field is required');
+			}
+			if (!body.body || typeof body.body !== 'string') {
+				return badRequest(c, 'body field is required');
+			}
+
+			const name = body.name;
+			const templateBody = body.body;
+			const type = (typeof body.type === 'string' ? body.type : 'email') as
+				| 'email'
+				| 'sms'
+				| 'push';
+			const subject = typeof body.subject === 'string' ? body.subject : null;
+			const language = typeof body.language === 'string' ? body.language : 'en';
+			const status = (typeof body.status === 'string' ? body.status : 'active') as
+				| 'active'
+				| 'draft'
+				| 'archived';
 
 			const template = await upsertEmailTemplate(
 				c.env.DB,
 				c.env.TEMPLATES_KV,
 				{
 					id,
-					name: body.name,
-					type: body.type || 'email',
-					subject: body.subject || null,
-					body: body.body,
-					language: body.language || 'en',
-					status: body.status || 'active',
+					name,
+					type,
+					subject,
+					body: templateBody,
+					language,
+					status,
 					created_by: changedBy,
 					metadata: body.metadata ? JSON.stringify(body.metadata) : null,
 				},

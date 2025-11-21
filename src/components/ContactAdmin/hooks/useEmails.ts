@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ContactAdminClient } from '../../../lib/api/contact-admin-client';
+import type { ContactAdminClient } from '../../../lib/api/contact-admin-client';
 import { ContactAdminStorage } from '../../../lib/storage/contact-admin-storage';
 import type { Email } from '../../../lib/api/types';
 
@@ -52,7 +52,7 @@ export function useEmails(client: ContactAdminClient | null): UseEmailsResult {
 			}
 		}
 
-		fetchEmails();
+		fetchEmails().catch(console.error);
 	}, [client]);
 
 	// Refresh emails

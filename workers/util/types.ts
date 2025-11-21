@@ -82,7 +82,7 @@ export interface ValidationRule {
 
 export interface ValidationResult {
 	valid: boolean;
-	errors: Array<{ field: string; message: string }>;
+	errors: { field: string; message: string }[];
 }
 
 // ============================================================================

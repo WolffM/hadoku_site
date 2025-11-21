@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, type RefObject } from 'react'
 import { setTheme as applyTheme } from '@wolffm/themes'
 import { logger } from '@wolffm/task-ui-components'
 import { getThemeFamilies } from '../app/themeConfig'
@@ -6,7 +6,7 @@ import { getThemeFamilies } from '../app/themeConfig'
 interface UseThemeOptions {
   propsTheme?: string
   experimentalThemes?: boolean
-  containerRef?: React.RefObject<HTMLElement | null>
+  containerRef?: RefObject<HTMLElement | null>
 }
 
 export function useTheme(options: UseThemeOptions = {}) {
@@ -25,7 +25,7 @@ export function useTheme(options: UseThemeOptions = {}) {
     const saved = sessionStorage.getItem('hadoku-theme')
     if (saved) return saved
 
-    if (typeof window !== 'undefined' && window.matchMedia) {
+    if (window.matchMedia) {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       return prefersDark ? 'dark' : 'light'
     }

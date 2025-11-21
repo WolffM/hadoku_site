@@ -3,8 +3,12 @@
  * Manages email templates and chatbot prompts with versioning
  */
 
-import { TEMPLATE_CONFIG, PAGINATION_DEFAULTS } from '../constants';
-import type { TemplateType, TemplateStatus } from '../constants';
+import {
+	TEMPLATE_CONFIG,
+	PAGINATION_DEFAULTS,
+	type TemplateType,
+	type TemplateStatus,
+} from '../constants';
 
 export interface EmailTemplate {
 	id: string;
@@ -60,7 +64,7 @@ async function loadTemplate<T>(
 	tableName: string,
 	kvPrefix: string,
 	name: string,
-	language: string = TEMPLATE_CONFIG.DEFAULT_LANGUAGE
+	language = TEMPLATE_CONFIG.DEFAULT_LANGUAGE
 ): Promise<T | null> {
 	// Try KV cache first (fast path)
 	const kvKey = `${kvPrefix}:${name}:${language}`;
@@ -96,7 +100,7 @@ export async function getEmailTemplate(
 	db: D1Database,
 	kv: KVNamespace,
 	name: string,
-	language: string = TEMPLATE_CONFIG.DEFAULT_LANGUAGE
+	language = TEMPLATE_CONFIG.DEFAULT_LANGUAGE
 ): Promise<EmailTemplate | null> {
 	return loadTemplate<EmailTemplate>(db, kv, 'email_templates', 'template:email', name, language);
 }
@@ -108,7 +112,7 @@ export async function getChatbotPrompt(
 	db: D1Database,
 	kv: KVNamespace,
 	name: string,
-	language: string = TEMPLATE_CONFIG.DEFAULT_LANGUAGE
+	language = TEMPLATE_CONFIG.DEFAULT_LANGUAGE
 ): Promise<ChatbotPrompt | null> {
 	return loadTemplate<ChatbotPrompt>(db, kv, 'chatbot_prompts', 'template:chatbot', name, language);
 }
@@ -130,7 +134,7 @@ export async function listEmailTemplates(
 		language,
 		limit = PAGINATION_DEFAULTS.LIMIT,
 		offset = PAGINATION_DEFAULTS.OFFSET,
-	} = filters || {};
+	} = filters ?? {};
 
 	let query = `SELECT * FROM email_templates WHERE 1=1`;
 	const bindings: (string | number)[] = [];
@@ -167,7 +171,7 @@ export async function upsertEmailTemplate(
 	changedBy?: string
 ): Promise<EmailTemplate> {
 	const now = Date.now();
-	const id = template.id || `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+	const id = template.id ?? `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
 	// Check if template exists
 	const existing = await db
@@ -202,7 +206,7 @@ export async function upsertEmailTemplate(
 			template.status,
 			existing ? existing.id : now, // Keep original created_at
 			now,
-			changedBy || template.created_by,
+			changedBy ?? template.created_by,
 			template.metadata
 		)
 		.run();
@@ -289,7 +293,7 @@ export async function getTemplateVersionHistory(
 	db: D1Database,
 	templateId: string,
 	templateType: 'email' | 'chatbot' = 'email',
-	limit: number = PAGINATION_DEFAULTS.MAX_VERSION_HISTORY
+	limit = PAGINATION_DEFAULTS.MAX_VERSION_HISTORY
 ): Promise<TemplateVersion[]> {
 	const { results } = await db
 		.prepare(

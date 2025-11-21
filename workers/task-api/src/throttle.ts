@@ -100,7 +100,7 @@ export async function checkThrottle(
 
 	// Get current throttle state
 	const key = throttleKey(sessionId);
-	const stateData = (await kv.get(key, 'json')) as ThrottleState | null;
+	const stateData = await kv.get<ThrottleState>(key, 'json');
 
 	let state: ThrottleState;
 
@@ -109,7 +109,7 @@ export async function checkThrottle(
 		state = {
 			count: 1,
 			windowStart: now,
-			violations: stateData?.violations || 0,
+			violations: stateData?.violations ?? 0,
 		};
 	} else {
 		// Update existing window
@@ -152,8 +152,8 @@ export async function recordIncident(kv: KVNamespace, incident: IncidentRecord):
 	const key = incidentsKey(incident.sessionId);
 
 	// Get existing incidents
-	const existing = (await kv.get(key, 'json')) as IncidentRecord[] | null;
-	const incidents = existing || [];
+	const existing = await kv.get<IncidentRecord[]>(key, 'json');
+	const incidents = existing ?? [];
 
 	// Add new incident
 	incidents.push(incident);
@@ -172,8 +172,8 @@ export async function recordIncident(kv: KVNamespace, incident: IncidentRecord):
  */
 export async function getIncidents(kv: KVNamespace, sessionId: string): Promise<IncidentRecord[]> {
 	const key = incidentsKey(sessionId);
-	const data = (await kv.get(key, 'json')) as IncidentRecord[] | null;
-	return data || [];
+	const data = await kv.get<IncidentRecord[]>(key, 'json');
+	return data ?? [];
 }
 
 /**
@@ -234,7 +234,7 @@ export async function getThrottleState(
 	sessionId: string
 ): Promise<ThrottleState | null> {
 	const key = throttleKey(sessionId);
-	const data = (await kv.get(key, 'json')) as ThrottleState | null;
+	const data = await kv.get<ThrottleState>(key, 'json');
 	return data;
 }
 
@@ -264,7 +264,7 @@ export async function checkSuspiciousPatterns(
 
 	// Pattern 2: Check for high violation rates across sessions
 	const states = await Promise.all(sessionIds.map((sessionId) => getThrottleState(kv, sessionId)));
-	const totalViolations = states.reduce((sum, state) => sum + (state?.violations || 0), 0);
+	const totalViolations = states.reduce((sum, state) => sum + (state?.violations ?? 0), 0);
 
 	if (totalViolations > THROTTLE_THRESHOLDS.MAX_TOTAL_VIOLATIONS) {
 		reasons.push(`High violation count across sessions: ${totalViolations}`);

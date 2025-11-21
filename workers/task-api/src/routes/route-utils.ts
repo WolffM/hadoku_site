@@ -21,18 +21,18 @@ import {
 	logTaskEvent,
 } from '../events';
 
-type Env = {
+interface Env {
 	TASKS_KV: KVNamespace;
 	DB: D1Database;
-};
+}
 
-type AppContext = {
+interface AppContext {
 	Bindings: Env;
 	Variables: {
 		authContext: TaskAuthContext;
 		context: { auth: TaskAuthContext };
 	};
-};
+}
 
 /**
  * Create KV-backed storage adapter for @wolffm/task package
@@ -42,7 +42,7 @@ export function createKVStorage(env: Env): TaskStorage {
 		// --- Boards ---
 		async getBoards(userType: UserType, sessionId?: string): Promise<BoardsFile> {
 			const kvKey = boardsKey(sessionId);
-			const data = (await env.TASKS_KV.get(kvKey, 'json')) as BoardsFile | null;
+			const data = await env.TASKS_KV.get<BoardsFile>(kvKey, 'json');
 			if (data) return data;
 			// Default with a single default board
 			return {
@@ -58,7 +58,7 @@ export function createKVStorage(env: Env): TaskStorage {
 		async getTasks(userType: UserType, sessionId?: string, boardId?: string) {
 			if (!boardId) boardId = DEFAULT_BOARD_ID;
 			const kvKey = tasksKey(sessionId, boardId);
-			const data = (await env.TASKS_KV.get(kvKey, 'json')) as TasksFile | null;
+			const data = await env.TASKS_KV.get<TasksFile>(kvKey, 'json');
 			if (data) return data;
 			return {
 				version: 1,
@@ -182,7 +182,9 @@ export async function withBoardLock<T>(boardsKey: string, operation: () => Promi
 	// Wait for any existing operation on this board to complete
 	const existingLock = boardLocks.get(boardsKey);
 	if (existingLock) {
-		await existingLock.catch(() => {}); // Ignore errors from previous operations
+		await existingLock.catch(() => {
+			// Ignore errors from previous operations
+		});
 	}
 
 	// Create a new lock for this operation

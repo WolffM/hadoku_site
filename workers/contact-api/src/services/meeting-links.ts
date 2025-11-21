@@ -24,11 +24,11 @@ export interface AppointmentDetails {
 /**
  * Generate a meeting link based on platform
  */
-export async function generateMeetingLink(
+export function generateMeetingLink(
 	platform: MeetingPlatform,
 	appointment: AppointmentDetails,
-	env: any
-): Promise<MeetingLinkResult> {
+	env: Record<string, unknown>
+): MeetingLinkResult {
 	switch (platform) {
 		case 'discord':
 			return generateDiscordLink(appointment, env);
@@ -41,7 +41,7 @@ export async function generateMeetingLink(
 		default:
 			return {
 				success: false,
-				error: `Unsupported platform: ${platform}`,
+				error: `Unsupported platform: ${String(platform)}`,
 			};
 	}
 }
@@ -51,7 +51,10 @@ export async function generateMeetingLink(
  * Currently uses a static Discord server invite
  * TODO: Implement Discord bot to send personalized messages
  */
-function generateDiscordLink(appointment: AppointmentDetails, env: any): MeetingLinkResult {
+function generateDiscordLink(
+	appointment: AppointmentDetails,
+	_env: Record<string, unknown>
+): MeetingLinkResult {
 	// Use the hardcoded Discord invite for now
 	const discordInvite = 'https://discord.gg/Epchg7QQ';
 
@@ -72,10 +75,10 @@ function generateDiscordLink(appointment: AppointmentDetails, env: any): Meeting
  * Generate Google Meet link
  * TODO: Implement Google Calendar API integration
  */
-async function generateGoogleMeetLink(
-	appointment: AppointmentDetails,
-	env: any
-): Promise<MeetingLinkResult> {
+function generateGoogleMeetLink(
+	_appointment: AppointmentDetails,
+	env: Record<string, unknown>
+): MeetingLinkResult {
 	// Check if Google Calendar API credentials are configured
 	const hasGoogleCredentials = env.GOOGLE_CALENDAR_API_KEY && env.GOOGLE_CALENDAR_ID;
 
@@ -146,10 +149,10 @@ async function generateGoogleMeetLink(
  * Generate Microsoft Teams meeting link
  * TODO: Implement Microsoft Graph API integration
  */
-async function generateTeamsLink(
-	appointment: AppointmentDetails,
-	env: any
-): Promise<MeetingLinkResult> {
+function generateTeamsLink(
+	_appointment: AppointmentDetails,
+	env: Record<string, unknown>
+): MeetingLinkResult {
 	// Check if Microsoft Graph API credentials are configured
 	const hasTeamsCredentials = env.MICROSOFT_GRAPH_CLIENT_ID && env.MICROSOFT_GRAPH_CLIENT_SECRET;
 
@@ -226,13 +229,17 @@ async function generateTeamsLink(
  * Generate Jitsi meeting link
  * Jitsi doesn't require API - we can generate unique room URLs
  */
-function generateJitsiLink(appointment: AppointmentDetails, env: any): MeetingLinkResult {
+function generateJitsiLink(
+	appointment: AppointmentDetails,
+	env: Record<string, unknown>
+): MeetingLinkResult {
 	// Generate unique room name using slot ID
 	const roomName = `hadoku-${appointment.slotId}`;
 
 	// Use Jitsi Meet's public instance
 	// You can self-host Jitsi and use your own domain here
-	const jitsiDomain = env.JITSI_DOMAIN || 'meet.jit.si';
+	const jitsiDomain =
+		(typeof env.JITSI_DOMAIN === 'string' ? env.JITSI_DOMAIN : null) ?? 'meet.jit.si';
 	const meetingLink = `https://${jitsiDomain}/${roomName}`;
 
 	return {

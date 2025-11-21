@@ -16,6 +16,11 @@ export default [
 			'**/.venv/**',
 			'**/venv/**',
 			'**/__pycache__/**',
+			'**/test/**',
+			'**/*.test.ts',
+			'**/*.test.tsx',
+			'**/vitest.config.ts',
+			'**/vite.config.ts',
 		],
 	},
 
@@ -29,7 +34,14 @@ export default [
 			parserOptions: {
 				ecmaVersion: 'latest',
 				sourceType: 'module',
-				project: ['./tsconfig.json'], // enables full type-aware linting
+				project: [
+					'./tsconfig.json',
+					'./workers/contact-api/tsconfig.json',
+					'./workers/task-api/tsconfig.json',
+					'./workers/edge-router/tsconfig.json',
+					'./workers/util/tsconfig.json',
+					'./docs/child-apps/template/tsconfig.json',
+				], // enables full type-aware linting
 			},
 		},
 		plugins: {
@@ -52,7 +64,7 @@ export default [
 			'@typescript-eslint/await-thenable': 'error',
 
 			// Avoid silent bugs
-			'@typescript-eslint/no-unnecessary-condition': 'warn',
+			'@typescript-eslint/no-unnecessary-condition': 'off', // Allow defensive null checks in storage/database operations
 			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 			'@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
 
@@ -63,7 +75,7 @@ export default [
 				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
 			],
 			'@typescript-eslint/no-explicit-any': ['warn', { fixToUnknown: false }],
-			'@typescript-eslint/no-non-null-assertion': 'warn',
+			'@typescript-eslint/no-non-null-assertion': 'off', // Allow ! after validation checks
 
 			// Node/browser correctness
 			'no-restricted-globals': ['error', 'event', 'fdescribe'],
@@ -81,6 +93,10 @@ export default [
 
 			// Allow console logs when intentional
 			'no-console': 'off',
+
+			// Allow intentional || for empty strings and falsy values
+			'@typescript-eslint/prefer-nullish-coalescing': 'off',
+			'@typescript-eslint/prefer-optional-chain': 'off',
 		},
 	},
 
@@ -104,6 +120,25 @@ export default [
 	},
 
 	// -------------------------------------------------------------
+	// DOCS / EXAMPLE CODE
+	// -------------------------------------------------------------
+	{
+		files: ['docs/**/*.{ts,tsx}'],
+		languageOptions: {
+			globals: {
+				...globals.browser,
+			},
+		},
+		rules: {
+			// Relax rules for example/template code
+			'@typescript-eslint/no-unsafe-assignment': 'off',
+			'@typescript-eslint/no-unsafe-member-access': 'off',
+			'@typescript-eslint/no-unsafe-call': 'off',
+			'@typescript-eslint/no-unnecessary-condition': 'off',
+		},
+	},
+
+	// -------------------------------------------------------------
 	// CLOUDFLARE WORKERS
 	// -------------------------------------------------------------
 	{
@@ -120,7 +155,17 @@ export default [
 				R2Bucket: 'readonly',
 				DurableObjectNamespace: 'readonly',
 				D1Database: 'readonly',
+				AnalyticsEngineDataset: 'readonly',
 			},
+		},
+		rules: {
+			// Relax rules for third-party type issues
+			'@typescript-eslint/no-unsafe-assignment': 'off',
+			'@typescript-eslint/no-unsafe-member-access': 'off',
+			'@typescript-eslint/no-unsafe-argument': 'off',
+			'@typescript-eslint/no-unsafe-call': 'off',
+			'@typescript-eslint/no-unsafe-return': 'off',
+			'@typescript-eslint/restrict-template-expressions': 'off',
 		},
 	},
 

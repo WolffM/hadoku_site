@@ -9,20 +9,28 @@
  * Simple Mustache-like template renderer
  * Supports {{variable}} syntax
  */
-export function renderTemplate(template: string, data: Record<string, any>): string {
+export function renderTemplate(template: string, data: Record<string, unknown>): string {
 	let result = template;
 
 	// Replace {{#if variable}} blocks
 	result = result.replace(
 		/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
-		(match, varName, content) => {
+		(_match, varName: string, content: string) => {
 			return data[varName] ? content : '';
 		}
 	);
 
 	// Replace {{variable}} placeholders
-	result = result.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-		return data[varName] !== undefined && data[varName] !== null ? String(data[varName]) : '';
+	result = result.replace(/\{\{(\w+)\}\}/g, (_match, varName: string) => {
+		const value = data[varName];
+		if (value === undefined || value === null) {
+			return '';
+		}
+		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+			return String(value);
+		}
+		// For objects, use JSON.stringify
+		return JSON.stringify(value);
 	});
 
 	return result;
@@ -154,7 +162,9 @@ Reply to this email to reach me directly at matthaeus@hadoku.me.`;
  * Prepare template variables for appointment confirmation email
  * Returns data object ready for template rendering
  */
-export function prepareAppointmentTemplateData(data: AppointmentEmailData): Record<string, any> {
+export function prepareAppointmentTemplateData(
+	data: AppointmentEmailData
+): Record<string, unknown> {
 	// Get platform-specific instructions
 	const platformInstructions = getPlatformInstructions(data.platform, data.meetingLink);
 
@@ -171,8 +181,8 @@ export function prepareAppointmentTemplateData(data: AppointmentEmailData): Reco
 		duration: data.duration,
 		platform: data.platform,
 		platformName,
-		meetingLink: data.meetingLink || '',
-		message: data.message || '',
+		meetingLink: data.meetingLink ?? '',
+		message: data.message ?? '',
 		platformInstructions,
 	};
 }

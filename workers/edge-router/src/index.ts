@@ -8,11 +8,9 @@
  * Configuration is injected from GitHub Secrets via ROUTE_CONFIG env var.
  */
 
-import { Hono } from 'hono';
-import type { Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import type { Fetcher } from '@cloudflare/workers-types';
-import { logToAnalytics } from './logging';
-import type { LogEntry } from './logging';
+import { logToAnalytics, type LogEntry } from './logging';
 import {
 	badRequest,
 	serverError,
@@ -42,13 +40,13 @@ interface RouteConfig {
 	watchparty_priority?: string;
 }
 
-type AppContext = {
+interface AppContext {
 	Bindings: Env;
 	Variables: {
 		startTime: number;
 		backend: LogEntry['backend'];
 	};
-};
+}
 
 const app = new Hono<AppContext>();
 
@@ -173,7 +171,6 @@ async function handleApiRoute(c: Context<AppContext>): Promise<Response> {
 			}
 
 			// Create request with timeout
-			// eslint-disable-next-line no-await-in-loop
 			const res = await Promise.race([
 				fetch(targetUrl, {
 					method: c.req.method,

@@ -41,7 +41,7 @@ export function getBoardIdFromContext(
  * @param paramName - Parameter name (default: 'id')
  * @returns Task ID or null if not found
  */
-export function getTaskIdFromParam(c: Context, paramName: string = 'id'): string | null {
+export function getTaskIdFromParam(c: Context, paramName = 'id'): string | null {
 	const id = c.req.param(paramName);
 	return id || null;
 }
@@ -126,7 +126,7 @@ export function createTaskOperationHandler<T>(
 		}
 
 		// After validation, we know id is a valid string
-		const taskId = id as string;
+		const taskId = id!;
 
 		const body = await parseBodySafely(c);
 		const boardId = getBoardIdFromContext(c, body, DEFAULT_BOARD_ID);

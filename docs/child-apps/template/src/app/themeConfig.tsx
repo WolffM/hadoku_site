@@ -8,9 +8,9 @@ import {
   StrawberryIcon,
   WaveIcon,
   ZapIcon,
-  HeartIcon
+  HeartIcon,
+  type ThemeFamily
 } from '@wolffm/task-ui-components'
-import type { ThemeFamily } from '@wolffm/task-ui-components'
 
 export const BASE_THEME_FAMILIES: ThemeFamily[] = [
   {

@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ContactAdminClient } from '../../../lib/api/contact-admin-client';
+import type { ContactAdminClient } from '../../../lib/api/contact-admin-client';
 import type { AppointmentConfig } from '../../../lib/api/types';
 
 interface UseAppointmentConfigResult {
@@ -30,7 +30,7 @@ export function useAppointmentConfig(
 	useEffect(() => {
 		if (!client || !isActive) return;
 
-		fetchConfig();
+		fetchConfig().catch(console.error);
 	}, [client, isActive]);
 
 	// Fetch appointment config

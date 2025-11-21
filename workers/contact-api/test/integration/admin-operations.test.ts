@@ -22,6 +22,16 @@ import {
 
 /* global global */
 
+// Helper to unwrap success responses: { data: T, timestamp: string }
+function unwrapData<T>(result: any): T {
+	return result.data as T;
+}
+
+// Helper to unwrap error responses: { error: string, details?: unknown, timestamp: string }
+function unwrapError(result: any): { error: string; details?: unknown } {
+	return { error: result.error, details: result.details };
+}
+
 describe('Admin Operations Integration', () => {
 	let env: ReturnType<typeof createTestEnv>;
 	let mockDB: any;
@@ -36,6 +46,7 @@ describe('Admin Operations Integration', () => {
 			ADMIN_KEYS: JSON.stringify({ 'test-admin-key': 'admin' }),
 			DB: mockDB,
 			RATE_LIMIT_KV: mockKV,
+			TEMPLATES_KV: createMockKV(),
 			EMAIL_PROVIDER: 'resend',
 			RESEND_API_KEY: 'test-api-key',
 		};
@@ -79,9 +90,10 @@ describe('Admin Operations Integration', () => {
 			);
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
+			const result = await response.json();
+			const data = unwrapData<{ submissions: any[]; stats: any; pagination: any }>(result);
 			expect(data.submissions).toHaveLength(2);
-			expect(data.total).toBe(2);
+			expect(data.stats.total).toBe(2);
 			expect(data.submissions[0].id).toBeDefined();
 		});
 
@@ -92,7 +104,8 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
+			const result = await response.json();
+			const data = unwrapData<any>(result);
 			expect(data.id).toBe('sub-1');
 			expect(data.email).toBe('user1@example.com');
 		});
@@ -107,12 +120,12 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
-			expect(data.message).toContain('updated');
+			const result = await response.json();
+			expect(result.message || result.data.message).toContain('updated');
 
 			// Verify D1 update
 			const submissions = mockDB._getSubmissions();
-			const updated = submissions.find((s) => s.id === 'sub-1');
+			const updated = submissions.find((s: any) => s.id === 'sub-1');
 			expect(updated?.status).toBe('archived');
 		});
 
@@ -123,12 +136,12 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
-			expect(data.message).toContain('deleted');
+			const result = await response.json();
+			expect(result.message || result.data?.message).toContain('deleted');
 
 			// Verify D1 deletion
 			const submissions = mockDB._getSubmissions();
-			expect(submissions.find((s) => s.id === 'sub-1')).toBeUndefined();
+			expect(submissions.find((s: any) => s.id === 'sub-1')).toBeUndefined();
 			expect(submissions).toHaveLength(1);
 		});
 
@@ -148,8 +161,9 @@ describe('Admin Operations Integration', () => {
 				});
 
 				expect(response.status).toBe(403);
-				const data = await response.json();
-				expect(data.message).toContain('Admin access required');
+				const result = await response.json();
+				const error = unwrapError(result);
+				expect(error.error).toContain('Admin access required');
 			}
 		});
 	});
@@ -172,7 +186,8 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
+			const result = await response.json();
+			const data = unwrapData<{ whitelist: any[] }>(result);
 			expect(data.whitelist).toHaveLength(1);
 			expect(data.whitelist[0].email).toBe('whitelisted@example.com');
 		});
@@ -188,13 +203,13 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(201);
-			const data = await response.json();
-			expect(data.message).toContain('added');
+			const result = await response.json();
+			expect(result.message || result.data.message).toContain('added');
 
 			// Verify D1 insertion
 			const whitelist = mockDB._getWhitelist();
 			expect(whitelist).toHaveLength(2);
-			const newEntry = whitelist.find((w) => w.email === 'newuser@example.com');
+			const newEntry = whitelist.find((w: any) => w.email === 'newuser@example.com');
 			expect(newEntry).toBeDefined();
 			expect(newEntry?.notes).toBe('Test addition');
 		});
@@ -211,8 +226,8 @@ describe('Admin Operations Integration', () => {
 			);
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
-			expect(data.message).toContain('removed');
+			const result = await response.json();
+			expect(result.message || result.data?.message).toContain('removed');
 
 			// Verify D1 deletion
 			const whitelist = mockDB._getWhitelist();
@@ -230,8 +245,9 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(400);
-			const data = await response.json();
-			expect(data.message).toContain('already whitelisted');
+			const result = await response.json();
+			const error = unwrapError(result);
+			expect(error.error).toContain('already whitelisted');
 
 			// Verify no duplicate in D1
 			const whitelist = mockDB._getWhitelist();
@@ -278,13 +294,14 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
-			expect(data.message).toContain('sent');
+			const result = await response.json();
+			const data = unwrapData<any>(result);
+			expect(result.message || data.message).toContain('sent');
 			expect(data.messageId).toBe('test-message-id');
 
 			// Verify auto-whitelisting in D1
 			const whitelist = mockDB._getWhitelist();
-			const autoWhitelisted = whitelist.find((w) => w.email === 'newrecipient@example.com');
+			const autoWhitelisted = whitelist.find((w: any) => w.email === 'newrecipient@example.com');
 			expect(autoWhitelisted).toBeDefined();
 			expect(autoWhitelisted?.notes).toContain('Auto-whitelisted');
 		});
@@ -337,8 +354,9 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(400);
-			const data = await response.json();
-			expect(data.errors).toBeDefined();
+			const result = await response.json();
+			const error = unwrapError(result);
+			expect(error.error || error.details).toBeDefined();
 
 			// Verify no whitelist entry created
 			const whitelist = mockDB._getWhitelist();
@@ -355,11 +373,10 @@ describe('Admin Operations Integration', () => {
 				name: 'Meeting One',
 				email: 'meeting1@example.com',
 				date: '2025-12-15',
-				time: '14:00',
-				platform: 'zoom',
-				notes: 'Project discussion',
+				start_time: '2025-12-15T14:00:00.000Z',
+				platform: 'discord',
 				status: 'pending',
-				meeting_link: 'https://zoom.us/j/123',
+				meeting_link: 'https://discord.gg/abc',
 				created_at: Date.now(),
 			});
 			appointments.set('apt-2', {
@@ -367,9 +384,8 @@ describe('Admin Operations Integration', () => {
 				name: 'Meeting Two',
 				email: 'meeting2@example.com',
 				date: '2025-12-16',
-				time: '10:00',
-				platform: 'google-meet',
-				notes: 'Review session',
+				start_time: '2025-12-16T10:00:00.000Z',
+				platform: 'google',
 				status: 'confirmed',
 				meeting_link: 'https://meet.google.com/abc',
 				created_at: Date.now(),
@@ -383,7 +399,8 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
+			const result = await response.json();
+			const data = unwrapData<{ appointments: any[] }>(result);
 			expect(data.appointments).toHaveLength(2);
 		});
 
@@ -397,12 +414,12 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
-			expect(data.message).toContain('updated');
+			const result = await response.json();
+			expect(result.message || result.data?.message).toContain('updated');
 
 			// Verify D1 update
 			const appointments = mockDB._getAppointments();
-			const updated = appointments.find((a) => a.id === 'apt-1');
+			const updated = appointments.find((a: any) => a.id === 'apt-1');
 			expect(updated?.status).toBe('confirmed');
 		});
 
@@ -413,12 +430,12 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
-			expect(data.message).toContain('cancelled');
+			const result = await response.json();
+			expect(result.message || result.data?.message).toContain('cancelled');
 
 			// Verify status update in D1 (soft delete)
 			const appointments = mockDB._getAppointments();
-			const cancelled = appointments.find((a) => a.id === 'apt-1');
+			const cancelled = appointments.find((a: any) => a.id === 'apt-1');
 			expect(cancelled?.status).toBe('cancelled');
 		});
 
@@ -451,7 +468,7 @@ describe('Admin Operations Integration', () => {
 				start_hour: 9,
 				end_hour: 17,
 				available_days: '1,2,3,4,5',
-				platforms: 'zoom,google-meet',
+				platforms: 'discord,google,teams,jitsi',
 				advance_notice_hours: 24,
 			});
 		});
@@ -463,7 +480,8 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
+			const result = await response.json();
+			const data = unwrapData<any>(result);
 			expect(data.timezone).toBe('America/New_York');
 			expect(data.start_hour).toBe(9);
 			expect(data.end_hour).toBe(17);
@@ -479,14 +497,14 @@ describe('Admin Operations Integration', () => {
 					start_hour: 8,
 					end_hour: 18,
 					available_days: '1,2,3,4,5,6',
-					platforms: 'zoom,google-meet,teams',
+					platforms: 'discord,google,teams',
 					advance_notice_hours: 48,
 				},
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
-			expect(data.message).toContain('updated');
+			const result = await response.json();
+			expect(result.message || result.data?.message).toContain('updated');
 
 			// Verify D1 update
 			const configTables = mockDB._getTables().appointmentConfig;
@@ -509,8 +527,9 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(400);
-			const data = await response.json();
-			expect(data.errors).toBeDefined();
+			const result = await response.json();
+			const error = unwrapError(result);
+			expect(error.error || error.details).toBeDefined();
 
 			// Verify D1 not updated with invalid data
 			const configTables = mockDB._getTables().appointmentConfig;
@@ -578,7 +597,8 @@ describe('Admin Operations Integration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const data = await response.json();
+			const result = await response.json();
+			const data = unwrapData<any>(result);
 			expect(data.submissions.total).toBe(2);
 			expect(data.appointments.total).toBe(2);
 			expect(data.whitelist.total).toBe(1);

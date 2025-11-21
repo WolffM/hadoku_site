@@ -4,18 +4,18 @@
  */
 
 import { API_ENDPOINTS, PAGINATION } from '../../config/contact-admin';
-import type {
-	Email,
-	GetSubmissionsResponse,
-	WhitelistEntry,
-	GetWhitelistResponse,
-	AppointmentConfig,
-	GetAppointmentConfigResponse,
-	SendEmailRequest,
-	SendEmailResponse,
-	ApiResponse,
+import {
+	ApiError,
+	type Email,
+	type GetSubmissionsResponse,
+	type WhitelistEntry,
+	type GetWhitelistResponse,
+	type AppointmentConfig,
+	type GetAppointmentConfigResponse,
+	type SendEmailRequest,
+	type SendEmailResponse,
+	type ApiResponse,
 } from './types';
-import { ApiError } from './types';
 
 /**
  * Contact Admin API Client
@@ -27,7 +27,7 @@ export class ContactAdminClient {
 	/**
 	 * Create headers with admin key
 	 */
-	private getHeaders(includeContentType: boolean = false): HeadersInit {
+	private getHeaders(includeContentType = false): HeadersInit {
 		const headers: Record<string, string> = {
 			'X-User-Key': this.adminKey,
 		};
@@ -53,15 +53,17 @@ export class ContactAdminClient {
 			});
 
 			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+				const errorData = (await response.json().catch(() => ({ message: 'Unknown error' }))) as {
+					message?: string;
+				};
 				throw new ApiError(
-					errorData.message || `Request failed: ${response.statusText}`,
+					errorData.message ?? `Request failed: ${response.statusText}`,
 					response.status,
 					errorData
 				);
 			}
 
-			return await response.json();
+			return (await response.json()) as T;
 		} catch (error) {
 			if (error instanceof ApiError) {
 				throw error;

@@ -79,7 +79,7 @@ export function maskSessionId(id: string): string {
  * ```
  */
 export function maskEmail(email: string): string {
-	if (!email || !email.includes('@')) {
+	if (!email?.includes('@')) {
 		return email;
 	}
 

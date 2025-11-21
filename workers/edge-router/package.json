@@ -1,5 +1,5 @@
 {
-  "name": "edge-router",
+  "name": "@hadoku/edge-router",
   "version": "1.0.0",
   "description": "Edge router Worker for hadoku.me with API fallback logic",
   "main": "src/index.ts",

@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { ContactAdminClient } from '../../../lib/api/contact-admin-client';
+import type { ContactAdminClient } from '../../../lib/api/contact-admin-client';
 import { ContactAdminStorage } from '../../../lib/storage/contact-admin-storage';
 import { VALID_RECIPIENTS } from '../../../config/contact-admin';
 import type { SendEmailRequest } from '../../../lib/api/types';

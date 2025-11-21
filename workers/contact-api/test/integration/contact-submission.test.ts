@@ -72,12 +72,12 @@ describe('Contact Submission Integration', () => {
 
 			// Verify KV rate limit tracking
 			const kvStore = mockKV._getStore();
-			const rateLimitKey = Array.from(kvStore.keys()).find((key) => key.startsWith('ratelimit:'));
+			const rateLimitKey = Array.from(kvStore.keys()).find((key) => key.startsWith('rate-limit:'));
 			expect(rateLimitKey).toBeDefined();
 			if (rateLimitKey) {
 				const rateLimitData = JSON.parse(kvStore.get(rateLimitKey)!);
 				expect(rateLimitData.count).toBe(1);
-				expect(rateLimitData.resetAt).toBeDefined();
+				expect(rateLimitData.windowStart).toBeDefined();
 			}
 		});
 
@@ -123,7 +123,7 @@ describe('Contact Submission Integration', () => {
 			// Verify separate rate limit entries in KV
 			const kvStore = mockKV._getStore();
 			const rateLimitKeys = Array.from(kvStore.keys()).filter((key) =>
-				key.startsWith('ratelimit:')
+				key.startsWith('rate-limit:')
 			);
 			expect(rateLimitKeys.length).toBeGreaterThanOrEqual(2);
 		});
@@ -146,7 +146,7 @@ describe('Contact Submission Integration', () => {
 					body: {
 						name: `User ${i}`,
 						email: `user${i}@example.com`,
-						message: `Message ${i}`,
+						message: `This is test message number ${i}`,
 						recipient: 'matthaeus@hadoku.me',
 					},
 				});

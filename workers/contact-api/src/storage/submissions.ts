@@ -44,7 +44,7 @@ export async function createSubmission(
 	db: D1Database,
 	params: CreateSubmissionParams
 ): Promise<StoredSubmission> {
-	const id = crypto.randomUUID();
+	const id = (globalThis.crypto as { randomUUID: () => string }).randomUUID();
 	const created_at = Date.now();
 
 	await db
@@ -62,11 +62,11 @@ export async function createSubmission(
 			params.ip_address,
 			params.user_agent,
 			params.referrer,
-			params.recipient || null
+			params.recipient ?? null
 		)
 		.run();
 
-	return {
+	const result: StoredSubmission = {
 		id,
 		name: params.name,
 		email: params.email,
@@ -76,9 +76,11 @@ export async function createSubmission(
 		ip_address: params.ip_address,
 		user_agent: params.user_agent,
 		referrer: params.referrer,
-		recipient: params.recipient || null,
+		recipient: params.recipient ?? null,
 		deleted_at: null,
 	};
+
+	return result;
 }
 
 /**
@@ -88,9 +90,9 @@ export async function createSubmission(
  */
 export async function getAllSubmissions(
 	db: D1Database,
-	limit: number = PAGINATION_DEFAULTS.LIMIT,
-	offset: number = PAGINATION_DEFAULTS.OFFSET,
-	includeDeleted: boolean = false
+	limit = PAGINATION_DEFAULTS.LIMIT,
+	offset = PAGINATION_DEFAULTS.OFFSET,
+	includeDeleted = false
 ): Promise<StoredSubmission[]> {
 	const whereClause = includeDeleted ? '' : `WHERE status != 'deleted'`;
 	const result = await db
@@ -103,7 +105,7 @@ export async function getAllSubmissions(
 		.bind(limit, offset)
 		.all<StoredSubmission>();
 
-	return result.results || [];
+	return result.results ?? [];
 }
 
 /**
@@ -176,7 +178,7 @@ export async function purgeOldDeletedSubmissions(db: D1Database): Promise<number
 		.bind(cutoffTime)
 		.run();
 
-	return result.meta?.changes || 0;
+	return result.meta?.changes ?? 0;
 }
 
 /**
@@ -196,7 +198,7 @@ export async function getSubmissionStats(db: D1Database): Promise<SubmissionStat
 		)
 		.first<SubmissionStats>();
 
-	return result || { total: 0, unread: 0, read: 0, archived: 0, deleted: 0 };
+	return result ?? { total: 0, unread: 0, read: 0, archived: 0, deleted: 0 };
 }
 
 /**
@@ -206,7 +208,7 @@ export async function getSubmissionStats(db: D1Database): Promise<SubmissionStat
  */
 export async function archiveOldSubmissions(
 	db: D1Database,
-	daysOld: number = RETENTION_CONFIG.ARCHIVE_AFTER_DAYS
+	daysOld = RETENTION_CONFIG.ARCHIVE_AFTER_DAYS
 ): Promise<number> {
 	const cutoffTime = Date.now() - daysOld * 24 * 60 * 60 * 1000;
 	const archivedAt = Date.now();
@@ -227,5 +229,5 @@ export async function archiveOldSubmissions(
 	await db.prepare(`DELETE FROM contact_submissions WHERE created_at < ?`).bind(cutoffTime).run();
 
 	// Return count of archived rows
-	return copyResult.meta?.changes || 0;
+	return copyResult.meta?.changes ?? 0;
 }

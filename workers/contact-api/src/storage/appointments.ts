@@ -3,8 +3,7 @@
  * Handles appointment booking, configuration, and management
  */
 
-import { PAGINATION_DEFAULTS } from '../constants';
-import type { AppointmentPlatform } from '../constants';
+import { PAGINATION_DEFAULTS, type AppointmentPlatform } from '../constants';
 
 /**
  * Appointment configuration stored in database
@@ -75,13 +74,13 @@ export interface CreateAppointmentParams {
  * Utility to build dynamic update queries
  * Avoids deeply nested conditionals for field updates
  */
-function buildUpdateQuery<T extends Record<string, any>>(
+function buildUpdateQuery<T extends Record<string, unknown>>(
 	tableName: string,
 	updates: Partial<T>,
 	whereClause: string
-): { query: string; values: any[] } {
+): { query: string; values: unknown[] } {
 	const fields: string[] = [];
-	const values: any[] = [];
+	const values: unknown[] = [];
 
 	for (const [key, value] of Object.entries(updates)) {
 		if (value !== undefined) {
@@ -137,7 +136,7 @@ export async function createAppointment(
 	db: D1Database,
 	params: CreateAppointmentParams
 ): Promise<StoredAppointment> {
-	const id = crypto.randomUUID();
+	const id = (globalThis.crypto as { randomUUID: () => string }).randomUUID();
 	const now = Date.now();
 
 	await db
@@ -150,10 +149,10 @@ export async function createAppointment(
 		)
 		.bind(
 			id,
-			params.submission_id || null,
+			params.submission_id ?? null,
 			params.name,
 			params.email,
-			params.message || null,
+			params.message ?? null,
 			params.slot_id,
 			params.date,
 			params.start_time,
@@ -161,21 +160,21 @@ export async function createAppointment(
 			params.duration,
 			params.timezone,
 			params.platform,
-			params.meeting_link || null,
-			params.meeting_id || null,
+			params.meeting_link ?? null,
+			params.meeting_id ?? null,
 			now,
 			now,
-			params.ip_address || null,
-			params.user_agent || null
+			params.ip_address ?? null,
+			params.user_agent ?? null
 		)
 		.run();
 
-	return {
+	const result: StoredAppointment = {
 		id,
-		submission_id: params.submission_id || null,
+		submission_id: params.submission_id ?? null,
 		name: params.name,
 		email: params.email,
-		message: params.message || null,
+		message: params.message ?? null,
 		slot_id: params.slot_id,
 		date: params.date,
 		start_time: params.start_time,
@@ -183,17 +182,19 @@ export async function createAppointment(
 		duration: params.duration,
 		timezone: params.timezone,
 		platform: params.platform,
-		meeting_link: params.meeting_link || null,
-		meeting_id: params.meeting_id || null,
+		meeting_link: params.meeting_link ?? null,
+		meeting_id: params.meeting_id ?? null,
 		status: 'confirmed',
 		created_at: now,
 		updated_at: now,
 		cancelled_at: null,
-		ip_address: params.ip_address || null,
-		user_agent: params.user_agent || null,
+		ip_address: params.ip_address ?? null,
+		user_agent: params.user_agent ?? null,
 		confirmation_sent: false,
 		reminder_sent: false,
 	};
+
+	return result;
 }
 
 /**
@@ -219,7 +220,7 @@ export async function isSlotAvailable(db: D1Database, slotId: string): Promise<b
 export async function getAppointmentsByDate(
 	db: D1Database,
 	date: string,
-	includeNonConfirmed: boolean = false
+	includeNonConfirmed = false
 ): Promise<StoredAppointment[]> {
 	const whereClause = includeNonConfirmed
 		? 'WHERE date = ?'
@@ -234,7 +235,7 @@ export async function getAppointmentsByDate(
 		.bind(date)
 		.all<StoredAppointment>();
 
-	return result.results || [];
+	return result.results ?? [];
 }
 
 /**
@@ -254,7 +255,7 @@ export async function getAllAppointments(
 		.bind(limit, offset)
 		.all<StoredAppointment>();
 
-	return result.results || [];
+	return result.results ?? [];
 }
 
 /**

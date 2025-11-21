@@ -98,17 +98,28 @@ export function createMockD1() {
 							// Contact submissions
 							if (query.includes('INSERT INTO contact_submissions')) {
 								const id = values[0];
+								console.log('[MOCK DB] INSERT contact_submissions with values:', {
+									id,
+									name: values[1],
+									email: values[2],
+									message: values[3],
+									created_at: values[4],
+									ip_address: values[5],
+									user_agent: values[6],
+									referrer: values[7],
+									recipient: values[8],
+								});
 								_submissions.set(id, {
 									id,
 									name: values[1],
 									email: values[2],
 									message: values[3],
-									status: values[4],
-									created_at: values[5],
-									ip_address: values[6],
-									user_agent: values[7],
-									referrer: values[8],
-									recipient: values[9],
+									status: 'unread', // Status is hardcoded in SQL, not a parameter
+									created_at: values[4],
+									ip_address: values[5],
+									user_agent: values[6],
+									referrer: values[7],
+									recipient: values[8],
 									deleted_at: null,
 								});
 								return { success: true, meta: {} };
@@ -148,19 +159,48 @@ export function createMockD1() {
 							// Appointments
 							if (query.includes('INSERT INTO appointments')) {
 								const id = values[0];
+								console.log('[MOCK DB] INSERT appointments with values:', {
+									id,
+									submission_id: values[1],
+									name: values[2],
+									email: values[3],
+									message: values[4],
+									slot_id: values[5],
+									date: values[6],
+									start_time: values[7],
+									end_time: values[8],
+									duration: values[9],
+									timezone: values[10],
+									platform: values[11],
+									meeting_link: values[12],
+									meeting_id: values[13],
+									created_at: values[14],
+									updated_at: values[15],
+									ip_address: values[16],
+									user_agent: values[17],
+								});
 								_appointments.set(id, {
 									id,
-									name: values[1],
-									email: values[2],
-									date: values[3],
-									time: values[4],
-									platform: values[5],
-									notes: values[6],
-									status: values[7],
-									meeting_link: values[8],
-									created_at: values[9],
-									ip_address: values[10],
-									user_agent: values[11],
+									submission_id: values[1],
+									name: values[2],
+									email: values[3],
+									message: values[4],
+									slot_id: values[5],
+									date: values[6],
+									start_time: values[7],
+									end_time: values[8],
+									duration: values[9],
+									timezone: values[10],
+									platform: values[11],
+									meeting_link: values[12],
+									meeting_id: values[13],
+									status: 'confirmed', // Status is hardcoded in SQL, not a parameter
+									created_at: values[14],
+									updated_at: values[15],
+									ip_address: values[16],
+									user_agent: values[17],
+									confirmation_sent: 0,
+									reminder_sent: 0,
 								});
 								return { success: true, meta: {} };
 							}
@@ -284,6 +324,14 @@ export function createMockD1() {
 							}
 							if (query.includes('FROM appointments') && query.includes('WHERE id = ?')) {
 								return _appointments.get(values[0]) || null;
+							}
+							// Check slot availability: SELECT id FROM appointments WHERE slot_id = ? AND status = 'confirmed'
+							if (query.includes('FROM appointments') && query.includes('WHERE slot_id = ?')) {
+								const slotId = values[0];
+								const appointment = Array.from(_appointments.values()).find(
+									(apt) => apt.slot_id === slotId && apt.status === 'confirmed'
+								);
+								return appointment ? { id: appointment.id } : null;
 							}
 							if (query.includes('FROM appointment_config')) {
 								return _appointmentConfig.get('default') || null;

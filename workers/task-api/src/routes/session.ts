@@ -3,15 +3,14 @@
  *
  * Handles session handshake endpoint for establishing and migrating sessions
  */
-import { Hono } from 'hono';
-import type { Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import { badRequest, logRequest, logError } from '../../../util';
-import { handleSessionHandshake, type HandshakeRequest } from '../session';
+import { handleSessionHandshake } from '../session';
 import { maskKey, maskSessionId } from '../request-utils';
 
-type Env = {
+interface Env {
 	TASKS_KV: KVNamespace;
-};
+}
 
 export function createSessionRoutes() {
 	const app = new Hono<{ Bindings: Env }>();
@@ -30,7 +29,7 @@ export function createSessionRoutes() {
 	app.post('/session/handshake', async (c: Context) => {
 		try {
 			const auth = c.get('authContext');
-			const body = (await c.req.json()) as HandshakeRequest;
+			const body = await c.req.json();
 
 			// Validate request
 			if (!body.newSessionId) {
