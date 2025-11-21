@@ -5,7 +5,7 @@
  */
 
 import { Hono, type Context, type Next } from 'hono';
-import { ok, badRequest, notFound, serverError } from '@hadoku/worker-utils';
+import { badRequest, notFound, serverError } from '@hadoku/worker-utils';
 import {
 	getAllSubmissions,
 	getSubmissionById,
@@ -33,6 +33,14 @@ import {
 import { resetRateLimit } from '../rate-limit';
 import { createEmailProvider } from '../email';
 import { EMAIL_CONFIG, VALIDATION_CONSTRAINTS, RETENTION_CONFIG } from '../constants';
+
+/**
+ * Admin API response helper - matches contact-admin client expectations
+ * Returns { success: true, data: T } instead of { data: T, timestamp: string }
+ */
+function adminOk<T>(c: Context, data: T): Response {
+	return c.json({ success: true, data }, 200);
+}
 
 interface Env {
 	DB: D1Database;
@@ -93,7 +101,7 @@ export function createAdminRoutes() {
 			const submissions = await getAllSubmissions(c.env.DB, limit, offset);
 			const stats = await getSubmissionStats(c.env.DB);
 
-			return ok(c, {
+			return adminOk(c, {
 				submissions,
 				stats,
 				pagination: {
@@ -121,7 +129,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Submission not found');
 			}
 
-			return ok(c, { submission });
+			return adminOk(c, { submission });
 		} catch (error) {
 			console.error('Error fetching submission:', error);
 			return serverError(c, 'Failed to fetch submission');
@@ -151,7 +159,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Submission not found');
 			}
 
-			return ok(c, { success: true, message: 'Status updated successfully' });
+			return adminOk(c, { success: true, message: 'Status updated successfully' });
 		} catch (error) {
 			console.error('Error updating submission status:', error);
 			return serverError(c, 'Failed to update submission status');
@@ -172,7 +180,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Submission not found');
 			}
 
-			return ok(c, { success: true, message: 'Submission moved to trash' });
+			return adminOk(c, { success: true, message: 'Submission moved to trash' });
 		} catch (error) {
 			console.error('Error deleting submission:', error);
 			return serverError(c, 'Failed to delete submission');
@@ -193,7 +201,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Submission not found');
 			}
 
-			return ok(c, { success: true, message: 'Submission restored successfully' });
+			return adminOk(c, { success: true, message: 'Submission restored successfully' });
 		} catch (error) {
 			console.error('Error restoring submission:', error);
 			return serverError(c, 'Failed to restore submission');
@@ -208,7 +216,7 @@ export function createAdminRoutes() {
 		try {
 			const purgedCount = await purgeOldDeletedSubmissions(c.env.DB);
 
-			return ok(c, {
+			return adminOk(c, {
 				success: true,
 				message: `Permanently deleted ${purgedCount} submission(s) from trash`,
 				purgedCount,
@@ -228,7 +236,7 @@ export function createAdminRoutes() {
 			const stats = await getSubmissionStats(c.env.DB);
 			const dbSize = await getDatabaseSize(c.env.DB);
 
-			return ok(c, {
+			return adminOk(c, {
 				submissions: stats,
 				database: {
 					sizeBytes: dbSize.sizeBytes,
@@ -258,7 +266,7 @@ export function createAdminRoutes() {
 
 			const archivedCount = await archiveOldSubmissions(c.env.DB, daysOld);
 
-			return ok(c, {
+			return adminOk(c, {
 				success: true,
 				message: `Archived ${archivedCount} submission(s)`,
 				archivedCount,
@@ -283,7 +291,7 @@ export function createAdminRoutes() {
 
 			await resetRateLimit(c.env.RATE_LIMIT_KV, body.ipAddress);
 
-			return ok(c, {
+			return adminOk(c, {
 				success: true,
 				message: `Rate limit reset for IP: ${body.ipAddress}`,
 			});
@@ -363,7 +371,7 @@ export function createAdminRoutes() {
 				'Auto-whitelisted after admin reply'
 			);
 
-			return ok(c, {
+			return adminOk(c, {
 				success: true,
 				message: 'Email sent successfully',
 				messageId: result.messageId,
@@ -383,7 +391,7 @@ export function createAdminRoutes() {
 		try {
 			const emails = await getAllWhitelistedEmails(c.env.DB);
 
-			return ok(c, {
+			return adminOk(c, {
 				emails,
 				total: emails.length,
 			});
@@ -411,7 +419,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Email not found in whitelist');
 			}
 
-			return ok(c, {
+			return adminOk(c, {
 				success: true,
 				message: `Email ${email} removed from whitelist`,
 			});
@@ -438,14 +446,16 @@ export function createAdminRoutes() {
 			}
 
 			// Parse comma-separated values into arrays for frontend
-			return ok(c, {
+			const platforms = config.meeting_platforms.split(',').map((p) => p.trim());
+			return adminOk(c, {
 				config: {
 					...config,
 					available_days: config.available_days.split(',').map((d) => parseInt(d.trim())),
 					slot_duration_options: config.slot_duration_options
 						.split(',')
 						.map((d) => parseInt(d.trim())),
-					meeting_platforms: config.meeting_platforms.split(',').map((p) => p.trim()),
+					meeting_platforms: platforms,
+					platforms, // Add alias for frontend compatibility
 				},
 			});
 		} catch (error) {
@@ -486,7 +496,7 @@ export function createAdminRoutes() {
 				return serverError(c, 'Failed to update configuration');
 			}
 
-			return ok(c, {
+			return adminOk(c, {
 				success: true,
 				message: 'Appointment configuration updated successfully',
 			});
@@ -507,7 +517,7 @@ export function createAdminRoutes() {
 
 			const appointments = await getAllAppointments(c.env.DB, limit, offset);
 
-			return ok(c, {
+			return adminOk(c, {
 				appointments,
 				pagination: {
 					limit,
@@ -533,7 +543,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Appointment not found');
 			}
 
-			return ok(c, { appointment });
+			return adminOk(c, { appointment });
 		} catch (error) {
 			console.error('Error fetching appointment:', error);
 			return serverError(c, 'Failed to fetch appointment');
@@ -569,7 +579,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Appointment not found');
 			}
 
-			return ok(c, { success: true, message: 'Appointment status updated successfully' });
+			return adminOk(c, { success: true, message: 'Appointment status updated successfully' });
 		} catch (error) {
 			console.error('Error updating appointment status:', error);
 			return serverError(c, 'Failed to update appointment status');
@@ -594,7 +604,7 @@ export function createAdminRoutes() {
 				offset,
 			});
 
-			return ok(c, {
+			return adminOk(c, {
 				templates,
 				pagination: { limit, offset, total: templates.length },
 			});
@@ -620,7 +630,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Template not found');
 			}
 
-			return ok(c, { template });
+			return adminOk(c, { template });
 		} catch (error) {
 			console.error('Error fetching template:', error);
 			return serverError(c, 'Failed to fetch template');
@@ -675,7 +685,7 @@ export function createAdminRoutes() {
 				changedBy
 			);
 
-			return ok(c, { template, message: 'Template created successfully' });
+			return adminOk(c, { template, message: 'Template created successfully' });
 		} catch (error) {
 			console.error('Error creating template:', error);
 			return serverError(c, 'Failed to create template');
@@ -741,7 +751,7 @@ export function createAdminRoutes() {
 				changedBy
 			);
 
-			return ok(c, { template, message: 'Template updated successfully' });
+			return adminOk(c, { template, message: 'Template updated successfully' });
 		} catch (error) {
 			console.error('Error updating template:', error);
 			return serverError(c, 'Failed to update template');
@@ -762,7 +772,7 @@ export function createAdminRoutes() {
 				return notFound(c, 'Template not found');
 			}
 
-			return ok(c, { success: true, message: 'Template archived successfully' });
+			return adminOk(c, { success: true, message: 'Template archived successfully' });
 		} catch (error) {
 			console.error('Error deleting template:', error);
 			return serverError(c, 'Failed to delete template');
@@ -780,7 +790,7 @@ export function createAdminRoutes() {
 
 			const versions = await getTemplateVersionHistory(c.env.DB, id, 'email', limit);
 
-			return ok(c, { versions });
+			return adminOk(c, { versions });
 		} catch (error) {
 			console.error('Error fetching template versions:', error);
 			return serverError(c, 'Failed to fetch template versions');
