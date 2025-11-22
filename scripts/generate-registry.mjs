@@ -9,11 +9,13 @@ const __dirname = dirname(__filename);
 // Read package.json to get versions for cache busting
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-const resumeVersion = packageJson.dependencies['@wolffm/resume-bot']?.replace(/^[\^~]/, '') || Date.now().toString();
+const resumeVersion =
+	packageJson.dependencies['@wolffm/resume-bot']?.replace(/^[\^~]/, '') || Date.now().toString();
 const taskVersion = packageJson.dependencies['@wolffm/task']?.replace('^', '') || 'latest';
 const watchpartyVersion =
 	packageJson.dependencies['@wolffm/watchparty-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
-const contactVersion = packageJson.dependencies['@wolffm/contact-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
+const contactVersion =
+	packageJson.dependencies['@wolffm/contact-ui']?.replace(/^[\^~]/, '') || Date.now().toString();
 const timestamp = Date.now(); // Fallback for apps without versions
 
 // Load .env file if it exists (for local development)
@@ -59,7 +61,9 @@ function createApp(name, version, additionalProps = {}, hasCSS = true) {
 // Generate registry with cache-busting query parameters
 const registry = {
 	home: createApp('home', timestamp, {}, false),
-	resume: createApp('resume', resumeVersion),
+	resume: createApp('resume', resumeVersion, {
+		apiUrl: '/resume', // Base URL for resume API endpoints
+	}),
 	watchparty: createApp('watchparty', watchpartyVersion, {
 		serverOrigin: MODE === 'production' ? 'https://api.hadoku.me' : 'http://localhost:8080',
 	}),

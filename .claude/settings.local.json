@@ -54,7 +54,10 @@
       "Bash(find:*)",
       "Bash(npx tsc:*)",
       "Bash(npx lint-staged --version)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(node scripts/generate-registry.mjs:*)",
+      "Bash(node node_modules/wrangler/bin/wrangler.js pages deploy:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
