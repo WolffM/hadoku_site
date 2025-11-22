@@ -38,7 +38,8 @@ const PACKAGE_CONFIGS = {
 	},
 	'@wolffm/themes': {
 		targetDir: 'themes',
-		cssSource: '../src/style.css',
+		copyAll: true,
+		cssSource: '../src/style.css', // Also copy the src CSS
 	},
 	'@wolffm/task-ui-components': {
 		targetDir: 'ui-components',
@@ -108,23 +109,23 @@ function main() {
 			console.error('✗ Failed to copy index.js:', err.message);
 			process.exit(1);
 		}
+	}
 
-		// Copy CSS file (if configured)
-		if (config.cssSource) {
-			const cssFrom = join(sourceDir, config.cssSource);
-			const cssTo = join(targetDir, 'style.css');
-			try {
-				if (existsSync(cssFrom)) {
-					copyFileSync(cssFrom, cssTo);
-					console.log(`✓ Copied style.css (from ${config.cssSource})`);
-				} else {
-					console.error(`✗ CSS file not found: ${config.cssSource}`);
-					process.exit(1);
-				}
-			} catch (err) {
-				console.error('✗ Failed to copy CSS file:', err.message);
+	// Copy CSS file (if configured) - runs for both copyAll and single-file modes
+	if (config.cssSource) {
+		const cssFrom = join(sourceDir, config.cssSource);
+		const cssTo = join(targetDir, 'style.css');
+		try {
+			if (existsSync(cssFrom)) {
+				copyFileSync(cssFrom, cssTo);
+				console.log(`✓ Copied style.css (from ${config.cssSource})`);
+			} else {
+				console.error(`✗ CSS file not found: ${config.cssSource}`);
 				process.exit(1);
 			}
+		} catch (err) {
+			console.error('✗ Failed to copy CSS file:', err.message);
+			process.exit(1);
 		}
 	}
 	console.log(`✅ ${packageShortName} bundle updated`);

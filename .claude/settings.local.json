@@ -48,7 +48,9 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(pnpm run build:*)",
-      "Bash(npx prettier:*)"
+      "Bash(npx prettier:*)",
+      "Bash(nul)",
+      "Bash(pnpm update:*)"
     ],
     "deny": [],
     "ask": []
