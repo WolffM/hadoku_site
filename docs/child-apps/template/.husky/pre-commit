@@ -1,6 +1,9 @@
 #!/bin/sh
 echo "🔍 Running pre-commit checks..."
 
+# Capture originally staged files BEFORE any modifications
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
 # Auto-fix linting and formatting issues
 echo "📋 Running ESLint auto-fix..."
 pnpm run lint:fix
@@ -57,7 +60,10 @@ else
   echo "ℹ️  No code changes detected, skipping version bump"
 fi
 
-# Stage linting and formatting changes
-git add -u
+# Re-stage only the files that were originally staged (after lint/format may have modified them)
+# This avoids accidentally staging unrelated working directory changes
+if [ -n "$STAGED_FILES" ]; then
+  echo "$STAGED_FILES" | xargs -r git add
+fi
 
 echo "✅ All pre-commit checks passed!"
