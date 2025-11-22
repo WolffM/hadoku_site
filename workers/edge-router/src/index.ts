@@ -28,6 +28,7 @@ interface Env {
 	WORKER_BASE: string;
 	LAMBDA_BASE: string;
 	CONTACT_WORKER_BASE: string; // Contact API Worker
+	RESUME_WORKER_BASE: string; // Resume API Worker
 	STATIC_ORIGIN: string;
 	TASK_API?: Fetcher; // Optional service binding
 	ANALYTICS_ENGINE?: AnalyticsEngineDataset; // Analytics Engine binding
@@ -110,6 +111,9 @@ app.all('/watchparty/api/*', async (c) => handleApiRoute(c));
 
 // Contact API - Direct proxy to contact-api worker (no fallback needed)
 app.all('/contact/api/*', async (c) => handleContactApiRoute(c));
+
+// Resume API - Direct proxy to resume-api worker (no fallback needed)
+app.all('/resume/api/*', async (c) => handleResumeApiRoute(c));
 
 // 5. Static files - proxy to GitHub Pages
 app.all('*', async (c) => proxyToGitHubPages(c));
@@ -368,6 +372,43 @@ async function handleContactApiRoute(c: Context<AppContext>): Promise<Response> 
 		logError(c.req.method, c.req.path, `Contact API failed: ${(e as Error).message}`);
 		c.set('backend', 'error');
 		return serverError(c, 'Contact API unavailable', {
+			details: (e as Error).message,
+		});
+	}
+}
+
+/**
+ * Handle resume API routes - simple proxy to resume-api worker
+ * No fallback needed since this is a dedicated public-facing endpoint
+ */
+async function handleResumeApiRoute(c: Context<AppContext>): Promise<Response> {
+	const targetUrl = new URL(c.req.path, c.env.RESUME_WORKER_BASE).toString();
+
+	try {
+		// Clone headers
+		const headers = new Headers(c.req.raw.headers);
+
+		// Read body once
+		const bodyBuffer = c.req.raw.body ? await c.req.arrayBuffer() : null;
+
+		// Forward request to resume-api worker
+		const res = await fetch(targetUrl, {
+			method: c.req.method,
+			headers,
+			body: bodyBuffer,
+			redirect: 'manual',
+		});
+
+		// Add tracing header
+		const newRes = new Response(res.body, res);
+		newRes.headers.set('X-Backend-Source', 'resume-api-worker');
+
+		c.set('backend', 'worker');
+		return newRes;
+	} catch (e) {
+		logError(c.req.method, c.req.path, `Resume API failed: ${(e as Error).message}`);
+		c.set('backend', 'error');
+		return serverError(c, 'Resume API unavailable', {
 			details: (e as Error).message,
 		});
 	}

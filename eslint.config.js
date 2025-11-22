@@ -39,6 +39,7 @@ export default [
 					'./workers/contact-api/tsconfig.json',
 					'./workers/task-api/tsconfig.json',
 					'./workers/edge-router/tsconfig.json',
+					'./workers/resume-api/tsconfig.json',
 					'./workers/util/tsconfig.json',
 					'./docs/child-apps/template/tsconfig.json',
 				], // enables full type-aware linting

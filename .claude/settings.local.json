@@ -52,7 +52,9 @@
       "Bash(nul)",
       "Bash(pnpm update:*)",
       "Bash(find:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx lint-staged --version)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

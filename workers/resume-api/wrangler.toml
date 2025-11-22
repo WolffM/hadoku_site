@@ -1,0 +1,39 @@
+name = "resume-api"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Observability settings - logs visible in Cloudflare dashboard
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+
+# Build configuration
+[build]
+command = ""
+
+# KV Namespace - Rate limiting (shared with contact-api)
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "67a22575cb1e4ff79b65b5cf8e11729b"
+
+# KV Namespace - Content storage (resume markdown)
+# To upload resume content:
+#   npx wrangler kv key put --namespace-id=963eeaa358d44c88a7e4047303e20997 "resume" --path=../../ai_engineer_resume_waymo.md
+[[kv_namespaces]]
+binding = "CONTENT_KV"
+id = "963eeaa358d44c88a7e4047303e20997"
+
+# Secrets (set via: wrangler secret put <NAME>)
+#
+# GROQ_API_KEY - API key for Groq LLM service
+#   wrangler secret put GROQ_API_KEY
+#
+# RESUME_SYSTEM_PROMPT - The system prompt for the resume chatbot
+#   wrangler secret put RESUME_SYSTEM_PROMPT
