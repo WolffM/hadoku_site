@@ -56,7 +56,7 @@ export function MailList({
 									{new Date(email.created_at).toLocaleDateString()}
 								</span>
 							</div>
-							<div className="text-xs text-text-secondary mb-1">{email.email}</div>
+							<div className="text-xs text-text-muted mb-1">{email.email}</div>
 							<div className="text-sm text-text-secondary truncate">{email.message}</div>
 						</button>
 					);

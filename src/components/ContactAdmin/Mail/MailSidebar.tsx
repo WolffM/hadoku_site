@@ -66,7 +66,7 @@ export function MailSidebar({
 						}}
 						className={`w-full text-left px-3 py-2 rounded text-sm ${
 							selectedRecipient === 'all' && !showTrash
-								? 'bg-primary-light text-primary-dark font-medium'
+								? 'bg-primary text-primary-dark font-medium'
 								: 'text-text hover:bg-bg-card'
 						}`}
 					>
@@ -88,7 +88,7 @@ export function MailSidebar({
 								onClick={() => onSelectRecipient(recipient)}
 								className={`w-full text-left px-3 py-2 rounded text-sm ${
 									selectedRecipient === recipient && !showTrash
-										? 'bg-primary-light text-primary-dark font-medium'
+										? 'bg-primary text-primary-dark font-medium'
 										: 'text-text hover:bg-bg-card'
 								}`}
 							>
@@ -105,9 +105,7 @@ export function MailSidebar({
 					<button
 						onClick={onShowTrash}
 						className={`w-full text-left px-3 py-2 rounded text-sm ${
-							showTrash
-								? 'bg-primary-light text-primary-dark font-medium'
-								: 'text-text hover:bg-bg-card'
+							showTrash ? 'bg-primary text-primary-dark font-medium' : 'text-text hover:bg-bg-card'
 						}`}
 					>
 						<span className="flex justify-between">
