@@ -39,7 +39,7 @@
     "@wolffm/resume-bot": "^1.0.6",
     "@wolffm/task": "^3.4.6",
     "@wolffm/task-ui-components": "^1.2.4",
-    "@wolffm/themes": "1.1.12",
+    "@wolffm/themes": "1.1.15",
     "@wolffm/watchparty-ui": "^0.1.11",
     "astro": "^5.15.1",
     "chokidar": "^4.0.3",
