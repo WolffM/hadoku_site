@@ -1,5 +1,5 @@
 /**
- * Contact Admin Component - Refactored
+ * Contact Admin Component
  * Main component that orchestrates all sub-components and hooks
  */
 
@@ -8,24 +8,23 @@ import ThemePickerWrapper from '../ThemePickerWrapper';
 import { ContactAdminClient } from '../../lib/api/contact-admin-client';
 
 // Hooks
-import { useAdminAuth } from './hooks/useAdminAuth';
-import { useEmails } from './hooks/useEmails';
-import { useComposeForm } from './hooks/useComposeForm';
-import { useWhitelist } from './hooks/useWhitelist';
-import { useAppointmentConfig } from './hooks/useAppointmentConfig';
+import {
+	useAdminAuth,
+	useEmails,
+	useComposeForm,
+	useWhitelist,
+	useAppointmentConfig,
+} from './hooks';
 
 // Components
-import { MailSidebar } from './Mail/MailSidebar';
-import { MailList } from './Mail/MailList';
-import { MailDetail } from './Mail/MailDetail';
-import { MailCompose } from './Mail/MailCompose';
-import { WhitelistModal } from './Whitelist/WhitelistModal';
-import { AppointmentConfigEditor } from './Appointments/AppointmentConfigEditor';
+import { MailSidebar, MailList, MailDetail, MailCompose } from './Mail';
+import { WhitelistModal } from './Whitelist';
+import { AppointmentConfigEditor } from './Appointments';
 
 type ViewMode = 'inbox' | 'compose';
 type TabMode = 'mail' | 'appointments';
 
-export default function ContactAdminRefactored() {
+export function ContactAdmin() {
 	// Auth
 	const { adminKey, keyValidated, loading: authLoading, error: authError } = useAdminAuth();
 
@@ -249,3 +248,5 @@ export default function ContactAdminRefactored() {
 		</div>
 	);
 }
+
+export default ContactAdmin;

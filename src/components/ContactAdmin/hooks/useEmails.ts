@@ -14,7 +14,7 @@ interface UseEmailsResult {
 	refreshing: boolean;
 	error: string | null;
 	readEmails: Set<string>;
-	selectEmail: (email: Email) => void;
+	selectEmail: (email: Email | null) => void;
 	refreshEmails: () => Promise<void>;
 	deleteEmail: (id: string) => Promise<void>;
 	restoreEmail: (id: string) => Promise<void>;
@@ -127,11 +127,11 @@ export function useEmails(client: ContactAdminClient | null): UseEmailsResult {
 
 	// Select email and mark as read
 	const selectEmail = useCallback(
-		(email: Email) => {
+		(email: Email | null) => {
 			setSelectedEmail(email);
 
 			// Mark as read in localStorage
-			if (!readEmails.has(email.id)) {
+			if (email && !readEmails.has(email.id)) {
 				const updated = new Set(readEmails);
 				updated.add(email.id);
 				setReadEmails(updated);

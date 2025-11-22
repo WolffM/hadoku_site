@@ -51,7 +51,8 @@
       "Bash(npx prettier:*)",
       "Bash(nul)",
       "Bash(pnpm update:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
