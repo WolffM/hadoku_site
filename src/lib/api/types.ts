@@ -66,11 +66,13 @@ export interface GetWhitelistResponse {
 
 export interface AppointmentConfig {
 	timezone: string;
-	start_hour: number;
-	end_hour: number;
+	start_hour: number; // Hour in 24h format (0-23)
+	end_hour: number; // Hour in 24h format (0-23)
 	available_days: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-	platforms: string[];
-	advance_notice_hours: number;
+	platforms: string[]; // Array of platform IDs: 'discord', 'google', 'teams', 'jitsi'
+	advance_notice_hours: number; // Minimum hours required between booking and appointment
+	slot_duration_options?: number[]; // Available slot durations in minutes (e.g., [15, 30, 60])
+	max_advance_days?: number; // Maximum days in advance appointments can be booked
 }
 
 export interface GetAppointmentConfigResponse {

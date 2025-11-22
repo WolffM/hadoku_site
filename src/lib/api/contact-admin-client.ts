@@ -147,6 +147,17 @@ export class ContactAdminClient {
 	}
 
 	/**
+	 * Add an email to the whitelist
+	 */
+	async addToWhitelist(email: string, notes?: string): Promise<boolean> {
+		const response = await this.fetch<ApiResponse>(API_ENDPOINTS.WHITELIST, {
+			method: 'POST',
+			body: JSON.stringify({ email, notes }),
+		});
+		return response.success;
+	}
+
+	/**
 	 * Remove an email from the whitelist
 	 */
 	async removeFromWhitelist(email: string): Promise<boolean> {

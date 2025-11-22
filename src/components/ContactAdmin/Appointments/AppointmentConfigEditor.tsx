@@ -116,7 +116,7 @@ export function AppointmentConfigEditor({
 									}}
 									className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
 										config.available_days.includes(day.value)
-											? 'bg-primary text-primary-dark'
+											? 'bg-primary text-bg-card'
 											: 'bg-bg border border-border text-text-secondary hover:text-text'
 									}`}
 								>
@@ -175,7 +175,7 @@ export function AppointmentConfigEditor({
 						<button
 							onClick={onSave}
 							disabled={saving}
-							className="px-6 py-2 bg-primary text-primary-dark rounded hover:bg-primary-dark hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							className="px-6 py-2 bg-primary text-bg-card rounded hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							{saving ? 'Saving...' : 'Save Configuration'}
 						</button>

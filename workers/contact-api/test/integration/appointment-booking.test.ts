@@ -34,15 +34,17 @@ describe('Appointment Booking Integration', () => {
 		};
 		vi.restoreAllMocks();
 
-		// Initialize appointment configuration
+		// Initialize appointment configuration with DATABASE field names
 		const defaultConfig = {
 			id: '1',
 			timezone: 'America/New_York',
-			start_hour: 9,
-			end_hour: 17,
+			business_hours_start: '09:00',
+			business_hours_end: '17:00',
 			available_days: '1,2,3,4,5', // Monday to Friday
-			platforms: 'zoom,google-meet',
-			advance_notice_hours: 24,
+			slot_duration_options: '15,30,60',
+			max_advance_days: 30,
+			min_advance_hours: 24,
+			meeting_platforms: 'discord,google,teams,jitsi',
 		};
 		mockDB._getTables().appointmentConfig.set('default', defaultConfig);
 	});

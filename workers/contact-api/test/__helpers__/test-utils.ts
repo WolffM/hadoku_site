@@ -128,8 +128,19 @@ export function createMockD1() {
 								const id = values[values.length - 1];
 								const existing = _submissions.get(id);
 								if (existing) {
-									if (query.includes('SET status = ?')) {
+									// Handle soft-delete: SET status = 'deleted', deleted_at = ?
+									if (query.includes("SET status = 'deleted'")) {
+										existing.status = 'deleted';
+										existing.deleted_at = values[0];
+									}
+									// Handle regular status update: SET status = ?
+									else if (query.includes('SET status = ?')) {
 										existing.status = values[0];
+									}
+									// Handle restore: SET status = 'unread', deleted_at = NULL
+									else if (query.includes("SET status = 'unread'")) {
+										existing.status = 'unread';
+										existing.deleted_at = null;
 									}
 								}
 								return { success: true, meta: {} };
@@ -140,14 +151,30 @@ export function createMockD1() {
 								return { success: true, meta: {} };
 							}
 
-							// Whitelist
+							// Whitelist - INSERT with ON CONFLICT DO UPDATE
+							// Columns: (email, whitelisted_at, whitelisted_by, contact_id, notes)
+							// Query binds 10 values: first 5 for INSERT, next 5 for ON CONFLICT UPDATE
 							if (query.includes('INSERT INTO email_whitelist')) {
 								const email = values[0];
-								_whitelist.set(email, {
-									email,
-									whitelisted_at: values[1],
-									notes: values[2] || null,
-								});
+								const existing = _whitelist.get(email);
+
+								if (existing && query.includes('ON CONFLICT')) {
+									// UPDATE - use COALESCE logic (only update if new value is not null)
+									existing.whitelisted_at = values[5]; // Update timestamp
+									existing.whitelisted_by = values[6]; // Update who whitelisted
+									// Only update contact_id and notes if new value is not null (COALESCE)
+									if (values[7] !== null) existing.contact_id = values[7];
+									if (values[8] !== null) existing.notes = values[8];
+								} else {
+									// INSERT new entry
+									_whitelist.set(email, {
+										email,
+										whitelisted_at: values[1],
+										whitelisted_by: values[2] || null,
+										contact_id: values[3] || null,
+										notes: values[4] || null,
+									});
+								}
 								return { success: true, meta: {} };
 							}
 							if (query.includes('DELETE FROM email_whitelist')) {
@@ -220,26 +247,31 @@ export function createMockD1() {
 								_appointmentConfig.set('default', {
 									id: values[0],
 									timezone: values[1],
-									start_hour: values[2],
-									end_hour: values[3],
+									business_hours_start: values[2],
+									business_hours_end: values[3],
 									available_days: values[4],
-									platforms: values[5],
-									advance_notice_hours: values[6],
+									slot_duration_options: values[5] || '15,30,60',
+									max_advance_days: values[6] || 30,
+									min_advance_hours: values[7] || 24,
+									meeting_platforms: values[8] || 'discord,google,teams,jitsi',
 								});
 								return { success: true, meta: {} };
 							}
 							if (query.includes('UPDATE appointment_config')) {
 								const existing = _appointmentConfig.get('default');
 								if (existing) {
-									// Dynamic update based on query
-									Object.assign(existing, {
-										timezone: values[0],
-										start_hour: values[1],
-										end_hour: values[2],
-										available_days: values[3],
-										platforms: values[4],
-										advance_notice_hours: values[5],
-									});
+									// Parse the SET clause to determine which fields to update
+									// The query looks like: UPDATE appointment_config SET field1 = ?, field2 = ? WHERE id = 1
+									const setMatch = query.match(/SET\s+(.+?)\s+WHERE/i);
+									if (setMatch) {
+										const setClause = setMatch[1];
+										const fields = setClause.split(',').map((f) => f.trim().split('=')[0].trim());
+										fields.forEach((field, index) => {
+											if (values[index] !== undefined) {
+												existing[field] = values[index];
+											}
+										});
+									}
 								}
 								return { success: true, meta: {} };
 							}
@@ -390,6 +422,10 @@ export function createMockD1() {
 					}
 					if (query.includes('PRAGMA page_size')) {
 						return { page_size: 4096 };
+					}
+					// Handle appointment_config query (no bind params, WHERE id = 1)
+					if (query.includes('FROM appointment_config')) {
+						return _appointmentConfig.get('default') || null;
 					}
 					return null;
 				},

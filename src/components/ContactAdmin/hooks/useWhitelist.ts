@@ -13,6 +13,7 @@ interface UseWhitelistResult {
 	openModal: () => void;
 	closeModal: () => void;
 	fetchWhitelist: () => Promise<void>;
+	addToWhitelist: (email: string, notes?: string) => Promise<boolean>;
 	removeFromWhitelist: (email: string) => Promise<void>;
 }
 
@@ -39,6 +40,26 @@ export function useWhitelist(client: ContactAdminClient | null): UseWhitelistRes
 			setLoading(false);
 		}
 	}, [client]);
+
+	// Add to whitelist
+	const addToWhitelist = useCallback(
+		async (email: string, notes?: string): Promise<boolean> => {
+			if (!client) return false;
+
+			try {
+				const success = await client.addToWhitelist(email, notes);
+				if (success) {
+					// Refresh whitelist
+					await fetchWhitelist();
+				}
+				return success;
+			} catch (err) {
+				console.error('Failed to add to whitelist:', err);
+				return false;
+			}
+		},
+		[client, fetchWhitelist]
+	);
 
 	// Remove from whitelist
 	const removeFromWhitelist = useCallback(
@@ -79,6 +100,7 @@ export function useWhitelist(client: ContactAdminClient | null): UseWhitelistRes
 		openModal,
 		closeModal,
 		fetchWhitelist,
+		addToWhitelist,
 		removeFromWhitelist,
 	};
 }

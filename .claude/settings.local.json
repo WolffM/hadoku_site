@@ -50,7 +50,8 @@
       "Bash(pnpm run build:*)",
       "Bash(npx prettier:*)",
       "Bash(nul)",
-      "Bash(pnpm update:*)"
+      "Bash(pnpm update:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

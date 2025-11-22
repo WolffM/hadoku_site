@@ -341,13 +341,25 @@ export function createAdminRoutes() {
 			const providerName = c.env.EMAIL_PROVIDER ?? 'resend';
 			const emailProvider = createEmailProvider(providerName, c.env.RESEND_API_KEY);
 
+			// Determine effective reply-to address
+			// - For no-reply@hadoku.me: redirect replies to public@hadoku.me
+			// - For other senders: use the explicit replyTo or default to the from address
+			let effectiveReplyTo: string | undefined;
+			if (body.from.toLowerCase() === EMAIL_CONFIG.NO_REPLY_ADDRESS) {
+				effectiveReplyTo = EMAIL_CONFIG.PUBLIC_REPLY_TO;
+			} else if (typeof body.replyTo === 'string') {
+				effectiveReplyTo = body.replyTo;
+			} else {
+				effectiveReplyTo = body.from; // Default: reply-to same as from
+			}
+
 			// Send email
 			const result = await emailProvider.sendEmail({
 				from: body.from,
 				to: body.to,
 				subject: body.subject,
 				text: body.text,
-				replyTo: typeof body.replyTo === 'string' ? body.replyTo : undefined,
+				replyTo: effectiveReplyTo,
 			});
 
 			if (!result.success) {
@@ -402,6 +414,49 @@ export function createAdminRoutes() {
 	});
 
 	/**
+	 * POST /admin/whitelist
+	 * Add an email to the whitelist
+	 */
+	app.post('/whitelist', async (c) => {
+		try {
+			const body = await c.req.json();
+
+			if (!body.email || typeof body.email !== 'string') {
+				return badRequest(c, 'email field is required');
+			}
+
+			// Basic email validation
+			if (!VALIDATION_CONSTRAINTS.EMAIL_REGEX.test(body.email)) {
+				return badRequest(c, 'Invalid email address');
+			}
+
+			const auth = c.get('authContext');
+			const adminIdentifier = auth?.sessionId ?? 'admin';
+
+			const success = await addToWhitelist(
+				c.env.DB,
+				body.email,
+				adminIdentifier,
+				typeof body.contactId === 'string' ? body.contactId : undefined,
+				typeof body.notes === 'string' ? body.notes : 'Manually added by admin'
+			);
+
+			if (!success) {
+				return serverError(c, 'Failed to add email to whitelist');
+			}
+
+			return adminOk(c, {
+				success: true,
+				message: `Email ${body.email} added to whitelist`,
+				email: body.email.toLowerCase(),
+			});
+		} catch (error) {
+			console.error('Error adding to whitelist:', error);
+			return serverError(c, 'Failed to add to whitelist');
+		}
+	});
+
+	/**
 	 * DELETE /admin/whitelist/:email
 	 * Remove an email from the whitelist
 	 */
@@ -436,6 +491,12 @@ export function createAdminRoutes() {
 	/**
 	 * GET /admin/appointments/config
 	 * Get appointment configuration
+	 *
+	 * Transforms database fields to frontend format:
+	 * - business_hours_start ("09:00") -> start_hour (9)
+	 * - business_hours_end ("17:00") -> end_hour (17)
+	 * - min_advance_hours -> advance_notice_hours
+	 * - meeting_platforms -> platforms
 	 */
 	app.get('/appointments/config', async (c) => {
 		try {
@@ -445,17 +506,29 @@ export function createAdminRoutes() {
 				return notFound(c, 'Appointment configuration not found');
 			}
 
+			// Parse business hours from "HH:MM" format to hour numbers
+			const startHour = parseInt(config.business_hours_start.split(':')[0], 10);
+			const endHour = parseInt(config.business_hours_end.split(':')[0], 10);
+
 			// Parse comma-separated values into arrays for frontend
 			const platforms = config.meeting_platforms.split(',').map((p) => p.trim());
+			const availableDays = config.available_days.split(',').map((d) => parseInt(d.trim()));
+			const slotDurationOptions = config.slot_duration_options
+				.split(',')
+				.map((d) => parseInt(d.trim()));
+
 			return adminOk(c, {
 				config: {
-					...config,
-					available_days: config.available_days.split(',').map((d) => parseInt(d.trim())),
-					slot_duration_options: config.slot_duration_options
-						.split(',')
-						.map((d) => parseInt(d.trim())),
-					meeting_platforms: platforms,
-					platforms, // Add alias for frontend compatibility
+					// Frontend-friendly field names
+					timezone: config.timezone,
+					start_hour: startHour,
+					end_hour: endHour,
+					available_days: availableDays,
+					platforms,
+					advance_notice_hours: config.min_advance_hours,
+					// Also include additional fields the frontend may need
+					slot_duration_options: slotDurationOptions,
+					max_advance_days: config.max_advance_days,
 				},
 			});
 		} catch (error) {
@@ -467,6 +540,12 @@ export function createAdminRoutes() {
 	/**
 	 * PUT /admin/appointments/config
 	 * Update appointment configuration
+	 *
+	 * Accepts frontend field names and transforms to database format:
+	 * - start_hour (9) -> business_hours_start ("09:00")
+	 * - end_hour (17) -> business_hours_end ("17:00")
+	 * - advance_notice_hours -> min_advance_hours
+	 * - platforms -> meeting_platforms
 	 */
 	app.put('/appointments/config', async (c) => {
 		try {
@@ -475,14 +554,32 @@ export function createAdminRoutes() {
 			// Build updates object with only valid database fields
 			const updates: Record<string, unknown> = {};
 
-			// Valid fields that map directly
+			// Direct database field mappings
 			if (body.timezone !== undefined) updates.timezone = body.timezone;
-			if (body.business_hours_start !== undefined)
-				updates.business_hours_start = body.business_hours_start;
-			if (body.business_hours_end !== undefined)
-				updates.business_hours_end = body.business_hours_end;
 			if (body.max_advance_days !== undefined) updates.max_advance_days = body.max_advance_days;
-			if (body.min_advance_hours !== undefined) updates.min_advance_hours = body.min_advance_hours;
+
+			// Frontend -> Database field mappings for business hours
+			// Accept both frontend format (start_hour as number) and database format (business_hours_start as "HH:MM")
+			if (body.start_hour !== undefined) {
+				const hour = parseInt(body.start_hour, 10);
+				updates.business_hours_start = `${hour.toString().padStart(2, '0')}:00`;
+			} else if (body.business_hours_start !== undefined) {
+				updates.business_hours_start = body.business_hours_start;
+			}
+
+			if (body.end_hour !== undefined) {
+				const hour = parseInt(body.end_hour, 10);
+				updates.business_hours_end = `${hour.toString().padStart(2, '0')}:00`;
+			} else if (body.business_hours_end !== undefined) {
+				updates.business_hours_end = body.business_hours_end;
+			}
+
+			// Frontend -> Database field mapping for advance notice
+			if (body.advance_notice_hours !== undefined) {
+				updates.min_advance_hours = body.advance_notice_hours;
+			} else if (body.min_advance_hours !== undefined) {
+				updates.min_advance_hours = body.min_advance_hours;
+			}
 
 			// Convert arrays to comma-separated strings
 			if (Array.isArray(body.available_days)) {
@@ -493,12 +590,12 @@ export function createAdminRoutes() {
 				updates.slot_duration_options = body.slot_duration_options.join(',');
 			}
 
-			if (Array.isArray(body.meeting_platforms)) {
+			// Accept both 'platforms' (frontend) and 'meeting_platforms' (database)
+			if (Array.isArray(body.platforms)) {
+				updates.meeting_platforms = body.platforms.join(',');
+			} else if (Array.isArray(body.meeting_platforms)) {
 				updates.meeting_platforms = body.meeting_platforms.join(',');
 			}
-
-			// Ignore computed/alias fields like 'platforms', 'start_hour', 'end_hour', 'advance_notice_hours'
-			// These are derived from database fields for frontend convenience
 
 			const success = await updateAppointmentConfig(
 				c.env.DB,

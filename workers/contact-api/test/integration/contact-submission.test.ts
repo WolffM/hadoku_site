@@ -309,6 +309,101 @@ describe('Contact Submission Integration', () => {
 		});
 	});
 
+	describe('Public Recipient Bypass', () => {
+		it('should bypass referrer validation for public@hadoku.me recipient', async () => {
+			// Submit to public@hadoku.me from an external referrer (evil.com)
+			// This should succeed because public@ bypasses referrer validation
+			const response = await makeRequest(worker, env, '/contact/api/submit', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Forwarded-For': '203.0.113.1',
+					Referer: 'https://external-site.com/signup', // Not hadoku.me
+				},
+				body: {
+					name: 'External User',
+					email: 'user@external.com',
+					message: 'Signup from external site',
+					recipient: 'public@hadoku.me',
+				},
+			});
+
+			expect(response.status).toBe(201);
+			const data = await response.json();
+			expect(data.success).toBe(true);
+
+			// Verify submission was stored
+			const submissions = mockDB._getSubmissions();
+			expect(submissions).toHaveLength(1);
+			expect(submissions[0].recipient).toBe('public@hadoku.me');
+		});
+
+		it('should bypass referrer validation for public@hadoku.me even with no referrer', async () => {
+			const response = await makeRequest(worker, env, '/contact/api/submit', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Forwarded-For': '203.0.113.1',
+					// No Referer header
+				},
+				body: {
+					name: 'No Referrer User',
+					email: 'user@example.com',
+					message: 'Direct API call',
+					recipient: 'public@hadoku.me',
+				},
+			});
+
+			expect(response.status).toBe(201);
+			const data = await response.json();
+			expect(data.success).toBe(true);
+		});
+
+		it('should still require referrer for non-public recipients', async () => {
+			const response = await makeRequest(worker, env, '/contact/api/submit', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Forwarded-For': '203.0.113.1',
+					Referer: 'https://external-site.com/contact',
+				},
+				body: {
+					name: 'External User',
+					email: 'user@external.com',
+					message: 'Should fail',
+					recipient: 'matthaeus@hadoku.me', // Not a public recipient
+				},
+			});
+
+			expect(response.status).toBe(400);
+			const data = await response.json();
+			expect(data.message).toContain('Invalid referrer');
+
+			// Verify no submission was stored
+			const submissions = mockDB._getSubmissions();
+			expect(submissions).toHaveLength(0);
+		});
+
+		it('should handle public recipient case-insensitively', async () => {
+			const response = await makeRequest(worker, env, '/contact/api/submit', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Forwarded-For': '203.0.113.1',
+					Referer: 'https://evil.com',
+				},
+				body: {
+					name: 'Case Test',
+					email: 'user@example.com',
+					message: 'Testing case sensitivity',
+					recipient: 'PUBLIC@hadoku.me', // Uppercase
+				},
+			});
+
+			expect(response.status).toBe(201);
+		});
+	});
+
 	describe('Recipient Validation', () => {
 		it('should accept valid recipients', async () => {
 			const validRecipients = ['matthaeus@hadoku.me', 'mw@hadoku.me', 'admin@hadoku.me'];

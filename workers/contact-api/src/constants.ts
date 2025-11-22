@@ -8,6 +8,11 @@ export const EMAIL_CONFIG = {
 	DEFAULT_FROM: 'matthaeus@hadoku.me',
 	DEFAULT_REPLY_TO: 'matthaeus@hadoku.me',
 	VALID_DOMAINS: ['hadoku.me'],
+	// Recipients that bypass whitelist/referrer checks (public-facing mailboxes)
+	PUBLIC_RECIPIENTS: ['public@hadoku.me'],
+	// No-reply address redirects replies to public mailbox
+	NO_REPLY_ADDRESS: 'no-reply@hadoku.me',
+	PUBLIC_REPLY_TO: 'public@hadoku.me',
 } as const;
 
 // Site configuration

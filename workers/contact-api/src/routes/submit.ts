@@ -38,6 +38,16 @@ import {
 } from '../email/templates';
 import { EMAIL_CONFIG, APPOINTMENT_CONFIG, RATE_LIMIT_CONFIG } from '../constants';
 
+/**
+ * Check if recipient is a public mailbox that bypasses whitelist/referrer checks
+ */
+function isPublicRecipient(recipient: string | undefined): boolean {
+	if (!recipient) return false;
+	return EMAIL_CONFIG.PUBLIC_RECIPIENTS.includes(
+		recipient.toLowerCase() as (typeof EMAIL_CONFIG.PUBLIC_RECIPIENTS)[number]
+	);
+}
+
 interface Env {
 	DB: D1Database;
 	RATE_LIMIT_KV: KVNamespace;
@@ -69,13 +79,18 @@ export function createSubmitRoutes() {
 
 			// Quick validation check for email field
 			const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : undefined;
+			const recipient =
+				typeof body.recipient === 'string' ? body.recipient.trim().toLowerCase() : undefined;
 
-			// Security Layer 1: Check if email is whitelisted
+			// Security Layer 1a: Check if recipient is a public mailbox (bypasses all sender restrictions)
+			const isPublicMailbox = isPublicRecipient(recipient);
+
+			// Security Layer 1b: Check if email is whitelisted
 			// Whitelisted emails bypass referrer restrictions
 			const isWhitelisted = email ? await isEmailWhitelisted(db, email) : false;
 
-			// Security Layer 2: Referrer validation (skip if whitelisted)
-			if (!isWhitelisted && !validateReferrer(request)) {
+			// Security Layer 2: Referrer validation (skip if public mailbox or whitelisted)
+			if (!isPublicMailbox && !isWhitelisted && !validateReferrer(request)) {
 				return c.json({ success: false, message: 'Invalid referrer' }, 400);
 			}
 

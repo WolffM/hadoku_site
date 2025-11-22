@@ -219,4 +219,117 @@ describe('POST /contact/api/admin/send-email', () => {
 
 		expect(response.status).toBe(200);
 	});
+
+	describe('Reply-To Logic', () => {
+		it('should redirect replies to public@hadoku.me when from is no-reply@hadoku.me', async () => {
+			let capturedBody: any;
+			global.fetch = vi.fn().mockImplementation(async (_url, options) => {
+				capturedBody = JSON.parse(options.body);
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ id: 'test-message-id' }),
+				};
+			});
+
+			const response = await makeRequest(worker, env, '/contact/api/admin/send-email', {
+				method: 'POST',
+				headers,
+				body: {
+					from: 'no-reply@hadoku.me',
+					to: 'customer@example.com',
+					subject: 'Notification',
+					text: 'This is a no-reply notification',
+				},
+			});
+
+			expect(response.status).toBe(200);
+			// Verify the reply-to was set to public@hadoku.me (Resend uses array format)
+			expect(capturedBody.reply_to).toContain('public@hadoku.me');
+		});
+
+		it('should use from address as reply-to when no explicit replyTo is provided', async () => {
+			let capturedBody: any;
+			global.fetch = vi.fn().mockImplementation(async (_url, options) => {
+				capturedBody = JSON.parse(options.body);
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ id: 'test-message-id' }),
+				};
+			});
+
+			const response = await makeRequest(worker, env, '/contact/api/admin/send-email', {
+				method: 'POST',
+				headers,
+				body: {
+					from: 'support@hadoku.me',
+					to: 'customer@example.com',
+					subject: 'Support Reply',
+					text: 'Thanks for reaching out',
+				},
+			});
+
+			expect(response.status).toBe(200);
+			// reply-to should match the from address (Resend uses array format)
+			expect(capturedBody.reply_to).toContain('support@hadoku.me');
+		});
+
+		it('should use explicit replyTo when provided for non-no-reply senders', async () => {
+			let capturedBody: any;
+			global.fetch = vi.fn().mockImplementation(async (_url, options) => {
+				capturedBody = JSON.parse(options.body);
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ id: 'test-message-id' }),
+				};
+			});
+
+			const response = await makeRequest(worker, env, '/contact/api/admin/send-email', {
+				method: 'POST',
+				headers,
+				body: {
+					from: 'matthaeus@hadoku.me',
+					to: 'partner@example.com',
+					subject: 'Partnership Inquiry',
+					text: 'Regarding your proposal',
+					replyTo: 'business@hadoku.me', // Explicit replyTo
+				},
+			});
+
+			expect(response.status).toBe(200);
+			// Should use the explicit replyTo (Resend uses array format)
+			expect(capturedBody.reply_to).toContain('business@hadoku.me');
+		});
+
+		it('should always redirect no-reply@ to public@ even if explicit replyTo is provided', async () => {
+			let capturedBody: any;
+			global.fetch = vi.fn().mockImplementation(async (_url, options) => {
+				capturedBody = JSON.parse(options.body);
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ id: 'test-message-id' }),
+				};
+			});
+
+			const response = await makeRequest(worker, env, '/contact/api/admin/send-email', {
+				method: 'POST',
+				headers,
+				body: {
+					from: 'no-reply@hadoku.me',
+					to: 'user@example.com',
+					subject: 'Automated Message',
+					text: 'This is automated',
+					replyTo: 'support@hadoku.me', // This should be overridden
+				},
+			});
+
+			expect(response.status).toBe(200);
+			// no-reply should always redirect to public, ignoring explicit replyTo (Resend uses array format)
+			expect(capturedBody.reply_to).toContain('public@hadoku.me');
+			expect(capturedBody.reply_to).not.toContain('support@hadoku.me');
+		});
+	});
 });

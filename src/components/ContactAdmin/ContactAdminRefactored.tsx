@@ -240,6 +240,7 @@ export default function ContactAdminRefactored() {
 					whitelist={whitelistHook.whitelist}
 					loading={whitelistHook.loading}
 					onClose={whitelistHook.closeModal}
+					onAdd={whitelistHook.addToWhitelist}
 					onRemove={(email) => {
 						whitelistHook.removeFromWhitelist(email).catch(console.error);
 					}}
