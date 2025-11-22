@@ -3,6 +3,16 @@ main = "src/index.ts"
 compatibility_date = "2025-01-11"
 compatibility_flags = ["nodejs_compat"]
 
+# Enable Workers Logs for observability
+# Logs console.log, errors, and exceptions to Cloudflare dashboard
+[observability]
+enabled = true
+head_sampling_rate = 1  # Log 100% of requests (0-1 range)
+
+[observability.logs]
+enabled = true
+invocation_logs = true  # Include request/response metadata
+
 # D1 Database - Contact submissions storage
 [[d1_databases]]
 binding = "DB"

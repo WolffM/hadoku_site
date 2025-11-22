@@ -4,15 +4,14 @@ compatibility_date = "2025-10-11"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
-# Observability settings
+# Observability settings - logs visible in Cloudflare dashboard
 [observability]
-enabled = false
+enabled = true
 head_sampling_rate = 1
 
 [observability.logs]
 enabled = true
 head_sampling_rate = 1
-persist = true
 invocation_logs = true
 
 # Build configuration

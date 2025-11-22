@@ -2,6 +2,15 @@ name = "edge-router"
 main = "src/index.ts"
 compatibility_date = "2025-10-11"
 
+# Enable Workers Logs for observability
+[observability]
+enabled = true
+head_sampling_rate = 1  # Log 100% of requests
+
+[observability.logs]
+enabled = true
+invocation_logs = true  # Include request/response metadata
+
 # Routes - intercept API paths and session management
 routes = [
   { pattern = "hadoku.me/session/*", zone_name = "hadoku.me" },
