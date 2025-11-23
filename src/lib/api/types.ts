@@ -82,6 +82,46 @@ export interface GetAppointmentConfigResponse {
 	};
 }
 
+export type AppointmentStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_show';
+export type AppointmentPlatform = 'discord' | 'google' | 'teams' | 'jitsi';
+
+export interface Appointment {
+	id: string;
+	submission_id: string | null;
+	name: string;
+	email: string;
+	message: string | null;
+	slot_id: string;
+	date: string;
+	start_time: string;
+	end_time: string;
+	duration: number;
+	timezone: string;
+	platform: AppointmentPlatform;
+	meeting_link: string | null;
+	meeting_id: string | null;
+	status: AppointmentStatus;
+	created_at: number;
+	updated_at: number;
+	cancelled_at: number | null;
+	ip_address: string | null;
+	user_agent: string | null;
+	confirmation_sent: number;
+	reminder_sent: number;
+}
+
+export interface GetAppointmentsResponse {
+	success: boolean;
+	data: {
+		appointments: Appointment[];
+		pagination: {
+			limit: number;
+			offset: number;
+			total: number;
+		};
+	};
+}
+
 // ============================================================================
 // Email Sending Types
 // ============================================================================

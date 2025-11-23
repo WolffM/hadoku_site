@@ -12,6 +12,9 @@ import {
 	type GetWhitelistResponse,
 	type AppointmentConfig,
 	type GetAppointmentConfigResponse,
+	type Appointment,
+	type AppointmentStatus,
+	type GetAppointmentsResponse,
 	type SendEmailRequest,
 	type SendEmailResponse,
 	type ApiResponse,
@@ -188,6 +191,45 @@ export class ContactAdminClient {
 		const response = await this.fetch<ApiResponse>(API_ENDPOINTS.APPOINTMENT_CONFIG, {
 			method: 'PUT',
 			body: JSON.stringify(config),
+		});
+		return response.success;
+	}
+
+	// ========================================================================
+	// Appointments
+	// ========================================================================
+
+	/**
+	 * Get all appointments
+	 */
+	async getAppointments(
+		limit: number = PAGINATION.DEFAULT_LIMIT,
+		offset: number = PAGINATION.DEFAULT_OFFSET
+	): Promise<GetAppointmentsResponse> {
+		const url = `${API_ENDPOINTS.APPOINTMENTS}?limit=${limit}&offset=${offset}`;
+		return this.fetch<GetAppointmentsResponse>(url);
+	}
+
+	/**
+	 * Get a single appointment by ID
+	 */
+	async getAppointmentById(id: string): Promise<Appointment> {
+		const response = await this.fetch<ApiResponse<{ appointment: Appointment }>>(
+			API_ENDPOINTS.APPOINTMENT_BY_ID(id)
+		);
+		if (!response.data) {
+			throw new ApiError('No data in response');
+		}
+		return response.data.appointment;
+	}
+
+	/**
+	 * Update appointment status (cancel, complete, no-show)
+	 */
+	async updateAppointmentStatus(id: string, status: AppointmentStatus): Promise<boolean> {
+		const response = await this.fetch<ApiResponse>(API_ENDPOINTS.APPOINTMENT_STATUS(id), {
+			method: 'PATCH',
+			body: JSON.stringify({ status }),
 		});
 		return response.success;
 	}

@@ -69,12 +69,18 @@ export function createAppointmentsRoutes() {
 			}
 
 			// Check if requested date is in the past or too soon
+			// We need to compare against the first available slot on that day, not midnight UTC
 			const now = new Date();
-			const requestedDate = new Date(requestDate);
 			const minAdvanceMs = config.min_advance_hours * 60 * 60 * 1000;
-			const minAllowedDate = new Date(now.getTime() + minAdvanceMs);
+			const minAllowedTime = new Date(now.getTime() + minAdvanceMs);
 
-			if (requestedDate < minAllowedDate) {
+			// Parse the business hours to get the first slot time on the requested date
+			const [startHour, startMinute] = config.business_hours_start.split(':').map(Number);
+			const firstSlotTime = new Date(`${requestDate}T00:00:00.000Z`);
+			firstSlotTime.setUTCHours(startHour, startMinute, 0, 0);
+
+			// The date is valid if the first slot of the day is beyond the advance notice window
+			if (firstSlotTime < minAllowedTime) {
 				return c.json(
 					{
 						message: `Appointments must be booked at least ${config.min_advance_hours} hours in advance`,
@@ -84,10 +90,11 @@ export function createAppointmentsRoutes() {
 			}
 
 			// Check if requested date is too far in the future
+			// Use the first slot time for consistency
 			const maxAdvanceMs = config.max_advance_days * 24 * 60 * 60 * 1000;
-			const maxAllowedDate = new Date(now.getTime() + maxAdvanceMs);
+			const maxAllowedTime = new Date(now.getTime() + maxAdvanceMs);
 
-			if (requestedDate > maxAllowedDate) {
+			if (firstSlotTime > maxAllowedTime) {
 				return c.json(
 					{
 						message: `Appointments can only be booked up to ${config.max_advance_days} days in advance`,
@@ -97,7 +104,7 @@ export function createAppointmentsRoutes() {
 			}
 
 			// Check if the day of week is available
-			const dayOfWeek = requestedDate.getDay(); // 0 = Sunday, 6 = Saturday
+			const dayOfWeek = firstSlotTime.getUTCDay(); // 0 = Sunday, 6 = Saturday
 			if (!availableDays.includes(dayOfWeek)) {
 				return c.json(
 					{

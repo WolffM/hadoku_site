@@ -81,6 +81,9 @@ export const API_ENDPOINTS = {
 
 	// Appointments
 	APPOINTMENT_CONFIG: '/contact/api/admin/appointments/config',
+	APPOINTMENTS: '/contact/api/admin/appointments',
+	APPOINTMENT_BY_ID: (id: string) => `/contact/api/admin/appointments/${id}`,
+	APPOINTMENT_STATUS: (id: string) => `/contact/api/admin/appointments/${id}/status`,
 } as const;
 
 // Input validation constraints

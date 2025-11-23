@@ -15,12 +15,13 @@ import {
 	useComposeForm,
 	useWhitelist,
 	useAppointmentConfig,
+	useAppointments,
 } from './hooks';
 
 // Components
 import { MailSidebar, MailList, MailDetail, MailCompose } from './Mail';
 import { WhitelistModal } from './Whitelist';
-import { AppointmentConfigEditor } from './Appointments';
+import { AppointmentConfigEditor, AppointmentList } from './Appointments';
 
 type ViewMode = 'inbox' | 'compose';
 type TabMode = 'mail' | 'appointments';
@@ -48,7 +49,12 @@ export function ContactAdmin() {
 	const emailsHook = useEmails(client, showToast);
 	const composeHook = useComposeForm(client, showToast);
 	const whitelistHook = useWhitelist(client, showToast);
-	const appointmentHook = useAppointmentConfig(client, activeTab === 'appointments', showToast);
+	const appointmentConfigHook = useAppointmentConfig(
+		client,
+		activeTab === 'appointments',
+		showToast
+	);
+	const appointmentsHook = useAppointments(client, showToast);
 
 	// Filter emails based on selection
 	const filteredEmails = useMemo(() => {
@@ -228,15 +234,50 @@ export function ContactAdmin() {
 
 			{/* Appointments Tab Content */}
 			{activeTab === 'appointments' && (
-				<AppointmentConfigEditor
-					config={appointmentHook.config}
-					loading={appointmentHook.loading}
-					saving={appointmentHook.saving}
-					onUpdate={appointmentHook.updateConfig}
-					onSave={() => {
-						appointmentHook.saveConfig().catch(console.error);
-					}}
-				/>
+				<div className="flex-1 p-6 overflow-y-auto">
+					<div className="max-w-4xl mx-auto space-y-8">
+						{/* Appointments List */}
+						<AppointmentList
+							appointments={appointmentsHook.appointments}
+							loading={appointmentsHook.loading}
+							refreshing={appointmentsHook.refreshing}
+							error={appointmentsHook.error}
+							onRefresh={() => {
+								appointmentsHook.refreshAppointments().catch(console.error);
+							}}
+							onCancel={(id) => {
+								appointmentsHook.cancelAppointment(id).catch(console.error);
+							}}
+						/>
+
+						{/* Divider */}
+						<hr className="border-border" />
+
+						{/* Configuration Section */}
+						<div>
+							<h2 className="text-2xl font-bold text-text mb-6">Configuration</h2>
+							{appointmentConfigHook.loading ? (
+								<div className="text-center py-12">
+									<div className="text-text-secondary">Loading configuration...</div>
+								</div>
+							) : !appointmentConfigHook.config ? (
+								<div className="text-center py-12">
+									<div className="text-text-secondary">No configuration found</div>
+								</div>
+							) : (
+								<AppointmentConfigEditor
+									config={appointmentConfigHook.config}
+									loading={false}
+									saving={appointmentConfigHook.saving}
+									onUpdate={appointmentConfigHook.updateConfig}
+									onSave={() => {
+										appointmentConfigHook.saveConfig().catch(console.error);
+									}}
+								/>
+							)}
+						</div>
+					</div>
+				</div>
 			)}
 
 			{/* Whitelist Modal */}
