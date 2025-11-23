@@ -41,7 +41,15 @@ GitHub Secrets:
 
 Cloudflare Worker Secrets:
     cloudflare-secrets [worker] Update Cloudflare Worker secrets (task-api|contact-api|all)
-    cloudflare-secrets --dry-run Show what would be updated without making changes
+    cloudflare-secrets --dry-run Show what would be updated
+
+Resume Data Ingestion:
+    resume-ingest               Upload all (auto-detects resume from scripts/resume/)
+    resume-ingest <file.md>     Upload specific resume file + system prompt + GROQ key
+    resume-ingest --resume      Upload resume markdown to KV only
+    resume-ingest --prompt      Upload system prompt secret only
+    resume-ingest --groq        Upload GROQ API key secret only
+    resume-ingest --dry-run     Show what would be uploaded
 
 Common Examples:
     python administration.py verify-install
@@ -307,6 +315,30 @@ def run_command(args):
             else:
                 print("[ERROR] Failed to update Cloudflare secrets")
 
+            return result.returncode
+
+        elif command == 'resume-ingest':
+            # Resume data ingestion pipeline
+            script_path = Path(__file__).parent / 'ingest_resume.py'
+            cmd = [sys.executable, str(script_path)]
+
+            # Check for positional resume file argument (not a flag)
+            for arg in args[2:]:
+                if not arg.startswith('-'):
+                    cmd.append(arg)
+                    break
+
+            # Pass through flags
+            if '--resume' in args or '-r' in args:
+                cmd.append('--resume')
+            if '--prompt' in args or '-p' in args:
+                cmd.append('--prompt')
+            if '--groq' in args or '-g' in args:
+                cmd.append('--groq')
+            if '--dry-run' in args or '-n' in args:
+                cmd.append('--dry-run')
+
+            result = subprocess.run(cmd)
             return result.returncode
 
         else:

@@ -3,7 +3,8 @@
  */
 
 import type { AppointmentConfig } from '../../../lib/api/types';
-import { TIMEZONE_OPTIONS, DAYS_OF_WEEK, MEETING_PLATFORMS } from '../../../config/contact-admin';
+import { TIMEZONE_OPTIONS, MEETING_PLATFORMS } from '../../../config/contact-admin';
+import { WeeklyAvailabilityEditor } from './WeeklyAvailabilityEditor';
 
 interface AppointmentConfigEditorProps {
 	config: AppointmentConfig | null;
@@ -38,122 +39,80 @@ export function AppointmentConfigEditor({
 
 	return (
 		<div className="space-y-6">
-			{/* Timezone */}
-			<div className="bg-bg-secondary p-6 rounded-lg border border-border">
-				<label className="block text-sm font-medium text-text mb-2">Timezone</label>
-				<select
-					value={config.timezone}
-					onChange={(e) => onUpdate({ timezone: e.target.value })}
-					className="w-full px-3 py-2 bg-bg border border-border rounded text-text"
-				>
-					{TIMEZONE_OPTIONS.map((tz) => (
-						<option key={tz.value} value={tz.value}>
-							{tz.label}
-						</option>
-					))}
-				</select>
+			{/* Weekly Availability Calendar */}
+			<div className="bg-bg-secondary p-4 rounded-lg border border-border">
+				<h3 className="text-lg font-semibold text-text mb-4">Weekly Availability</h3>
+				<WeeklyAvailabilityEditor
+					startHour={config.start_hour}
+					endHour={config.end_hour}
+					availableDays={config.available_days}
+					onUpdate={onUpdate}
+				/>
 			</div>
 
-			{/* Business Hours */}
-			<div className="bg-bg-secondary p-6 rounded-lg border border-border">
-				<h3 className="text-lg font-semibold text-text mb-4">Business Hours</h3>
-				<div className="grid grid-cols-2 gap-4">
-					<div>
-						<label className="block text-sm font-medium text-text mb-2">Start Time (24h)</label>
+			{/* Settings Row */}
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+				{/* Timezone */}
+				<div className="bg-bg-secondary p-4 rounded-lg border border-border">
+					<label className="block text-sm font-medium text-text mb-2">Timezone</label>
+					<select
+						value={config.timezone}
+						onChange={(e) => onUpdate({ timezone: e.target.value })}
+						className="w-full px-3 py-2 bg-bg border border-border rounded text-text text-sm"
+					>
+						{TIMEZONE_OPTIONS.map((tz) => (
+							<option key={tz.value} value={tz.value}>
+								{tz.label}
+							</option>
+						))}
+					</select>
+				</div>
+
+				{/* Advance Notice */}
+				<div className="bg-bg-secondary p-4 rounded-lg border border-border">
+					<label className="block text-sm font-medium text-text mb-2">Advance Notice</label>
+					<div className="flex items-center gap-2">
 						<input
 							type="number"
 							min="0"
-							max="23"
-							value={config.start_hour}
-							onChange={(e) => onUpdate({ start_hour: parseInt(e.target.value) })}
-							className="w-full px-3 py-2 bg-bg border border-border rounded text-text"
+							max="168"
+							value={config.advance_notice_hours}
+							onChange={(e) => onUpdate({ advance_notice_hours: parseInt(e.target.value) })}
+							className="w-20 px-3 py-2 bg-bg border border-border rounded text-text text-sm"
 						/>
-						<div className="text-xs text-text-secondary mt-1">Current: {config.start_hour}:00</div>
-					</div>
-					<div>
-						<label className="block text-sm font-medium text-text mb-2">End Time (24h)</label>
-						<input
-							type="number"
-							min="0"
-							max="23"
-							value={config.end_hour}
-							onChange={(e) => onUpdate({ end_hour: parseInt(e.target.value) })}
-							className="w-full px-3 py-2 bg-bg border border-border rounded text-text"
-						/>
-						<div className="text-xs text-text-secondary mt-1">Current: {config.end_hour}:00</div>
+						<span className="text-sm text-text-secondary">hours minimum</span>
 					</div>
 				</div>
-			</div>
 
-			{/* Available Days */}
-			<div className="bg-bg-secondary p-6 rounded-lg border border-border">
-				<h3 className="text-lg font-semibold text-text mb-4">Available Days</h3>
-				<div className="grid grid-cols-7 gap-2">
-					{DAYS_OF_WEEK.map((day) => (
-						<button
-							key={day.value}
-							onClick={() => {
-								const days = config.available_days.includes(day.value)
-									? config.available_days.filter((d) => d !== day.value)
-									: [...config.available_days, day.value].sort();
-								onUpdate({ available_days: days });
-							}}
-							className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
-								config.available_days.includes(day.value)
-									? 'bg-primary text-bg-card'
-									: 'bg-bg border border-border text-text-secondary hover:text-text'
-							}`}
-						>
-							{day.short}
-						</button>
-					))}
-				</div>
-			</div>
-
-			{/* Meeting Platforms */}
-			<div className="bg-bg-secondary p-6 rounded-lg border border-border">
-				<h3 className="text-lg font-semibold text-text mb-4">Meeting Platforms</h3>
-				<div className="space-y-2">
-					{MEETING_PLATFORMS.map((platform) => (
-						<label key={platform.id} className="flex items-center space-x-3">
-							<input
-								type="checkbox"
-								checked={config.platforms.includes(platform.id)}
-								onChange={(e) => {
-									const platforms = e.target.checked
-										? [...config.platforms, platform.id]
-										: config.platforms.filter((p) => p !== platform.id);
+				{/* Meeting Platforms */}
+				<div className="bg-bg-secondary p-4 rounded-lg border border-border">
+					<label className="block text-sm font-medium text-text mb-2">Platforms</label>
+					<div className="flex flex-wrap gap-2">
+						{MEETING_PLATFORMS.map((platform) => (
+							<button
+								key={platform.id}
+								onClick={() => {
+									const platforms = config.platforms.includes(platform.id)
+										? config.platforms.filter((p) => p !== platform.id)
+										: [...config.platforms, platform.id];
 									onUpdate({ platforms });
 								}}
-								className="w-4 h-4"
-							/>
-							<span className="text-text capitalize">{platform.label}</span>
-							{platform.todoNote && (
-								<span className="text-xs text-text-secondary">({platform.todoNote})</span>
-							)}
-						</label>
-					))}
-				</div>
-			</div>
-
-			{/* Advance Notice */}
-			<div className="bg-bg-secondary p-6 rounded-lg border border-border">
-				<label className="block text-sm font-medium text-text mb-2">Advance Notice (hours)</label>
-				<input
-					type="number"
-					min="0"
-					max="168"
-					value={config.advance_notice_hours}
-					onChange={(e) => onUpdate({ advance_notice_hours: parseInt(e.target.value) })}
-					className="w-full px-3 py-2 bg-bg border border-border rounded text-text"
-				/>
-				<div className="text-xs text-text-secondary mt-1">
-					Minimum hours required between booking and appointment
+								className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+									config.platforms.includes(platform.id)
+										? 'bg-primary text-bg-card'
+										: 'bg-bg border border-border text-text-secondary hover:text-text'
+								}`}
+								title={platform.todoNote}
+							>
+								{platform.label}
+							</button>
+						))}
+					</div>
 				</div>
 			</div>
 
 			{/* Save Button */}
-			<div className="flex justify-end space-x-4">
+			<div className="flex justify-end">
 				<button
 					onClick={onSave}
 					disabled={saving}

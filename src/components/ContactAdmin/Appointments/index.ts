@@ -4,3 +4,4 @@
 
 export { AppointmentConfigEditor } from './AppointmentConfigEditor';
 export { AppointmentList } from './AppointmentList';
+export { WeeklyAvailabilityEditor } from './WeeklyAvailabilityEditor';

@@ -232,11 +232,35 @@ export function ContactAdmin() {
 				/>
 			)}
 
-			{/* Appointments Tab Content */}
+			{/* Appointments Tab Content - Two Column Layout */}
 			{activeTab === 'appointments' && (
-				<div className="flex-1 p-6 overflow-y-auto">
-					<div className="max-w-4xl mx-auto space-y-8">
-						{/* Appointments List */}
+				<div className="flex-1 flex overflow-hidden">
+					{/* Left Column - Configuration */}
+					<div className="flex-1 p-6 overflow-y-auto border-r border-border">
+						<h2 className="text-xl font-bold text-text mb-4">Configuration</h2>
+						{appointmentConfigHook.loading ? (
+							<div className="text-center py-12">
+								<div className="text-text-secondary">Loading configuration...</div>
+							</div>
+						) : !appointmentConfigHook.config ? (
+							<div className="text-center py-12">
+								<div className="text-text-secondary">No configuration found</div>
+							</div>
+						) : (
+							<AppointmentConfigEditor
+								config={appointmentConfigHook.config}
+								loading={false}
+								saving={appointmentConfigHook.saving}
+								onUpdate={appointmentConfigHook.updateConfig}
+								onSave={() => {
+									appointmentConfigHook.saveConfig().catch(console.error);
+								}}
+							/>
+						)}
+					</div>
+
+					{/* Right Column - Upcoming Appointments */}
+					<div className="w-96 p-6 overflow-y-auto bg-bg-secondary">
 						<AppointmentList
 							appointments={appointmentsHook.appointments}
 							loading={appointmentsHook.loading}
@@ -249,33 +273,6 @@ export function ContactAdmin() {
 								appointmentsHook.cancelAppointment(id).catch(console.error);
 							}}
 						/>
-
-						{/* Divider */}
-						<hr className="border-border" />
-
-						{/* Configuration Section */}
-						<div>
-							<h2 className="text-2xl font-bold text-text mb-6">Configuration</h2>
-							{appointmentConfigHook.loading ? (
-								<div className="text-center py-12">
-									<div className="text-text-secondary">Loading configuration...</div>
-								</div>
-							) : !appointmentConfigHook.config ? (
-								<div className="text-center py-12">
-									<div className="text-text-secondary">No configuration found</div>
-								</div>
-							) : (
-								<AppointmentConfigEditor
-									config={appointmentConfigHook.config}
-									loading={false}
-									saving={appointmentConfigHook.saving}
-									onUpdate={appointmentConfigHook.updateConfig}
-									onSave={() => {
-										appointmentConfigHook.saveConfig().catch(console.error);
-									}}
-								/>
-							)}
-						</div>
 					</div>
 				</div>
 			)}

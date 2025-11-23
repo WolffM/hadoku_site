@@ -58,7 +58,8 @@
       "Bash(node scripts/generate-registry.mjs:*)",
       "Bash(node node_modules/wrangler/bin/wrangler.js pages deploy:*)",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(nslookup:*)"
     ],
     "deny": [],
     "ask": []
