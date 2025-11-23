@@ -62,7 +62,7 @@ function createApp(name, version, additionalProps = {}, hasCSS = true) {
 const registry = {
 	home: createApp('home', timestamp, {}, false),
 	resume: createApp('resume', resumeVersion, {
-		apiUrl: '/resume', // Base URL for resume API endpoints
+		apiBaseUrl: '/resume', // Base URL for resume API endpoints (/resume/api/*)
 	}),
 	watchparty: createApp('watchparty', watchpartyVersion, {
 		serverOrigin: MODE === 'production' ? 'https://api.hadoku.me' : 'http://localhost:8080',
