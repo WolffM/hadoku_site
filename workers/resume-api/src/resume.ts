@@ -35,12 +35,16 @@ export function getSystemPrompt(env: Env): string {
  * Get the complete system prompt with resume content appended
  */
 export async function getFullSystemPrompt(env: Env): Promise<string> {
-	const systemPrompt = getSystemPrompt(env);
+	const basePrompt = getSystemPrompt(env);
 	const resumeContent = await getResumeContent(env);
 
-	return `${systemPrompt}
+	return `${basePrompt}
 
-Here is the resume you should use to answer questions:
+## Resume Content
 
-${resumeContent}`;
+Here is Matthaeus Wolff's complete resume. Use this information to answer questions accurately:
+
+${resumeContent}
+
+Remember: Only provide information that is explicitly stated in the resume above. Do not invent or speculate about information not present in the resume.`;
 }

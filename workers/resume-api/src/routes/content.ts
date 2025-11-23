@@ -6,7 +6,7 @@
  */
 
 import { Hono, type Context } from 'hono';
-import { getResumeContent, getSystemPrompt } from '../resume';
+import { getResumeContent, getFullSystemPrompt } from '../resume';
 import { HTTP_STATUS } from '../constants';
 import { logError } from '../../../util';
 
@@ -38,11 +38,11 @@ contentRoutes.get('/resume', async (c: Context<AppContext>) => {
 });
 
 /**
- * GET /system-prompt - Get system prompt from environment secret
+ * GET /system-prompt - Get full system prompt with resume content
  */
-contentRoutes.get('/system-prompt', (c: Context<AppContext>) => {
+contentRoutes.get('/system-prompt', async (c: Context<AppContext>) => {
 	try {
-		const systemPrompt = getSystemPrompt(c.env);
+		const systemPrompt = await getFullSystemPrompt(c.env);
 		return c.json({ systemPrompt }, HTTP_STATUS.OK);
 	} catch (error) {
 		logError('GET', '/resume/api/system-prompt', (error as Error).message);
