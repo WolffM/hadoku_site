@@ -12,6 +12,7 @@ export interface Env {
 
 /**
  * Get the resume content from KV storage
+ * Note: KV has eventual consistency with edge caching (default ~60s)
  */
 export async function getResumeContent(env: Env): Promise<string> {
 	const content = await env.CONTENT_KV.get('resume');

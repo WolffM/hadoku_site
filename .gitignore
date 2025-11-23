@@ -8,6 +8,7 @@ dist/
 
 # environment variables
 .env
+resumeData.env
 .env.*
 !.env.example
 .npmrc

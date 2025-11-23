@@ -142,8 +142,43 @@ def load_system_prompt() -> Optional[str]:
     return system_prompt
 
 
+def bust_resume_cache(dry_run: bool = False) -> bool:
+    """Bust the KV edge cache by hitting the API with a cache-busting query param.
+
+    KV has eventual consistency with edge caching (~60s). After uploading,
+    we hit the API once with a unique query param to force a fresh read,
+    which populates the edge cache with the new content.
+    """
+    import time
+    import urllib.request
+    import urllib.error
+
+    cache_bust_url = f"https://hadoku.me/resume/api/resume?cache_bust={int(time.time())}"
+
+    if dry_run:
+        print(f"[DRY RUN] Would bust cache via: {cache_bust_url}")
+        return True
+
+    print(f"[INFO] Busting edge cache...")
+    try:
+        req = urllib.request.Request(cache_bust_url)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                print(f"[SUCCESS] Edge cache refreshed")
+                return True
+            else:
+                print(f"[WARNING] Cache bust returned status {response.status}")
+                return True  # Not a failure, cache will refresh eventually
+    except urllib.error.URLError as e:
+        print(f"[WARNING] Could not bust cache: {e}")
+        return True  # Not a failure, cache will refresh eventually
+    except Exception as e:
+        print(f"[WARNING] Cache bust error: {e}")
+        return True
+
+
 def upload_resume_to_kv(resume_path: Path, dry_run: bool = False) -> bool:
-    """Upload resume content to KV namespace."""
+    """Upload resume content to KV namespace (remote/production)."""
     content = load_resume_content(resume_path)
     if not content:
         return False
@@ -155,9 +190,10 @@ def upload_resume_to_kv(resume_path: Path, dry_run: bool = False) -> bool:
         print(f"  File: {resume_path}")
         print(f"  Content length: {len(content)} chars")
         print(f"  First 200 chars: {content[:200]}...")
+        bust_resume_cache(dry_run=True)
         return True
 
-    print(f"[INFO] Uploading resume to KV namespace...")
+    print(f"[INFO] Uploading resume to KV namespace (remote)...")
     print(f"  Namespace ID: {RESUME_KV_NAMESPACE_ID}")
     print(f"  Key: {RESUME_KV_KEY}")
 
@@ -171,10 +207,12 @@ def upload_resume_to_kv(resume_path: Path, dry_run: bool = False) -> bool:
     resume_rel_path = os.path.relpath(resume_path, worker_path)
 
     try:
+        # Use --remote to ensure we're uploading to production, not local dev
         result = subprocess.run(
             [npx_cmd, 'wrangler', 'kv', 'key', 'put',
              '--namespace-id', RESUME_KV_NAMESPACE_ID,
-             RESUME_KV_KEY, '--path', resume_rel_path],
+             RESUME_KV_KEY, '--path', resume_rel_path,
+             '--remote'],
             capture_output=True,
             text=True,
             shell=True if os.name == 'nt' else False,
@@ -185,6 +223,8 @@ def upload_resume_to_kv(resume_path: Path, dry_run: bool = False) -> bool:
 
         if result.returncode == 0:
             print(f"[SUCCESS] Resume uploaded to KV")
+            # Bust the edge cache so the new content is immediately available
+            bust_resume_cache(dry_run)
             return True
         else:
             print(f"[ERROR] Failed to upload resume to KV")
