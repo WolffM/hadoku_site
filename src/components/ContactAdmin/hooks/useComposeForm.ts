@@ -8,6 +8,12 @@ import { ContactAdminStorage } from '../../../lib/storage/contact-admin-storage'
 import { VALID_RECIPIENTS } from '../../../config/contact-admin';
 import type { SendEmailRequest } from '../../../lib/api/types';
 
+type ShowToastFn = (
+	message: string,
+	type?: 'success' | 'error' | 'info' | 'warning',
+	duration?: number
+) => void;
+
 interface ComposeFormState {
 	from: string;
 	to: string;
@@ -31,7 +37,10 @@ interface UseComposeFormResult {
 /**
  * Hook to manage email composition
  */
-export function useComposeForm(client: ContactAdminClient | null): UseComposeFormResult {
+export function useComposeForm(
+	client: ContactAdminClient | null,
+	showToast: ShowToastFn
+): UseComposeFormResult {
 	const [form, setForm] = useState<ComposeFormState>({
 		from: VALID_RECIPIENTS[0],
 		to: '',
@@ -63,7 +72,7 @@ export function useComposeForm(client: ContactAdminClient | null): UseComposeFor
 	// Send email
 	const sendEmail = useCallback(async (): Promise<boolean> => {
 		if (!client) {
-			alert('No admin client available');
+			showToast('No admin client available', 'error');
 			return false;
 		}
 
@@ -87,16 +96,16 @@ export function useComposeForm(client: ContactAdminClient | null): UseComposeFor
 			}
 
 			// Success
-			alert('Email sent successfully!');
+			showToast('Email sent successfully!', 'success');
 			return true;
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Unknown error';
-			alert(`Failed to send email: ${message}`);
+			showToast(`Failed to send email: ${message}`, 'error');
 			return false;
 		} finally {
 			setSending(false);
 		}
-	}, [client, form, pastRecipients]);
+	}, [client, form, pastRecipients, showToast]);
 
 	// Reset form
 	const reset = useCallback(() => {

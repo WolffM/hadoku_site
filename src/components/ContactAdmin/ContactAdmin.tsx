@@ -4,6 +4,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import { useToast, Toaster } from '@wolffm/task-ui-components';
 import ThemePickerWrapper from '../ThemePickerWrapper';
 import { ContactAdminClient } from '../../lib/api/contact-admin-client';
 
@@ -25,6 +26,9 @@ type ViewMode = 'inbox' | 'compose';
 type TabMode = 'mail' | 'appointments';
 
 export function ContactAdmin() {
+	// Toast notifications
+	const { toasts, showToast, dismissToast } = useToast();
+
 	// Auth
 	const { adminKey, keyValidated, loading: authLoading, error: authError } = useAdminAuth();
 
@@ -41,10 +45,10 @@ export function ContactAdmin() {
 	const [showTrash, setShowTrash] = useState(false);
 
 	// Hooks
-	const emailsHook = useEmails(client);
-	const composeHook = useComposeForm(client);
-	const whitelistHook = useWhitelist(client);
-	const appointmentHook = useAppointmentConfig(client, activeTab === 'appointments');
+	const emailsHook = useEmails(client, showToast);
+	const composeHook = useComposeForm(client, showToast);
+	const whitelistHook = useWhitelist(client, showToast);
+	const appointmentHook = useAppointmentConfig(client, activeTab === 'appointments', showToast);
 
 	// Filter emails based on selection
 	const filteredEmails = useMemo(() => {
@@ -119,6 +123,8 @@ export function ContactAdmin() {
 
 	return (
 		<div className="h-screen flex flex-col bg-bg">
+			{/* Toast notifications */}
+			<Toaster toasts={toasts} onDismiss={dismissToast} position="top-right" />
 			{/* Top Bar with Navigation */}
 			<div className="border-b border-border bg-bg-card">
 				<div className="flex items-center justify-between px-6 py-3">

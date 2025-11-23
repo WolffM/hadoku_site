@@ -6,6 +6,12 @@ import { useState, useCallback } from 'react';
 import type { ContactAdminClient } from '../../../lib/api/contact-admin-client';
 import type { WhitelistEntry } from '../../../lib/api/types';
 
+type ShowToastFn = (
+	message: string,
+	type?: 'success' | 'error' | 'info' | 'warning',
+	duration?: number
+) => void;
+
 interface UseWhitelistResult {
 	whitelist: WhitelistEntry[];
 	loading: boolean;
@@ -20,7 +26,10 @@ interface UseWhitelistResult {
 /**
  * Hook to manage email whitelist
  */
-export function useWhitelist(client: ContactAdminClient | null): UseWhitelistResult {
+export function useWhitelist(
+	client: ContactAdminClient | null,
+	showToast: ShowToastFn
+): UseWhitelistResult {
 	const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [showModal, setShowModal] = useState(false);
@@ -35,11 +44,11 @@ export function useWhitelist(client: ContactAdminClient | null): UseWhitelistRes
 			setWhitelist(entries);
 		} catch (err) {
 			console.error('Failed to fetch whitelist:', err);
-			alert('Failed to load whitelist');
+			showToast('Failed to load whitelist', 'error');
 		} finally {
 			setLoading(false);
 		}
-	}, [client]);
+	}, [client, showToast]);
 
 	// Add to whitelist
 	const addToWhitelist = useCallback(
@@ -71,13 +80,13 @@ export function useWhitelist(client: ContactAdminClient | null): UseWhitelistRes
 				await client.removeFromWhitelist(email);
 				// Refresh whitelist
 				await fetchWhitelist();
-				alert('Email removed from whitelist');
+				showToast('Email removed from whitelist', 'success');
 			} catch (err) {
 				console.error('Failed to remove from whitelist:', err);
-				alert('Failed to remove from whitelist');
+				showToast('Failed to remove from whitelist', 'error');
 			}
 		},
-		[client, fetchWhitelist]
+		[client, fetchWhitelist, showToast]
 	);
 
 	// Modal controls

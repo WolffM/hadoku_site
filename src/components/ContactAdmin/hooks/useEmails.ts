@@ -7,6 +7,12 @@ import type { ContactAdminClient } from '../../../lib/api/contact-admin-client';
 import { ContactAdminStorage } from '../../../lib/storage/contact-admin-storage';
 import type { Email } from '../../../lib/api/types';
 
+type ShowToastFn = (
+	message: string,
+	type?: 'success' | 'error' | 'info' | 'warning',
+	duration?: number
+) => void;
+
 interface UseEmailsResult {
 	emails: Email[];
 	selectedEmail: Email | null;
@@ -23,7 +29,10 @@ interface UseEmailsResult {
 /**
  * Hook to manage email submissions
  */
-export function useEmails(client: ContactAdminClient | null): UseEmailsResult {
+export function useEmails(
+	client: ContactAdminClient | null,
+	showToast: ShowToastFn
+): UseEmailsResult {
 	const [emails, setEmails] = useState<Email[]>([]);
 	const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -64,11 +73,14 @@ export function useEmails(client: ContactAdminClient | null): UseEmailsResult {
 			const response = await client.getEmails();
 			setEmails(response.data.submissions);
 		} catch (err) {
-			alert(`Failed to refresh emails: ${err instanceof Error ? err.message : 'Unknown error'}`);
+			showToast(
+				`Failed to refresh emails: ${err instanceof Error ? err.message : 'Unknown error'}`,
+				'error'
+			);
 		} finally {
 			setRefreshing(false);
 		}
-	}, [client]);
+	}, [client, showToast]);
 
 	// Delete email (move to trash)
 	const deleteEmail = useCallback(
@@ -92,10 +104,13 @@ export function useEmails(client: ContactAdminClient | null): UseEmailsResult {
 					setSelectedEmail(null);
 				}
 			} catch (err) {
-				alert(`Failed to delete email: ${err instanceof Error ? err.message : 'Unknown error'}`);
+				showToast(
+					`Failed to delete email: ${err instanceof Error ? err.message : 'Unknown error'}`,
+					'error'
+				);
 			}
 		},
-		[client, selectedEmail]
+		[client, selectedEmail, showToast]
 	);
 
 	// Restore email from trash
@@ -119,10 +134,13 @@ export function useEmails(client: ContactAdminClient | null): UseEmailsResult {
 					);
 				}
 			} catch (err) {
-				alert(`Failed to restore email: ${err instanceof Error ? err.message : 'Unknown error'}`);
+				showToast(
+					`Failed to restore email: ${err instanceof Error ? err.message : 'Unknown error'}`,
+					'error'
+				);
 			}
 		},
-		[client, selectedEmail]
+		[client, selectedEmail, showToast]
 	);
 
 	// Select email and mark as read

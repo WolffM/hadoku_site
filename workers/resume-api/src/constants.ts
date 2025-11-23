@@ -8,7 +8,7 @@ export const LLM_CONFIG = {
 	BASE_URL: 'https://api.groq.com/openai/v1',
 	MODEL: 'openai/gpt-oss-120b',
 	TEMPERATURE: 0.7,
-	MAX_TOKENS: 1024,
+	MAX_TOKENS: 512, // Limits output to 512 tokens
 } as const;
 
 // Rate Limiting Configuration

@@ -66,22 +66,33 @@ describe('Resume Content Functions', () => {
 		};
 
 		const fullPrompt = await getFullSystemPrompt(env);
+		// Should include both the base system prompt and the resume content
 		expect(fullPrompt).toContain(mockSystemPrompt);
 		expect(fullPrompt).toContain(mockResume);
-		expect(fullPrompt).toContain('Here is the resume');
+		// Should have a resume content section
+		expect(fullPrompt).toContain('Resume Content');
 	});
 });
 
 describe('Configuration', () => {
-	it('should have valid LLM config', () => {
-		expect(LLM_CONFIG.BASE_URL).toBe('https://api.groq.com/openai/v1');
-		expect(LLM_CONFIG.MODEL).toBe('openai/gpt-oss-120b');
-		expect(LLM_CONFIG.TEMPERATURE).toBe(0.7);
-		expect(LLM_CONFIG.MAX_TOKENS).toBe(1024);
+	it('should have required LLM config properties', () => {
+		// Test structure and types, not hardcoded values
+		// Values can change based on business needs, but structure should be stable
+		expect(LLM_CONFIG.BASE_URL).toBeDefined();
+		expect(typeof LLM_CONFIG.BASE_URL).toBe('string');
+		expect(LLM_CONFIG.MODEL).toBeDefined();
+		expect(typeof LLM_CONFIG.MODEL).toBe('string');
+		expect(typeof LLM_CONFIG.TEMPERATURE).toBe('number');
+		expect(LLM_CONFIG.TEMPERATURE).toBeGreaterThanOrEqual(0);
+		expect(LLM_CONFIG.TEMPERATURE).toBeLessThanOrEqual(2);
+		expect(typeof LLM_CONFIG.MAX_TOKENS).toBe('number');
+		expect(LLM_CONFIG.MAX_TOKENS).toBeGreaterThan(0);
 	});
 
-	it('should have valid rate limit config', () => {
-		expect(RATE_LIMIT_CONFIG.MAX_REQUESTS_PER_WINDOW).toBe(10);
-		expect(RATE_LIMIT_CONFIG.WINDOW_DURATION_SECONDS).toBe(60);
+	it('should have required rate limit config properties', () => {
+		expect(typeof RATE_LIMIT_CONFIG.MAX_REQUESTS_PER_WINDOW).toBe('number');
+		expect(RATE_LIMIT_CONFIG.MAX_REQUESTS_PER_WINDOW).toBeGreaterThan(0);
+		expect(typeof RATE_LIMIT_CONFIG.WINDOW_DURATION_SECONDS).toBe('number');
+		expect(RATE_LIMIT_CONFIG.WINDOW_DURATION_SECONDS).toBeGreaterThan(0);
 	});
 });

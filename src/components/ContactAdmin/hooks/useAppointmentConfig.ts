@@ -6,6 +6,12 @@ import { useState, useEffect, useCallback } from 'react';
 import type { ContactAdminClient } from '../../../lib/api/contact-admin-client';
 import type { AppointmentConfig } from '../../../lib/api/types';
 
+type ShowToastFn = (
+	message: string,
+	type?: 'success' | 'error' | 'info' | 'warning',
+	duration?: number
+) => void;
+
 interface UseAppointmentConfigResult {
 	config: AppointmentConfig | null;
 	loading: boolean;
@@ -20,7 +26,8 @@ interface UseAppointmentConfigResult {
  */
 export function useAppointmentConfig(
 	client: ContactAdminClient | null,
-	isActive: boolean
+	isActive: boolean,
+	showToast: ShowToastFn
 ): UseAppointmentConfigResult {
 	const [config, setConfig] = useState<AppointmentConfig | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -43,11 +50,11 @@ export function useAppointmentConfig(
 			setConfig(fetchedConfig);
 		} catch (err) {
 			console.error('Failed to fetch appointment config:', err);
-			alert('Failed to load appointment configuration');
+			showToast('Failed to load appointment configuration', 'error');
 		} finally {
 			setLoading(false);
 		}
-	}, [client]);
+	}, [client, showToast]);
 
 	// Save appointment config
 	const saveConfig = useCallback(async () => {
@@ -56,14 +63,14 @@ export function useAppointmentConfig(
 		setSaving(true);
 		try {
 			await client.saveAppointmentConfig(config);
-			alert('Appointment configuration saved successfully!');
+			showToast('Appointment configuration saved successfully!', 'success');
 		} catch (err) {
 			console.error('Failed to save appointment config:', err);
-			alert('Failed to save appointment configuration');
+			showToast('Failed to save appointment configuration', 'error');
 		} finally {
 			setSaving(false);
 		}
-	}, [client, config]);
+	}, [client, config, showToast]);
 
 	// Update config
 	const updateConfig = useCallback((updates: Partial<AppointmentConfig>) => {
