@@ -33,6 +33,10 @@ id = "e445c7b9dae643ac9b3b999cd85a239c"
 [triggers]
 crons = ["0 3 * * *"]
 
+# Analytics Engine for structured event logging (queryable via SQL)
+[[analytics_engine_datasets]]
+binding = "ANALYTICS_ENGINE"
+
 # Optional: Resend webhook secret for verifying inbound emails
 # Set this via: wrangler secret put RESEND_WEBHOOK_SECRET
 # RESEND_WEBHOOK_SECRET = "your-webhook-secret-here"

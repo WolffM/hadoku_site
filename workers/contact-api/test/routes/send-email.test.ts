@@ -221,7 +221,7 @@ describe('POST /contact/api/admin/send-email', () => {
 	});
 
 	describe('Reply-To Logic', () => {
-		it('should redirect replies to public@hadoku.me when from is no-reply@hadoku.me', async () => {
+		it('should use from address as reply-to when from is no-reply@hadoku.me without explicit replyTo', async () => {
 			let capturedBody: any;
 			global.fetch = vi.fn().mockImplementation(async (_url, options) => {
 				capturedBody = JSON.parse(options.body);
@@ -244,8 +244,8 @@ describe('POST /contact/api/admin/send-email', () => {
 			});
 
 			expect(response.status).toBe(200);
-			// Verify the reply-to was set to public@hadoku.me (Resend uses array format)
-			expect(capturedBody.reply_to).toContain('public@hadoku.me');
+			// Without explicit replyTo, defaults to from address (Resend uses array format)
+			expect(capturedBody.reply_to).toContain('no-reply@hadoku.me');
 		});
 
 		it('should use from address as reply-to when no explicit replyTo is provided', async () => {
@@ -303,7 +303,7 @@ describe('POST /contact/api/admin/send-email', () => {
 			expect(capturedBody.reply_to).toContain('business@hadoku.me');
 		});
 
-		it('should always redirect no-reply@ to public@ even if explicit replyTo is provided', async () => {
+		it('should use explicit replyTo for no-reply@ if provided', async () => {
 			let capturedBody: any;
 			global.fetch = vi.fn().mockImplementation(async (_url, options) => {
 				capturedBody = JSON.parse(options.body);
@@ -322,14 +322,13 @@ describe('POST /contact/api/admin/send-email', () => {
 					to: 'user@example.com',
 					subject: 'Automated Message',
 					text: 'This is automated',
-					replyTo: 'support@hadoku.me', // This should be overridden
+					replyTo: 'support@hadoku.me', // Explicit replyTo should be used
 				},
 			});
 
 			expect(response.status).toBe(200);
-			// no-reply should always redirect to public, ignoring explicit replyTo (Resend uses array format)
-			expect(capturedBody.reply_to).toContain('public@hadoku.me');
-			expect(capturedBody.reply_to).not.toContain('support@hadoku.me');
+			// Should use the explicit replyTo (Resend uses array format)
+			expect(capturedBody.reply_to).toContain('support@hadoku.me');
 		});
 	});
 });

@@ -37,6 +37,28 @@ import {
 	prepareAppointmentTemplateData,
 } from '../email/templates';
 import { EMAIL_CONFIG, APPOINTMENT_CONFIG, RATE_LIMIT_CONFIG } from '../constants';
+import {
+	logRateLimitHit,
+	logRateLimitWarning,
+	logEmailSent,
+	logEmailFailed,
+	logAppointmentBooked,
+	logAppointmentConflict,
+	logSubmissionCreated,
+} from '../telemetry';
+
+/**
+ * Hash IP for logging (privacy-preserving)
+ */
+function hashIP(ip: string): string {
+	let hash = 0;
+	for (let i = 0; i < ip.length; i++) {
+		const char = ip.charCodeAt(i);
+		hash = (hash << 5) - hash + char;
+		hash = hash & hash;
+	}
+	return Math.abs(hash).toString(16).padStart(8, '0');
+}
 
 /**
  * Check if recipient is a public mailbox that bypasses whitelist/referrer checks
@@ -52,6 +74,7 @@ interface Env {
 	DB: D1Database;
 	RATE_LIMIT_KV: KVNamespace;
 	TEMPLATES_KV: KVNamespace;
+	ANALYTICS_ENGINE?: AnalyticsEngineDataset;
 	EMAIL_PROVIDER?: string;
 	RESEND_API_KEY?: string;
 }
@@ -104,6 +127,9 @@ export function createSubmitRoutes() {
 			// Security Layer 4: Rate limiting check
 			const rateLimitResult = await checkRateLimit(kv, ipAddress);
 			if (!rateLimitResult.allowed) {
+				// Log rate limit hit for monitoring
+				logRateLimitHit(c.env, hashIP(ipAddress), rateLimitResult.remaining, '/submit');
+
 				return c.json(
 					{
 						success: false,
@@ -118,6 +144,11 @@ export function createSubmitRoutes() {
 						'X-RateLimit-Reset': rateLimitResult.resetAt.toString(),
 					}
 				);
+			}
+
+			// Log warning when approaching limit (1 remaining)
+			if (rateLimitResult.remaining <= 1) {
+				logRateLimitWarning(c.env, hashIP(ipAddress), rateLimitResult.remaining, '/submit');
 			}
 
 			// Security Layer 5: Validate and sanitize input (includes honeypot check)
@@ -156,6 +187,9 @@ export function createSubmitRoutes() {
 
 			// Record this submission for rate limiting
 			await recordSubmission(kv, ipAddress);
+
+			// Log submission creation
+			logSubmissionCreated(c.env, sanitized.recipient || 'default');
 
 			// Auto-whitelist the sender after successful submission
 			// This allows them to contact us again without referrer restrictions
@@ -200,6 +234,9 @@ export function createSubmitRoutes() {
 				const slotAvailable = await isSlotAvailable(db, appointmentData.slotId);
 
 				if (!slotAvailable) {
+					// Log appointment conflict
+					logAppointmentConflict(c.env, appointmentData.slotId);
+
 					// Slot was taken, fetch updated available slots
 					const updatedSlots = await getAppointmentsByDate(db, appointmentData.date);
 
@@ -319,27 +356,39 @@ export function createSubmitRoutes() {
 						text = emailContent.text;
 					}
 
-					// Send confirmation email
+					// Send confirmation email (reply-to defaults to from address)
 					const emailResult = await emailProvider.sendEmail({
 						from: EMAIL_CONFIG.DEFAULT_FROM,
 						to: sanitized.email,
 						subject,
 						text,
-						replyTo: EMAIL_CONFIG.DEFAULT_REPLY_TO,
+						replyTo: EMAIL_CONFIG.DEFAULT_FROM,
 					});
 
 					if (!emailResult.success) {
 						console.error('Failed to send appointment confirmation email:', emailResult.error);
+						logEmailFailed(c.env, 'appointment_confirmation', emailResult.error || 'Unknown error');
 						// Don't fail the request - appointment was still created
 					} else {
 						console.log(
 							`Appointment confirmation email sent to ${sanitized.email} (${emailResult.messageId})`
 						);
+						// Log success with recipient domain (privacy-preserving)
+						const recipientDomain = sanitized.email.split('@')[1] || 'unknown';
+						logEmailSent(c.env, 'appointment_confirmation', recipientDomain);
 					}
 				} catch (emailError) {
 					console.error('Error sending appointment confirmation email:', emailError);
+					logEmailFailed(
+						c.env,
+						'appointment_confirmation',
+						emailError instanceof Error ? emailError.message : 'Unknown error'
+					);
 					// Don't fail the request - appointment was still created
 				}
+
+				// Log successful appointment booking
+				logAppointmentBooked(c.env, appointmentData.platform, appointmentData.duration);
 
 				// Success response with appointment
 				return c.json(

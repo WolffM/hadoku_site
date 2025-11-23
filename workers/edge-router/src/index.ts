@@ -155,10 +155,13 @@ async function handleApiRoute(c: Context<AppContext>): Promise<Response> {
 
 	let lastErr: Error | null = null;
 
+	// Use c.req.url to preserve query string (c.req.path strips it)
+	const requestUrl = new URL(c.req.url);
+
 	// Try each backend sequentially until one succeeds (fallback pattern)
 	for (const base of bases) {
 		try {
-			const targetUrl = new URL(c.req.path, base).toString();
+			const targetUrl = new URL(requestUrl.pathname + requestUrl.search, base).toString();
 
 			// Clone headers and add loop prevention
 			const headers = new Headers(c.req.raw.headers);
@@ -224,7 +227,12 @@ async function handleApiRoute(c: Context<AppContext>): Promise<Response> {
  * Proxy static content to GitHub Pages
  */
 async function proxyToGitHubPages(c: Context<AppContext>): Promise<Response> {
-	const targetUrl = new URL(c.req.path, c.env.STATIC_ORIGIN).toString();
+	// Use c.req.url to preserve query string (c.req.path strips it)
+	const requestUrl = new URL(c.req.url);
+	const targetUrl = new URL(
+		requestUrl.pathname + requestUrl.search,
+		c.env.STATIC_ORIGIN
+	).toString();
 
 	try {
 		const res = await fetch(targetUrl, {
@@ -336,7 +344,12 @@ async function getKeyForSession(sessionId: string | null, env: Env): Promise<str
  * No fallback needed since this is a dedicated public-facing endpoint
  */
 async function handleContactApiRoute(c: Context<AppContext>): Promise<Response> {
-	const targetUrl = new URL(c.req.path, c.env.CONTACT_WORKER_BASE).toString();
+	// Use c.req.url to preserve query string (c.req.path strips it)
+	const requestUrl = new URL(c.req.url);
+	const targetUrl = new URL(
+		requestUrl.pathname + requestUrl.search,
+		c.env.CONTACT_WORKER_BASE
+	).toString();
 
 	try {
 		// Look up session and inject key if present (for admin routes)
@@ -382,7 +395,12 @@ async function handleContactApiRoute(c: Context<AppContext>): Promise<Response> 
  * No fallback needed since this is a dedicated public-facing endpoint
  */
 async function handleResumeApiRoute(c: Context<AppContext>): Promise<Response> {
-	const targetUrl = new URL(c.req.path, c.env.RESUME_WORKER_BASE).toString();
+	// Use c.req.url to preserve query string (c.req.path strips it)
+	const requestUrl = new URL(c.req.url);
+	const targetUrl = new URL(
+		requestUrl.pathname + requestUrl.search,
+		c.env.RESUME_WORKER_BASE
+	).toString();
 
 	try {
 		// Clone headers

@@ -12,6 +12,8 @@ export const VALID_RECIPIENTS = [
 	'no-reply@hadoku.me',
 	'hello@hadoku.me',
 	'public@hadoku.me', // Public-facing mailbox (bypasses whitelist/referrer checks)
+	'meeting@hadoku.me', // Meeting scheduling mailbox
+	'alert@hadoku.me', // Alert mailbox
 ] as const;
 
 // Timezone options for appointment scheduling

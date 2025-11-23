@@ -6,13 +6,11 @@
 // Email configuration
 export const EMAIL_CONFIG = {
 	DEFAULT_FROM: 'matthaeus@hadoku.me',
-	DEFAULT_REPLY_TO: 'matthaeus@hadoku.me',
 	VALID_DOMAINS: ['hadoku.me'],
 	// Recipients that bypass whitelist/referrer checks (public-facing mailboxes)
-	PUBLIC_RECIPIENTS: ['public@hadoku.me'],
-	// No-reply address redirects replies to public mailbox
+	PUBLIC_RECIPIENTS: ['public@hadoku.me', 'meeting@hadoku.me', 'test@hadoku.me', 'alert@hadoku.me'],
+	// No-reply address - replies will use sender's from address
 	NO_REPLY_ADDRESS: 'no-reply@hadoku.me',
-	PUBLIC_REPLY_TO: 'public@hadoku.me',
 } as const;
 
 // Site configuration

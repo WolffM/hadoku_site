@@ -45,7 +45,7 @@ export function MailDetail({ email, onReply, onDelete, onRestore }: MailDetailPr
 							<>
 								<button
 									onClick={onReply}
-									className="px-4 py-1 text-sm bg-primary text-primary-dark rounded hover:bg-primary-dark hover:text-white transition-colors"
+									className="px-4 py-1 text-sm bg-primary text-bg-card rounded hover:bg-primary-dark transition-colors"
 								>
 									Reply
 								</button>

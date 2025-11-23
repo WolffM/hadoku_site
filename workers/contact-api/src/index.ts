@@ -21,13 +21,15 @@ import { createSubmitRoutes } from './routes/submit';
 import { createAdminRoutes } from './routes/admin';
 import { createInboundRoutes } from './routes/inbound';
 import { createAppointmentsRoutes } from './routes/appointments';
-import { archiveOldSubmissions, isDatabaseNearCapacity } from './storage';
-import { RETENTION_CONFIG, DATABASE_CONFIG } from './constants';
+import { archiveOldSubmissions, getDatabaseSize, purgeOldDeletedSubmissions } from './storage';
+import { RETENTION_CONFIG } from './constants';
+import { logDbCapacity, logArchive, logTrashPurge, logScheduledRun } from './telemetry';
 
 interface Env {
 	DB: D1Database;
 	RATE_LIMIT_KV: KVNamespace;
 	TEMPLATES_KV: KVNamespace;
+	ANALYTICS_ENGINE?: AnalyticsEngineDataset;
 	ADMIN_KEYS?: string;
 	FRIEND_KEYS?: string;
 	EMAIL_PROVIDER?: string;
@@ -156,10 +158,14 @@ app.onError((err, c) => {
  *
  * Tasks:
  * 1. Archive submissions older than configured days
- * 2. Check database capacity and log warning if over threshold
+ * 2. Purge old deleted submissions (trash cleanup)
+ * 3. Check database capacity and log with severity levels
+ *
+ * All events are logged to Analytics Engine for queryable metrics.
  */
 async function handleScheduled(env: Env): Promise<void> {
 	console.log('Running scheduled tasks...');
+	let success = true;
 
 	try {
 		// Task 1: Archive old submissions
@@ -167,20 +173,35 @@ async function handleScheduled(env: Env): Promise<void> {
 		console.log(
 			`Archived ${archivedCount} submission(s) older than ${RETENTION_CONFIG.ARCHIVE_AFTER_DAYS} days`
 		);
+		logArchive(env, archivedCount, RETENTION_CONFIG.ARCHIVE_AFTER_DAYS);
 
-		// Task 2: Check database capacity
-		const isNearCapacity = await isDatabaseNearCapacity(env.DB);
-		if (isNearCapacity) {
-			console.warn(
-				`⚠️ WARNING: Database is over ${DATABASE_CONFIG.CAPACITY_WARNING_THRESHOLD * 100}% capacity!`
-			);
+		// Task 2: Purge old deleted submissions (trash cleanup)
+		const purgedCount = await purgeOldDeletedSubmissions(env.DB);
+		console.log(
+			`Purged ${purgedCount} deleted submission(s) older than ${RETENTION_CONFIG.TRASH_RETENTION_DAYS} days`
+		);
+		logTrashPurge(env, purgedCount, RETENTION_CONFIG.TRASH_RETENTION_DAYS);
+
+		// Task 3: Check database capacity with detailed logging
+		const dbSize = await getDatabaseSize(env.DB);
+		console.log(
+			`Database capacity: ${dbSize.percentUsed.toFixed(1)}% (${(dbSize.sizeBytes / 1024 / 1024).toFixed(2)} MB)`
+		);
+		logDbCapacity(env, dbSize.percentUsed, dbSize.sizeBytes);
+
+		if (dbSize.warning) {
+			console.warn('⚠️ WARNING: Database capacity threshold exceeded!');
 			console.warn('Consider archiving more aggressively or cleaning up old data');
 		}
 
 		console.log('Scheduled tasks completed successfully');
 	} catch (error) {
 		console.error('Error running scheduled tasks:', error);
+		success = false;
 	}
+
+	// Log overall scheduled run status
+	logScheduledRun(env, 'daily_maintenance', success);
 }
 
 // ============================================================================

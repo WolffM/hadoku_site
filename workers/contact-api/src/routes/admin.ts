@@ -342,16 +342,8 @@ export function createAdminRoutes() {
 			const emailProvider = createEmailProvider(providerName, c.env.RESEND_API_KEY);
 
 			// Determine effective reply-to address
-			// - For no-reply@hadoku.me: redirect replies to public@hadoku.me
-			// - For other senders: use the explicit replyTo or default to the from address
-			let effectiveReplyTo: string | undefined;
-			if (body.from.toLowerCase() === EMAIL_CONFIG.NO_REPLY_ADDRESS) {
-				effectiveReplyTo = EMAIL_CONFIG.PUBLIC_REPLY_TO;
-			} else if (typeof body.replyTo === 'string') {
-				effectiveReplyTo = body.replyTo;
-			} else {
-				effectiveReplyTo = body.from; // Default: reply-to same as from
-			}
+			// Use explicit replyTo if provided, otherwise default to the from address
+			const effectiveReplyTo = typeof body.replyTo === 'string' ? body.replyTo : body.from;
 
 			// Send email
 			const result = await emailProvider.sendEmail({
