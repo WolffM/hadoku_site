@@ -13,7 +13,7 @@ export const LLM_CONFIG = {
 
 // Rate Limiting Configuration
 export const RATE_LIMIT_CONFIG = {
-	MAX_REQUESTS_PER_WINDOW: 10, // 10 requests per window
+	MAX_REQUESTS_PER_WINDOW: 30, // 30 requests per window (Groq free tier)
 	WINDOW_DURATION_SECONDS: 60, // 1 minute window
 	KV_TTL_SECONDS: 120, // TTL for rate limit entries (2 minutes)
 } as const;
